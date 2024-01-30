@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use crate::constants::ETH_IN_WEI;
-use crate::token::{ERC20TokenInfo, NativeTokenName, Token, TokenBalance};
+use crate::constants::WEI_CONVERSION;
+use crate::network::networks::ZKSYNC;
+use crate::token::{ERC20TokenInfo, Token, TokenBalance};
 
 use crate::block_explorer::explorer::BlockExplorer;
+use crate::Network;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchNativeBalanceResponse {
@@ -12,6 +15,7 @@ struct FetchNativeBalanceResponse {
     result: String,
 }
 
+#[derive(Debug)]
 pub struct ZkSyncExplorer;
 
 impl BlockExplorer for ZkSyncExplorer {
@@ -24,23 +28,23 @@ impl BlockExplorer for ZkSyncExplorer {
         );
         let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
         let resp: FetchNativeBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = resp.result.parse::<f64>().unwrap() / (ETH_IN_WEI as f64);
+        let balance = resp.result.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
 
         TokenBalance {
-            token: self.get_native_token(),
+            token: self.get_network().native_token.to_owned(),
             balance,
         }
     }
 
-    fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Token, TokenBalance> {
+    fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
         todo!()
     }
 
-    fn fetch_erc20_balance(&self, evm_address: &str, token_info: &ERC20TokenInfo) -> TokenBalance {
+    fn fetch_erc20_balance(&self, evm_address: &str, token_info: ERC20TokenInfo) -> TokenBalance {
         todo!()
     }
 
-    fn get_native_token(&self) -> Token {
-        Token::Native(NativeTokenName::ETH)
+    fn get_network(&self) -> &'static Network {
+        &ZKSYNC
     }
 }

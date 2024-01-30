@@ -1,15 +1,11 @@
-use super::etherscan_implementation::EtherscanImplementation;
-use crate::{
-    app_config::CONFIG,
-    token::{NativeTokenName, Token},
-};
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 
-lazy_static! {
-    pub static ref ETHERSCAN: EtherscanImplementation = EtherscanImplementation {
-        network_name: "Ethereum".to_string(),
+use super::etherscan_implementation::EtherscanImplementation;
+use crate::{app_config::CONFIG, network::networks::ETHEREUM};
+
+pub static ETHERSCAN: LazyLock<EtherscanImplementation> =
+    LazyLock::new(|| EtherscanImplementation {
         api_key: CONFIG.etherscan_api_key.clone(),
         base_url: "https://api.etherscan.io/api".to_string(),
-        native_token: Token::Native(NativeTokenName::ETH),
-    };
-}
+        network: LazyLock::new(|| &ETHEREUM),
+    });
