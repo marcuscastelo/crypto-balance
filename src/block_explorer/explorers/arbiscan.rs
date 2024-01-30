@@ -1,7 +1,7 @@
-use super::BlockExplorer;
 use crate::app_config::CONFIG;
 use crate::constants::ETH_IN_WEI;
 use crate::token::{Token, TokenBalance};
+use crate::BlockExplorer;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchBalanceResponse {

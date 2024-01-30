@@ -6,16 +6,7 @@ mod token;
 use std::collections::HashMap;
 
 use crate::app_config::CONFIG;
-use crate::block_explorer::arbiscan::Arbiscan;
-use crate::block_explorer::basescan::Basescan;
-use crate::block_explorer::etherscan::Etherscan;
-use crate::block_explorer::lineascan::Lineascan;
-use crate::block_explorer::optimistic_etherscan::OptimisticEtherscan;
-use crate::block_explorer::polygonscan::Polygonscan;
 use crate::block_explorer::prelude::*;
-use crate::block_explorer::scrollscan::Scrollscan;
-use crate::block_explorer::zksync::ZkSyncExplorer;
-use crate::block_explorer::zora::ZoraExplorer;
 use crate::token::Token;
 
 fn main() {

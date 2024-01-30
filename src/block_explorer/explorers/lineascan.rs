@@ -1,7 +1,7 @@
-use super::BlockExplorer;
 use crate::app_config::CONFIG;
 use crate::constants::ETH_IN_WEI;
 use crate::token::{Token, TokenBalance};
+use crate::BlockExplorer;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchBalanceResponse {
@@ -10,13 +10,13 @@ struct FetchBalanceResponse {
     result: String,
 }
 
-pub struct Scrollscan;
+pub struct Lineascan;
 
-impl BlockExplorer for Scrollscan {
+impl BlockExplorer for Lineascan {
     fn fetch_balance(&self, evm_address: &str) -> TokenBalance {
-        let api_key = &CONFIG.scrollscan_api_key;
+        let api_key = &CONFIG.lineascan_api_key;
         let url = format!(
-            "https://api.scrollscan.com/api\
+            "https://api.lineascan.build/api\
                 ?module=account\
                 &action=balance\
                 &address={evm_address}\
