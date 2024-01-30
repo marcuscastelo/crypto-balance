@@ -9,6 +9,7 @@ pub struct AppConfig {
     pub basescan_api_key: String,
     pub arbiscan_api_key: String,
     pub optimistic_etherscan_api_key: String,
+    pub polygonscan_api_key: String,
     pub evm_address: String,
 }
 

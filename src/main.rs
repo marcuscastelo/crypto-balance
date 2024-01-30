@@ -9,9 +9,11 @@ use crate::block_explorer::basescan::Basescan;
 use crate::block_explorer::etherscan::Etherscan;
 use crate::block_explorer::lineascan::Lineascan;
 use crate::block_explorer::optimistic_etherscan::OptimisticEtherscan;
+use crate::block_explorer::polygonscan::Polygonscan;
 use crate::block_explorer::prelude::*;
 use crate::block_explorer::scrollscan::Scrollscan;
 use crate::block_explorer::zksync::ZkSyncExplorer;
+use crate::block_explorer::zora::ZoraExplorer;
 
 fn main() {
     let evm_address = &CONFIG.evm_address;
@@ -26,4 +28,6 @@ fn main() {
         OptimisticEtherscan.fetch_balance(evm_address)
     );
     println!("Arbitrum: {:?}", Arbiscan.fetch_balance(evm_address));
+    println!("Zora: {:?}", ZoraExplorer.fetch_balance(evm_address));
+    println!("Polygon: {:?}", Polygonscan.fetch_balance(evm_address));
 }
