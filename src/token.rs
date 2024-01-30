@@ -1,5 +1,5 @@
 #![allow(clippy::upper_case_acronyms)] // Tokens are upper case acronyms on the crypto space
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Token {
     ETH,
     WETH,
