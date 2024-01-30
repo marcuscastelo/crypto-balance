@@ -10,6 +10,11 @@ use crate::block_explorer::prelude::*;
 use crate::token::Token;
 
 fn main() {
+    // main_native();
+    main_erc20();
+}
+
+fn main_native() {
     let mut network_explorer_map = HashMap::<&str, Box<dyn BlockExplorer>>::new();
     network_explorer_map.insert("Ethereum", Box::new(Etherscan));
     network_explorer_map.insert("zkSync", Box::new(ZkSyncExplorer));
@@ -25,9 +30,9 @@ fn main() {
     let evm_address = &CONFIG.evm_address;
     let mut totals: HashMap<Token, f64> = HashMap::<Token, f64>::new();
     for (network, explorer) in network_explorer_map {
-        let balance = explorer.fetch_balance(evm_address);
+        let balance = explorer.fetch_native_balance(evm_address);
         totals
-            .entry(balance.token)
+            .entry(balance.token.clone())
             .and_modify(|e| *e += balance.balance)
             .or_insert(balance.balance);
         println!("{}: {:?} {:?}", network, balance, balance.token);
@@ -39,4 +44,12 @@ fn main() {
 
     // TODO: Fetch all ERC-20 balances
     // TODO: Create EtherscanBasedExplorer to reduce code duplication
+}
+
+fn main_erc20() {
+    let ethereum_erc20_balances = Etherscan.fetch_erc20_balances(&CONFIG.evm_address);
+    println!(
+        "Ethereum ERC-20 balances: {:#?}",
+        ethereum_erc20_balances.values()
+    );
 }

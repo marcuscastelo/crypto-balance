@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::app_config::CONFIG;
 use crate::constants::ETH_IN_WEI;
-use crate::token::{Token, TokenBalance};
+use crate::token::{ERC20TokenInfo, NativeTokenName, Token, TokenBalance};
 use crate::BlockExplorer;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
-struct FetchBalanceResponse {
+struct FetchNativeBalanceResponse {
     status: String,
     message: String,
     result: String,
@@ -13,7 +15,7 @@ struct FetchBalanceResponse {
 pub struct Arbiscan;
 
 impl BlockExplorer for Arbiscan {
-    fn fetch_balance(&self, evm_address: &str) -> TokenBalance {
+    fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
         let api_key = &CONFIG.arbiscan_api_key;
         let url = format!(
             "https://api.arbiscan.io/api\
@@ -27,7 +29,8 @@ impl BlockExplorer for Arbiscan {
             .expect("Should make GET request")
             .text()
             .expect("Should get response text");
-        let resp: FetchBalanceResponse = serde_json::from_str(&resp).expect("Should parse JSON");
+        let resp: FetchNativeBalanceResponse =
+            serde_json::from_str(&resp).expect("Should parse JSON");
         let balance = match resp.result.parse::<f64>() {
             Ok(balance) => balance / (ETH_IN_WEI as f64),
             Err(_) => panic!("Could not parse balance, response: {:?}", resp),
@@ -39,7 +42,15 @@ impl BlockExplorer for Arbiscan {
         }
     }
 
+    fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Token, TokenBalance> {
+        todo!()
+    }
+
+    fn fetch_erc20_balance(&self, evm_address: &str, token_info: &ERC20TokenInfo) -> TokenBalance {
+        todo!()
+    }
+
     fn get_native_token(&self) -> Token {
-        Token::ETH
+        Token::Native(NativeTokenName::ETH)
     }
 }
