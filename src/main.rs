@@ -40,9 +40,6 @@ fn main_native() {
     for (token, balance) in totals {
         println!("Total {:?}: {}", token, balance);
     }
-
-    // TODO: Fetch all ERC-20 balances
-    // TODO: Create EtherscanBasedExplorer to reduce code duplication
 }
 
 fn main_erc20() {
