@@ -1,5 +1,4 @@
 use super::BlockExplorer;
-use crate::app_config::CONFIG;
 use crate::constants::ETH_IN_WEI;
 use crate::token::{Token, TokenBalance};
 
@@ -10,18 +9,15 @@ struct FetchBalanceResponse {
     result: String,
 }
 
-pub struct Etherscan;
+pub struct ZkSyncExplorer;
 
-impl BlockExplorer for Etherscan {
+impl BlockExplorer for ZkSyncExplorer {
     fn fetch_balance(&self, evm_address: &str) -> TokenBalance {
-        let api_key = &CONFIG.etherscan_api_key;
         let url = format!(
-            "https://api.etherscan.io/api\
+            "https://block-explorer-api.mainnet.zksync.io/api\
                 ?module=account\
                 &action=balance\
-                &address={evm_address}\
-                &tag=latest\
-                &apikey={api_key}"
+                &address={evm_address}"
         );
         let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
         let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();

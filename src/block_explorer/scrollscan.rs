@@ -10,13 +10,13 @@ struct FetchBalanceResponse {
     result: String,
 }
 
-pub struct Etherscan;
+pub struct Scrollscan;
 
-impl BlockExplorer for Etherscan {
+impl BlockExplorer for Scrollscan {
     fn fetch_balance(&self, evm_address: &str) -> TokenBalance {
-        let api_key = &CONFIG.etherscan_api_key;
+        let api_key = &CONFIG.scrollscan_api_key;
         let url = format!(
-            "https://api.etherscan.io/api\
+            "https://api.scrollscan.com/api\
                 ?module=account\
                 &action=balance\
                 &address={evm_address}\

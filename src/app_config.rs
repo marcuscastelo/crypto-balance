@@ -3,13 +3,18 @@ use lazy_static::lazy_static;
 
 #[derive(serde::Deserialize, Debug)]
 pub struct AppConfig {
-    pub api_key: String,
+    pub etherscan_api_key: String,
+    pub scrollscan_api_key: String,
     pub evm_address: String,
 }
 
 lazy_static! {
     pub static ref CONFIG: AppConfig = {
-        let mut builder = Config::builder().add_source(config::File::with_name("Config"));
-        builder.build().unwrap().try_deserialize().unwrap()
+        Config::builder()
+            .add_source(config::File::with_name("Config"))
+            .build()
+            .expect("Should build config from file")
+            .try_deserialize()
+            .expect("Should deserialize built config into struct")
     };
 }
