@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::constants::ETH_IN_WEI;
 use crate::token::{ERC20TokenInfo, NativeTokenName, Token, TokenBalance};
 
-use crate::BlockExplorer;
+use crate::block_explorer::explorer::BlockExplorer;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchNativeBalanceResponse {

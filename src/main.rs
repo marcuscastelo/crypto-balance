@@ -18,14 +18,13 @@ fn main_native() {
     let mut network_explorer_map = HashMap::<&str, &'static dyn BlockExplorer>::new();
     network_explorer_map.insert("Ethereum", &*ETHERSCAN);
     network_explorer_map.insert("zkSync", &ZkSyncExplorer);
-    network_explorer_map.insert("Scroll", &Scrollscan);
-    network_explorer_map.insert("Linea", &Lineascan);
-    network_explorer_map.insert("Base", &Basescan);
-    network_explorer_map.insert("Arbitrum", &Arbiscan);
-    network_explorer_map.insert("Optimism", &OptimisticEtherscan);
-    network_explorer_map.insert("Arbitrum", &Arbiscan);
+    network_explorer_map.insert("Scroll", &*SCROLLSCAN);
+    network_explorer_map.insert("Linea", &*LINEASCAN);
+    network_explorer_map.insert("Base", &*BASESCAN);
+    network_explorer_map.insert("Optimism", &*OPTIMISTIC_ETHERSCAN);
+    network_explorer_map.insert("Arbitrum", &*ARBISCAN);
     network_explorer_map.insert("Zora", &ZoraExplorer);
-    network_explorer_map.insert("Polygon", &Polygonscan);
+    network_explorer_map.insert("Polygon", &*POLYGONSCAN);
 
     let evm_address = &CONFIG.evm_address;
     let mut totals: HashMap<Token, f64> = HashMap::<Token, f64>::new();
@@ -35,7 +34,7 @@ fn main_native() {
             .entry(balance.token.clone())
             .and_modify(|e| *e += balance.balance)
             .or_insert(balance.balance);
-        println!("{}: {:?} {:?}", network, balance, balance.token);
+        println!("{}: {:?}", network, balance);
     }
 
     for (token, balance) in totals {

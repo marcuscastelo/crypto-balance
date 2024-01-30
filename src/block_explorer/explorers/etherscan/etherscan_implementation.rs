@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use crate::app_config::CONFIG;
 use crate::constants::ETH_IN_WEI;
-use crate::token::{ERC20TokenInfo, NativeTokenName, Token, TokenBalance};
+use crate::token::{ERC20TokenInfo, Token, TokenBalance};
 
-use crate::BlockExplorer;
+use crate::block_explorer::explorer::BlockExplorer;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchBalanceResponse {
@@ -21,6 +20,7 @@ struct FetchTokenTxResponse {
 }
 
 pub struct EtherscanImplementation {
+    pub network_name: String,
     pub api_key: String,
     pub base_url: String,
     pub native_token: Token,
@@ -28,9 +28,10 @@ pub struct EtherscanImplementation {
 
 impl BlockExplorer for EtherscanImplementation {
     fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
-        let api_key = &CONFIG.etherscan_api_key;
+        let api_key = self.api_key.as_str();
+        let base_url = self.base_url.as_str();
         let url = format!(
-            "https://api.etherscan.io/api\
+            "{base_url}\
                 ?module=account\
                 &action=balance\
                 &address={evm_address}\
@@ -39,7 +40,12 @@ impl BlockExplorer for EtherscanImplementation {
         );
         let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
         let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = resp.result.parse::<f64>().unwrap() / (ETH_IN_WEI as f64);
+        let balance = match resp.result.parse::<f64>() {
+            Ok(balance) => balance / (ETH_IN_WEI as f64),
+            Err(_) => {
+                panic!("Error fetching balance: {:?}", resp);
+            }
+        };
 
         TokenBalance {
             token: self.get_native_token(),
@@ -48,10 +54,11 @@ impl BlockExplorer for EtherscanImplementation {
     }
 
     fn fetch_erc20_balance(&self, evm_address: &str, token_info: &ERC20TokenInfo) -> TokenBalance {
-        let api_key = &CONFIG.etherscan_api_key;
+        let api_key = self.api_key.as_str();
+        let base_url = self.base_url.as_str();
         let contract_address = &token_info.contract_address;
         let url = format!(
-            "https://api.etherscan.io/api\
+            "{base_url}\
                 ?module=account\
                 &action=tokenbalance\
                 &contractaddress={contract_address}\
@@ -74,9 +81,10 @@ impl BlockExplorer for EtherscanImplementation {
         // Attention: wait for 0.25 seconds between each request to avoid rate limiting
 
         // TODO: Create functions for step 1 and step 2
-        let api_key = &CONFIG.etherscan_api_key;
-        let url = format!(
-            "https://api.etherscan.io/api\
+        let api_key = self.api_key.as_str();
+        let base_url = self.base_url.as_str();
+        let url: String = format!(
+            "{base_url}\
             ?module=account\
             &action=tokentx\
             &address={evm_address}\
@@ -104,6 +112,6 @@ impl BlockExplorer for EtherscanImplementation {
     }
 
     fn get_native_token(&self) -> Token {
-        Token::Native(NativeTokenName::ETH)
+        self.native_token.clone()
     }
 }
