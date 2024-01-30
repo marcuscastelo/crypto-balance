@@ -10,22 +10,22 @@ use crate::block_explorer::prelude::*;
 use crate::token::Token;
 
 fn main() {
-    // main_native();
-    main_erc20();
+    main_native();
+    // main_erc20();
 }
 
 fn main_native() {
-    let mut network_explorer_map = HashMap::<&str, Box<dyn BlockExplorer>>::new();
-    network_explorer_map.insert("Ethereum", Box::new(Etherscan));
-    network_explorer_map.insert("zkSync", Box::new(ZkSyncExplorer));
-    network_explorer_map.insert("Scroll", Box::new(Scrollscan));
-    network_explorer_map.insert("Linea", Box::new(Lineascan));
-    network_explorer_map.insert("Base", Box::new(Basescan));
-    network_explorer_map.insert("Arbitrum", Box::new(Arbiscan));
-    network_explorer_map.insert("Optimism", Box::new(OptimisticEtherscan));
-    network_explorer_map.insert("Arbitrum", Box::new(Arbiscan));
-    network_explorer_map.insert("Zora", Box::new(ZoraExplorer));
-    network_explorer_map.insert("Polygon", Box::new(Polygonscan));
+    let mut network_explorer_map = HashMap::<&str, &'static dyn BlockExplorer>::new();
+    network_explorer_map.insert("Ethereum", &*ETHERSCAN);
+    network_explorer_map.insert("zkSync", &ZkSyncExplorer);
+    network_explorer_map.insert("Scroll", &Scrollscan);
+    network_explorer_map.insert("Linea", &Lineascan);
+    network_explorer_map.insert("Base", &Basescan);
+    network_explorer_map.insert("Arbitrum", &Arbiscan);
+    network_explorer_map.insert("Optimism", &OptimisticEtherscan);
+    network_explorer_map.insert("Arbitrum", &Arbiscan);
+    network_explorer_map.insert("Zora", &ZoraExplorer);
+    network_explorer_map.insert("Polygon", &Polygonscan);
 
     let evm_address = &CONFIG.evm_address;
     let mut totals: HashMap<Token, f64> = HashMap::<Token, f64>::new();
@@ -47,7 +47,7 @@ fn main_native() {
 }
 
 fn main_erc20() {
-    let ethereum_erc20_balances = Etherscan.fetch_erc20_balances(&CONFIG.evm_address);
+    let ethereum_erc20_balances = ETHERSCAN.fetch_erc20_balances(&CONFIG.evm_address);
     println!(
         "Ethereum ERC-20 balances: {:#?}",
         ethereum_erc20_balances.values()
