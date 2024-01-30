@@ -4,9 +4,11 @@ mod constants;
 mod token;
 
 use crate::app_config::CONFIG;
+use crate::block_explorer::arbiscan::Arbiscan;
 use crate::block_explorer::basescan::Basescan;
 use crate::block_explorer::etherscan::Etherscan;
 use crate::block_explorer::lineascan::Lineascan;
+use crate::block_explorer::optimistic_etherscan::OptimisticEtherscan;
 use crate::block_explorer::prelude::*;
 use crate::block_explorer::scrollscan::Scrollscan;
 use crate::block_explorer::zksync::ZkSyncExplorer;
@@ -18,4 +20,10 @@ fn main() {
     println!("Scroll: {:?}", Scrollscan.fetch_balance(evm_address));
     println!("Linea: {:?}", Lineascan.fetch_balance(evm_address));
     println!("Base: {:?}", Basescan.fetch_balance(evm_address));
+    println!("Arbitrum: {:?}", Arbiscan.fetch_balance(evm_address));
+    println!(
+        "Optimism: {:?}",
+        OptimisticEtherscan.fetch_balance(evm_address)
+    );
+    println!("Arbitrum: {:?}", Arbiscan.fetch_balance(evm_address));
 }

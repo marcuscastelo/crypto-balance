@@ -7,6 +7,8 @@ pub struct AppConfig {
     pub scrollscan_api_key: String,
     pub lineascan_api_key: String,
     pub basescan_api_key: String,
+    pub arbiscan_api_key: String,
+    pub optimistic_etherscan_api_key: String,
     pub evm_address: String,
 }
 
