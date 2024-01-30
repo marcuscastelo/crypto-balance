@@ -5,6 +5,8 @@ use lazy_static::lazy_static;
 pub struct AppConfig {
     pub etherscan_api_key: String,
     pub scrollscan_api_key: String,
+    pub lineascan_api_key: String,
+    pub basescan_api_key: String,
     pub evm_address: String,
 }
 

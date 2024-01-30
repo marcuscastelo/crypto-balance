@@ -1,6 +1,8 @@
 use crate::token::{Token, TokenBalance};
 
+pub mod basescan;
 pub mod etherscan;
+pub mod lineascan;
 pub mod prelude;
 pub mod scrollscan;
 pub mod zksync;
