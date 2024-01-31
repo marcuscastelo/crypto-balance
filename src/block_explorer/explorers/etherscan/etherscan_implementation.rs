@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock};
 use crate::block_explorer::explorer::BlockExplorer;
 use crate::constants::WEI_CONVERSION;
 use crate::network::network::Network;
-use crate::token::{ERC20TokenInfo, Token, TokenBalance};
+use crate::token::{self, ERC20TokenInfo, Token, TokenBalance};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchBalanceResponse {
@@ -91,21 +91,21 @@ impl BlockExplorer for EtherscanImplementation {
             &address={evm_address}\
             &tag=latest&apikey={api_key}"
         );
-        dbg!(&url);
         let resp = reqwest::blocking::get(url)
             .expect("Should make GET request")
             .text()
             .expect("Should get response text");
         let resp: FetchTokenTxResponse = serde_json::from_str(&resp).expect("Should parse JSON");
-        dbg!(&resp);
 
-        let tokens: Vec<_> = resp.result.into_iter().map(Token::ERC20).collect();
-        dbg!(&tokens);
+        let tokens: Vec<_> = resp
+            .result
+            .into_iter()
+            .filter(|info| !token::spam_filter::check_spam(&info.token_symbol, &info.token_name))
+            .map(Token::ERC20)
+            .collect();
 
         let mut balances = HashMap::new();
         for token in tokens {
-            dbg!(&token);
-
             if let Token::ERC20(token_info) = &token {
                 if balances.contains_key(&token) {
                     continue; // Skip if we already fetched the balance for this token
@@ -121,7 +121,6 @@ impl BlockExplorer for EtherscanImplementation {
                 unreachable!("Token should be ERC20 since we just converted it")
             }
         }
-        dbg!(&balances);
 
         balances
     }

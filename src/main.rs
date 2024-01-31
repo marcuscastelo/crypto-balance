@@ -14,9 +14,7 @@ use crate::prelude::*;
 
 fn get_network_balance(network: &Network, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
     let native_balance = network.explorer.fetch_native_balance(evm_address);
-    dbg!(&native_balance);
     let erc20_balances = network.explorer.fetch_erc20_balances(evm_address);
-    dbg!(&erc20_balances);
     let mut balances = erc20_balances;
     balances.insert(network.native_token.to_owned(), native_balance);
     balances
@@ -24,12 +22,26 @@ fn get_network_balance(network: &Network, evm_address: &str) -> HashMap<Arc<Toke
 
 fn main() {
     for network in NETWORKS.values() {
-        dbg!(network);
+        println!("{} --------------", network.name);
+
         let network_balances = get_network_balance(network, &CONFIG.evm_address);
-        println!(
-            "{:?} balances: {:#?}",
-            network.name,
-            network_balances.values()
-        );
+
+        for (token, balance) in network_balances {
+            match token.as_ref() {
+                Token::Native(token_name) => {
+                    println!("   {} {:?}", balance.balance, token_name);
+                }
+                Token::ERC20(token_info) => {
+                    println!(
+                        "   {} {} ({})",
+                        balance.balance, token_info.token_symbol, token_info.token_name
+                    );
+                }
+            }
+        }
+
+        println!("   --------------");
+        println!();
+        println!();
     }
 }
