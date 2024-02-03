@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use google_sheets4::Sheets;
+use serde_json::Value;
 
 use crate::prelude::*;
 
@@ -25,19 +26,21 @@ fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, To
 async fn main() {
     let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
-    match spreadsheet_manager.named_range_map().await {
+    match spreadsheet_manager.named_range_map_a1_notation().await {
         Some(named_ranges) => {
-            for (name, range) in named_ranges {
+            for (name, a1_notation) in named_ranges {
+                println!("{}: {}", name, a1_notation);
+
+                let value_range = spreadsheet_manager.read_range(&a1_notation).await.unwrap();
                 println!(
-                    "{:?}: {:?}",
-                    name,
-                    range.to_a1_notation(
-                        spreadsheet_manager
-                            .get_sheet_title(range.sheet_id.unwrap())
-                            .await
-                            .unwrap()
-                            .as_str()
-                    )
+                    "\nValues: {:#?}\n\n",
+                    value_range
+                        .values
+                        .into_iter()
+                        .flatten()
+                        .flatten()
+                        .map(|v| v.to_string().replace('\"', ""))
+                        .collect::<Vec<String>>()
                 );
             }
         }

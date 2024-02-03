@@ -5,7 +5,7 @@ use google_sheets4::{
     Sheets,
 };
 
-use crate::sheets::prelude::*;
+use crate::{sheets::prelude::*, A1Notation};
 
 pub struct SpreadsheetManager {
     pub config: SpreadsheetConfig,
@@ -44,18 +44,23 @@ impl SpreadsheetManager {
         let named_ranges = self.named_ranges().await?;
         let mut map = HashMap::new();
         for named_range in named_ranges {
-            // TODO: simplify nested ifs
-            if let Some(name) = named_range.name {
-                if let Some(range) = named_range.range {
-                    map.insert(name, range);
-                } else {
-                    unreachable!(
-                        "For some reason, named_range.range is None. This should never happen."
-                    )
-                }
-            } else {
-                unreachable!("For some reason, named_range.name is None. This should never happen.")
-            }
+            map.insert(named_range.name?, named_range.range?);
+        }
+        Some(map)
+    }
+
+    pub async fn named_range_map_a1_notation(&self) -> Option<HashMap<String, String>> {
+        let named_ranges = self.named_ranges().await?;
+        let mut map = HashMap::new();
+        for named_range in named_ranges {
+            let a1_notation = named_range.range.as_ref()?.to_a1_notation(
+                self.get_sheet_title(named_range.range.as_ref()?.sheet_id?)
+                    .await
+                    .expect("Sheet title should exist")
+                    .as_str(),
+            );
+
+            map.insert(named_range.name?, a1_notation);
         }
         Some(map)
     }
