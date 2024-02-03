@@ -13,8 +13,13 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-Config.toml
+CONFIG.blockchain.toml
 
 # Added by cargo
 
 /target
+
+
+# Google cloud platform service account key for sheets api
+
+***REMOVED***

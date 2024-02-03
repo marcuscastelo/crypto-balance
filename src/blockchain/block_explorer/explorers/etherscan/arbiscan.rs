@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref ARBISCAN: EtherscanImplementation = EtherscanImplementation {
-        api_key: CONFIG.arbiscan_api_key.clone(),
+        api_key: CONFIG.blockchain.arbiscan_api_key.clone(),
         base_url: "https://api.arbiscan.io/api".to_string(),
         chain: LazyLock::new(|| &ARBITRUM),
     };

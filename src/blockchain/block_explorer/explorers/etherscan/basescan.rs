@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref BASESCAN: EtherscanImplementation = EtherscanImplementation {
-        api_key: CONFIG.basescan_api_key.clone(),
+        api_key: CONFIG.blockchain.basescan_api_key.clone(),
         base_url: "https://api.basescan.org/api".to_string(),
         chain: LazyLock::new(|| &BASE),
     };

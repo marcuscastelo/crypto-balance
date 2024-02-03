@@ -3,6 +3,13 @@ use lazy_static::lazy_static;
 
 #[derive(serde::Deserialize, Debug)]
 pub struct AppConfig {
+    pub blockchain: BlockchainConfig,
+    pub sheets: crate::sheets::config::Config,
+}
+
+// TODO: move to blockchain module
+#[derive(serde::Deserialize, Debug)]
+pub struct BlockchainConfig {
     pub etherscan_api_key: String,
     pub scrollscan_api_key: String,
     pub lineascan_api_key: String,

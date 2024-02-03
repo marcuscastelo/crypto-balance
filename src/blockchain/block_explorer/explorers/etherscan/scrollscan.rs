@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref SCROLLSCAN: EtherscanImplementation = EtherscanImplementation {
-        api_key: CONFIG.scrollscan_api_key.clone(),
+        api_key: CONFIG.blockchain.scrollscan_api_key.clone(),
         base_url: "https://api.scrollscan.com/api".to_string(),
         chain: LazyLock::new(|| &SCROLL),
     };

@@ -2,10 +2,14 @@
 
 mod app_config;
 mod blockchain;
+mod exchange;
 mod prelude;
+mod sheets;
 
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use google_sheets4::Sheets;
 
 use crate::prelude::*;
 
@@ -17,7 +21,35 @@ fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, To
     balances
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let config = &app_config::CONFIG.sheets;
+    let client = http_client::http_client();
+    let auth = auth::auth(config, client.clone()).await;
+    let hub = Sheets::new(client.clone(), auth);
+
+    let result = sheets::sheets::read(&hub, config).await;
+
+    match result {
+        Err(e) => println!("{}", e),
+        Ok((_, spreadsheet)) => {
+            let totals = Vec::new();
+
+            println!(
+                "Success: {:?}",
+                spreadsheet
+                    .values
+                    .unwrap()
+                    .into_iter()
+                    .fold(totals, |mut acc, next_row| {
+                        let key: String = next_row[0].to_string();
+                        acc.push(key);
+                        acc
+                    })
+            );
+        }
+    }
+
     // let binance: Market = Binance::new(None, None);
 
     // println!("BTC Price: {:?}", binance.get_price("BTCUSDT").unwrap());
@@ -25,7 +57,7 @@ fn main() {
     // for network in NETWORKS.values() {
     //     println!("{} --------------", network.name);
 
-    //     let network_balances = get_network_balance(network, &CONFIG.evm_address);
+    //     let network_balances = get_network_balance(network, &CONFIG.blockchain.evm_address);
 
     //     for (token, balance) in network_balances {
     //         match token.as_ref() {
