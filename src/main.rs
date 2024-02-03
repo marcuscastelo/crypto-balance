@@ -9,7 +9,9 @@ mod sheets;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use binance::account::Account;
 use binance::api::Binance;
+use binance::config::Config;
 use binance::market::Market;
 use binance::rest_model::Prices;
 use google_sheets4::api::ValueRange;
@@ -28,6 +30,39 @@ fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, To
 
 #[tokio::main]
 async fn main() {
+    let binance_account: Account = Binance::new_with_config(
+        Some(CONFIG.binance.binance_api_key.to_string()),
+        Some(CONFIG.binance.binance_secret_key.to_string()),
+        &Config {
+            rest_api_endpoint: "https://api.binance.com".into(),
+            ws_endpoint: "wss://stream.binance.com:9443".into(),
+
+            futures_rest_api_endpoint: "https://fapi.binance.com".into(),
+            futures_ws_endpoint: "wss://fstream.binance.com".into(),
+
+            recv_window: 50000,
+            binance_us_api: false,
+
+            timeout: None,
+        },
+    );
+
+    println!(
+        "Binance account: {:#?}",
+        binance_account
+            .get_account()
+            .await
+            .unwrap()
+            .balances
+            .into_iter()
+            .filter(|x| x.free > 0.0)
+            .collect::<Vec<_>>()
+    );
+
+    // TODO: Write to the spreadsheet
+}
+
+async fn main_price() {
     let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
     let token_names: Vec<String> = spreadsheet_manager

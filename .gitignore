@@ -22,4 +22,5 @@ CONFIG.blockchain.toml
 
 # Google cloud platform service account key for sheets api
 
-***REMOVED***
+priv_key.json
+Config.toml

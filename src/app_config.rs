@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 pub struct AppConfig {
     pub blockchain: BlockchainConfig,
     pub sheets: crate::sheets::config::SpreadsheetConfig,
+    pub binance: crate::exchange::binance_config::BinanceConfig,
 }
 
 // TODO: move to blockchain module
