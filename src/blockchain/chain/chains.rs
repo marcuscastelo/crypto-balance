@@ -1,82 +1,81 @@
 use std::{collections::HashMap, sync::LazyLock, vec};
 
-use crate::prelude::*;
-use lazy_static::lazy_static;
+use crate::blockchain::prelude::*;
 
-pub static ETHEREUM: LazyLock<Network> = LazyLock::new(|| Network {
+pub static ETHEREUM: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Ethereum",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &*ETHERSCAN,
 });
 
-pub static ARBITRUM: LazyLock<Network> = LazyLock::new(|| Network {
+pub static ARBITRUM: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Arbitrum",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &*ARBISCAN,
 });
 
-pub static OPTIMISM: LazyLock<Network> = LazyLock::new(|| Network {
+pub static OPTIMISM: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Optimism",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &*OPTIMISTIC_ETHERSCAN,
 });
 
-pub static POLYGON: LazyLock<Network> = LazyLock::new(|| Network {
+pub static POLYGON: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Polygon",
     native_token: Token::Native(NativeTokenName::MATIC).into(),
     explorer: &*POLYGONSCAN,
 });
 
-pub static BASE: LazyLock<Network> = LazyLock::new(|| Network {
+pub static BASE: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Base",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &*BASESCAN,
 });
 
-pub static LINEA: LazyLock<Network> = LazyLock::new(|| Network {
+pub static LINEA: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Linea",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &*LINEASCAN,
 });
 
-pub static SOLANA: LazyLock<Network> = LazyLock::new(|| Network {
+pub static SOLANA: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Solana",
     native_token: Token::Native(NativeTokenName::SOL).into(),
     explorer: todo!("Solana explorer"),
 });
 
-pub static ZKSYNC: LazyLock<Network> = LazyLock::new(|| Network {
+pub static ZKSYNC: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "zkSync",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &ZkSyncExplorer,
 });
 
-pub static ZORA: LazyLock<Network> = LazyLock::new(|| Network {
+pub static ZORA: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Zora",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &ZoraExplorer,
 });
 
-pub static SCROLL: LazyLock<Network> = LazyLock::new(|| Network {
+pub static SCROLL: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Scroll",
     native_token: Token::Native(NativeTokenName::ETH).into(),
     explorer: &*SCROLLSCAN,
 });
 
-pub static BINANCE: LazyLock<Network> = LazyLock::new(|| Network {
+pub static BINANCE: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Binance Smart Chain",
     native_token: Token::Native(NativeTokenName::BNB).into(),
     explorer: todo!("Binance explorer"),
 });
 
-pub static BITCOIN: LazyLock<Network> = LazyLock::new(|| Network {
+pub static BITCOIN: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Bitcoin",
     native_token: Token::Native(NativeTokenName::BTC).into(),
     explorer: todo!("Bitcoin explorer"),
 });
 
-pub static NETWORKS: LazyLock<HashMap<&'static str, &'static Network>> = LazyLock::new(|| {
-    let networks: Vec<&Network> = vec![
+pub static CHAINS: LazyLock<HashMap<&'static str, &'static Chain>> = LazyLock::new(|| {
+    let chains: Vec<&Chain> = vec![
         &ETHEREUM, //
         &ARBITRUM, //
         &OPTIMISM, //
@@ -92,8 +91,8 @@ pub static NETWORKS: LazyLock<HashMap<&'static str, &'static Network>> = LazyLoc
     ];
 
     let mut map = HashMap::new();
-    for network in networks {
-        map.insert(network.name, network);
+    for chain in chains {
+        map.insert(chain.name, chain);
     }
 
     map

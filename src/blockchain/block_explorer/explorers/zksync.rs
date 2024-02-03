@@ -1,30 +1,31 @@
+use crate::blockchain::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::constants::WEI_CONVERSION;
-use crate::network::networks::ZORA;
-use crate::token::{ERC20TokenInfo, Token, TokenBalance};
-
-use crate::block_explorer::explorer::BlockExplorer;
-use crate::Network;
-
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchNativeBalanceResponse {
-    coin_balance: String,
+    status: String,
+    message: String,
+    result: String,
 }
 
 #[derive(Debug)]
-pub struct ZoraExplorer;
+pub struct ZkSyncExplorer;
 
-impl BlockExplorer for ZoraExplorer {
+impl BlockExplorer for ZkSyncExplorer {
     fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
-        let url = format!("https://explorer.zora.energy/api/v2/addresses/{evm_address}",);
+        let url = format!(
+            "https://block-explorer-api.mainnet.zksync.io/api\
+                ?module=account\
+                &action=balance\
+                &address={evm_address}"
+        );
         let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
         let resp: FetchNativeBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = resp.coin_balance.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
+        let balance = resp.result.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
 
         TokenBalance {
-            token: self.get_network().native_token.to_owned(),
+            token: self.get_chain().native_token.to_owned(),
             balance,
         }
     }
@@ -37,7 +38,7 @@ impl BlockExplorer for ZoraExplorer {
         todo!()
     }
 
-    fn get_network(&self) -> &'static Network {
-        &ZORA
+    fn get_chain(&self) -> &'static Chain {
+        &ZKSYNC
     }
 }

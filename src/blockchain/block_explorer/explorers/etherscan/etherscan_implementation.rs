@@ -1,10 +1,6 @@
+use crate::blockchain::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
-
-use crate::block_explorer::explorer::BlockExplorer;
-use crate::constants::WEI_CONVERSION;
-use crate::network::network::Network;
-use crate::token::{self, ERC20TokenInfo, Token, TokenBalance};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchBalanceResponse {
@@ -24,7 +20,7 @@ struct FetchTokenTxResponse {
 pub struct EtherscanImplementation {
     pub api_key: String,
     pub base_url: String,
-    pub network: LazyLock<&'static Network>,
+    pub chain: LazyLock<&'static Chain>,
 }
 
 impl BlockExplorer for EtherscanImplementation {
@@ -49,7 +45,7 @@ impl BlockExplorer for EtherscanImplementation {
         };
 
         TokenBalance {
-            token: self.get_network().native_token.to_owned(),
+            token: self.get_chain().native_token.to_owned(),
             balance,
         }
     }
@@ -125,7 +121,7 @@ impl BlockExplorer for EtherscanImplementation {
         balances
     }
 
-    fn get_network(&self) -> &'static Network {
-        *self.network
+    fn get_chain(&self) -> &'static Chain {
+        *self.chain
     }
 }

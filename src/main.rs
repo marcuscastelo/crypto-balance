@@ -1,47 +1,48 @@
 #![feature(lazy_cell)]
 
 mod app_config;
-mod block_explorer;
-mod constants;
-mod network;
+mod blockchain;
 mod prelude;
-mod token;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::prelude::*;
 
-fn get_network_balance(network: &Network, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
-    let native_balance = network.explorer.fetch_native_balance(evm_address);
-    let erc20_balances = network.explorer.fetch_erc20_balances(evm_address);
+fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    let native_balance = chain.explorer.fetch_native_balance(evm_address);
+    let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address);
     let mut balances = erc20_balances;
-    balances.insert(network.native_token.to_owned(), native_balance);
+    balances.insert(chain.native_token.to_owned(), native_balance);
     balances
 }
 
 fn main() {
-    for network in NETWORKS.values() {
-        println!("{} --------------", network.name);
+    // let binance: Market = Binance::new(None, None);
 
-        let network_balances = get_network_balance(network, &CONFIG.evm_address);
+    // println!("BTC Price: {:?}", binance.get_price("BTCUSDT").unwrap());
 
-        for (token, balance) in network_balances {
-            match token.as_ref() {
-                Token::Native(token_name) => {
-                    println!("   {} {:?}", balance.balance, token_name);
-                }
-                Token::ERC20(token_info) => {
-                    println!(
-                        "   {} {} ({})",
-                        balance.balance, token_info.token_symbol, token_info.token_name
-                    );
-                }
-            }
-        }
+    // for network in NETWORKS.values() {
+    //     println!("{} --------------", network.name);
 
-        println!("   --------------");
-        println!();
-        println!();
-    }
+    //     let network_balances = get_network_balance(network, &CONFIG.evm_address);
+
+    //     for (token, balance) in network_balances {
+    //         match token.as_ref() {
+    //             Token::Native(token_name) => {
+    //                 println!("   {} {:?}", balance.balance, token_name);
+    //             }
+    //             Token::ERC20(token_info) => {
+    //                 println!(
+    //                     "   {} {} ({})",
+    //                     balance.balance, token_info.token_symbol, token_info.token_name
+    //                 );
+    //             }
+    //         }
+    //     }
+
+    //     println!("   --------------");
+    //     println!();
+    //     println!();
+    // }
 }
