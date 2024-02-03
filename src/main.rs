@@ -23,30 +23,26 @@ fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, To
 
 #[tokio::main]
 async fn main() {
-    let config = &app_config::CONFIG.sheets;
-    let client = http_client::http_client();
-    let auth = auth::auth(config, client.clone()).await;
-    let hub = Sheets::new(client.clone(), auth);
+    let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
-    let result = sheets::sheets::read(&hub, config).await;
-
-    match result {
-        Err(e) => println!("{}", e),
-        Ok((_, spreadsheet)) => {
-            let totals = Vec::new();
-
-            println!(
-                "Success: {:?}",
-                spreadsheet
-                    .values
-                    .unwrap()
-                    .into_iter()
-                    .fold(totals, |mut acc, next_row| {
-                        let key: String = next_row[0].to_string();
-                        acc.push(key);
-                        acc
-                    })
-            );
+    match spreadsheet_manager.named_range_map().await {
+        Some(named_ranges) => {
+            for (name, range) in named_ranges {
+                println!(
+                    "{:?}: {:?}",
+                    name,
+                    range.to_a1_notation(
+                        spreadsheet_manager
+                            .get_sheet_title(range.sheet_id.unwrap())
+                            .await
+                            .unwrap()
+                            .as_str()
+                    )
+                );
+            }
+        }
+        None => {
+            println!("No named ranges found");
         }
     }
 

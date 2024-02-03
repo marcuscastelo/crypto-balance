@@ -18,14 +18,14 @@ struct FetchTokenTxResponse {
 
 #[derive(Debug)]
 pub struct EtherscanImplementation {
-    pub api_key: String,
+    pub api_key: Box<str>,
     pub base_url: String,
     pub chain: LazyLock<&'static Chain>,
 }
 
 impl BlockExplorer for EtherscanImplementation {
     fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
-        let api_key = self.api_key.as_str();
+        let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let url = format!(
             "{base_url}\
@@ -51,7 +51,7 @@ impl BlockExplorer for EtherscanImplementation {
     }
 
     fn fetch_erc20_balance(&self, evm_address: &str, token_info: ERC20TokenInfo) -> TokenBalance {
-        let api_key = self.api_key.as_str();
+        let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let contract_address = &token_info.contract_address;
         let url = format!(
@@ -78,7 +78,7 @@ impl BlockExplorer for EtherscanImplementation {
         // Attention: wait for 0.25 seconds between each request to avoid rate limiting
 
         // TODO: Create functions for step 1 and step 2
-        let api_key = self.api_key.as_str();
+        let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let url: String = format!(
             "{base_url}\
