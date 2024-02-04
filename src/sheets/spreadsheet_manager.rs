@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-
 use google_sheets4::{
     api::{GridRange, NamedRange, ValueRange},
-    Sheets,
+    Error as Sheets4Error, Sheets,
 };
+use std::collections::HashMap;
+use thiserror::Error;
 
 use crate::{sheets::prelude::*, A1Notation};
 
@@ -12,6 +12,14 @@ pub struct SpreadsheetManager {
     hub: Sheets<
         google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
     >,
+}
+
+#[derive(Debug, Error)]
+pub enum SpreadsheetManagerError {
+    #[error("Error from Google Sheets API: {0}")]
+    HubError(Sheets4Error),
+    #[error("Error from some expectation on named range retrieval: {0}")]
+    NamedRangeError(Box<str>),
 }
 
 impl SpreadsheetManager {
@@ -54,7 +62,7 @@ impl SpreadsheetManager {
         let mut map = HashMap::new();
         for named_range in named_ranges {
             let a1_notation = named_range.range.as_ref()?.to_a1_notation(
-                self.get_sheet_title(named_range.range.as_ref()?.sheet_id?)
+                self.get_sheet_title(named_range.range.as_ref()?.sheet_id.unwrap_or(0))
                     .await
                     .expect("Sheet title should exist")
                     .as_str(),
@@ -97,33 +105,63 @@ impl SpreadsheetManager {
         Some(())
     }
 
-    pub async fn get_sheet_title(&self, sheet_id: i32) -> Option<String> {
+    pub async fn get_sheet_title(&self, sheet_id: i32) -> Result<String, SpreadsheetManagerError> {
         let response = self
             .hub
             .spreadsheets()
             .get(&self.config.spreadsheet_id)
             .doit()
             .await
-            .ok()?;
+            .map_err(SpreadsheetManagerError::HubError)?;
 
-        let sheet = response.1.sheets?;
-        let sheet = sheet.into_iter().find(|sheet| {
-            sheet
-                .properties
-                .as_ref()
-                .map_or(false, |props| props.sheet_id == Some(sheet_id))
-        })?;
-        sheet.properties?.title
+        let sheets = response
+            .1
+            .sheets
+            .ok_or(SpreadsheetManagerError::NamedRangeError(
+                "Sheets missing from response".into(),
+            ))?;
+
+        let sheet = sheets
+            .clone()
+            .into_iter()
+            .find(|sheet| {
+                sheet
+                    .properties
+                    .as_ref()
+                    .map_or(false, |props| props.sheet_id.unwrap_or(0) == sheet_id)
+            })
+            .ok_or(SpreadsheetManagerError::NamedRangeError(
+                format!(
+                    "Sheet with id {:?} not found in response, all sheets: {:?}",
+                    sheet_id,
+                    sheets
+                        .into_iter()
+                        .map(|sheet| (
+                            sheet.properties.clone().map(|props| props
+                                .title
+                                .or("Sheet title not present".to_owned().into())),
+                            sheet.properties.map(|props| props.sheet_id.or(Some(-1123)))
+                        ))
+                        .collect::<Vec<(_, _)>>()
+                )
+                .into(),
+            ))?;
+
+        sheet
+            .properties
+            .ok_or(SpreadsheetManagerError::NamedRangeError(
+                "Sheet properties not present for sheet".into(),
+            ))?
+            .title
+            .ok_or(SpreadsheetManagerError::NamedRangeError(
+                "Sheet title not present in properties".into(),
+            ))
     }
 
     pub async fn read_named_range(&self, name: &str) -> Option<ValueRange> {
         let named_range = self.get_named_range(name).await?;
         let sheet_title = self
-            .get_sheet_title(
-                named_range
-                    .sheet_id
-                    .expect("Named range should have a sheet_id"),
-            )
+            .get_sheet_title(named_range.sheet_id.unwrap_or(0))
             .await
             .expect("Sheet title should exist");
         self.read_range(named_range.to_a1_notation(&sheet_title).as_str())
@@ -133,11 +171,7 @@ impl SpreadsheetManager {
     pub async fn write_named_range(&self, name: &str, value_range: ValueRange) -> Option<()> {
         let named_range = self.get_named_range(name).await?;
         let sheet_title = self
-            .get_sheet_title(
-                named_range
-                    .sheet_id
-                    .expect("Named range should have a sheet_id"),
-            )
+            .get_sheet_title(named_range.sheet_id.unwrap_or(0))
             .await
             .expect("Sheet title should exist");
         self.write_range(

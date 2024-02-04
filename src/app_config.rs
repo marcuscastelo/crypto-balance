@@ -6,6 +6,7 @@ pub struct AppConfig {
     pub blockchain: BlockchainConfig,
     pub sheets: crate::sheets::config::SpreadsheetConfig,
     pub binance: crate::exchange::binance_config::BinanceConfig,
+    pub coingecko: crate::price::coingecko::config::CoingeckoConfig,
 }
 
 // TODO: move to blockchain module
