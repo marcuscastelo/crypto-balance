@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 pub use super::auth::*;
 pub use super::config::*;
 pub use super::http_client::*;
