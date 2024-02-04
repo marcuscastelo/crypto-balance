@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -11,10 +12,11 @@ struct FetchNativeBalanceResponse {
 #[derive(Debug)]
 pub struct ZoraExplorer;
 
+#[async_trait]
 impl BlockExplorer for ZoraExplorer {
-    fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
+    async fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
         let url = format!("https://explorer.zora.energy/api/v2/addresses/{evm_address}",);
-        let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
+        let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
         let resp: FetchNativeBalanceResponse = serde_json::from_str(&resp).unwrap();
         let balance = resp.coin_balance.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
 
@@ -24,11 +26,15 @@ impl BlockExplorer for ZoraExplorer {
         }
     }
 
-    fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
         todo!()
     }
 
-    fn fetch_erc20_balance(&self, evm_address: &str, token_info: ERC20TokenInfo) -> TokenBalance {
+    async fn fetch_erc20_balance(
+        &self,
+        evm_address: &str,
+        token_info: ERC20TokenInfo,
+    ) -> TokenBalance {
         todo!()
     }
 

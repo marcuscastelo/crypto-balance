@@ -7,7 +7,7 @@ mod prelude;
 mod price;
 mod sheets;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use binance::account::Account;
@@ -20,16 +20,160 @@ use serde_json::Value;
 
 use crate::prelude::*;
 
-fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
-    let native_balance = chain.explorer.fetch_native_balance(evm_address);
-    let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address);
+async fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    println!("Fetching balance for {}", chain.name);
+
+    println!("Fetching native balance for {}", chain.name);
+    let native_balance = chain.explorer.fetch_native_balance(evm_address).await;
+    println!("Fetching ERC20 balances for {}", chain.name);
+    let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address).await;
+    println!("Merging balances for {}", chain.name);
     let mut balances = erc20_balances;
     balances.insert(chain.native_token.to_owned(), native_balance);
+    println!("Balances fetched for {}", chain.name);
+
+    // Remove zero balances
+    balances.retain(|_, balance| balance.balance > 0.0);
     balances
 }
 
 #[tokio::main]
 async fn main() {
+    println!("Starting...");
+    let evm_address = &CONFIG.blockchain.evm_address;
+
+    let test_sheet = "Test";
+    let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+    println!("Creating futures...");
+    let futures = CHAINS
+        .values()
+        .map(|chain| async { (chain.name, get_chain_balance(chain, evm_address).await) });
+
+    println!("Waiting for futures...");
+    let a = futures::future::join_all(futures).await;
+    println!("Futures done...");
+    let chain_balances = a.into_iter().collect::<HashMap<_, _>>();
+    println!("Chain balances: {:#?}", chain_balances);
+
+    println!("Creating unique tokens...");
+
+    // Create a set of unique token structs using their names as keys
+    let mut unique_tokens: HashMap<String, Arc<Token>> = HashMap::new();
+    for (_, balances) in &chain_balances {
+        for (token, _) in balances {
+            match token.as_ref() {
+                Token::Native(token_name) => {
+                    unique_tokens.insert(token_name.as_str().to_owned(), token.clone());
+                }
+                Token::ERC20(token_info) => {
+                    unique_tokens.insert(token_info.token_symbol.to_string(), token.clone());
+                }
+            }
+        }
+    }
+    let mut unique_tokens = unique_tokens.into_iter().collect::<Vec<_>>();
+    unique_tokens.sort_by(|a, b| a.0.cmp(&b.0));
+    let unique_tokens = unique_tokens;
+
+    println!("Writing token names...");
+
+    // Write the token names to the spreadsheet (B3:B1000)
+    spreadsheet_manager
+        .write_range(
+            format!("'{}'!B3:B1000", test_sheet).as_str(),
+            ValueRange::from_rows(
+                unique_tokens
+                    .iter()
+                    .map(|(_, token)| match token.as_ref() {
+                        Token::Native(token_name) => token_name.as_str(),
+                        Token::ERC20(token_info) => token_info.token_symbol.as_ref(),
+                    })
+                    .collect::<Vec<_>>()
+                    .as_ref(),
+            ),
+        )
+        .await
+        .unwrap();
+
+    let mut chain_names = chain_balances.keys().cloned().collect::<Vec<_>>();
+    chain_names.sort();
+    let chain_names = chain_names;
+
+    println!("Writing token names done!");
+
+    let start_letter = 'C';
+    let mut current_chain_idx = 0; // Skip the first column for the token names
+    for chain in chain_names {
+        println!("Writing balances for {}", chain);
+
+        spreadsheet_manager
+            .write_range(
+                format!(
+                    "'{}'!{}2",
+                    test_sheet,
+                    (start_letter as u8 + current_chain_idx) as char
+                )
+                .as_str(),
+                ValueRange::from_str(chain),
+            )
+            .await
+            .unwrap();
+
+        let mut token_balances = Vec::with_capacity(unique_tokens.len());
+        for (_, token) in &unique_tokens {
+            token_balances.push(
+                chain_balances
+                    .get(chain)
+                    .unwrap_or_else(|| panic!("Chain {} should have balance", chain))
+                    .get(token)
+                    .map(|x| x.balance.to_string())
+                    .unwrap_or("".to_owned()),
+            );
+        }
+
+        let current_letter = (start_letter as u8 + current_chain_idx) as char;
+        current_chain_idx += 1;
+
+        let range = format!(
+            "'{}'!{}3:{}{}",
+            test_sheet,
+            current_letter,
+            current_letter,
+            4 + token_balances.len()
+        );
+
+        println!("Writing to range: {}", range);
+        spreadsheet_manager
+            .write_range(
+                range.as_str(),
+                ValueRange::from_rows(
+                    token_balances
+                        .iter()
+                        .map(|x| x.as_str())
+                        .collect::<Vec<_>>()
+                        .as_ref(),
+                ),
+            )
+            .await
+            .unwrap();
+
+        println!("Writing balances for {} done!", chain);
+        println!(
+            "Written: {:?}",
+            ValueRange::from_rows(
+                token_balances
+                    .iter()
+                    .map(|x| x.as_str())
+                    .collect::<Vec<_>>()
+                    .as_ref(),
+            )
+        );
+    }
+    println!("Writing balances done!");
+}
+
+async fn main_balance() {
     let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
     let binance_account: Account = Binance::new_with_config(
@@ -117,7 +261,7 @@ async fn main() {
         .expect("Should write balances to the spreadsheet");
 }
 
-async fn main_price() {
+async fn main_price_binance() {
     let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
     let token_names: Vec<String> = spreadsheet_manager

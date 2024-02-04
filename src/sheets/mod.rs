@@ -7,3 +7,4 @@ pub mod prelude;
 pub mod ranges;
 pub mod sheets;
 pub mod spreadsheet_manager;
+pub mod value_range_factory;

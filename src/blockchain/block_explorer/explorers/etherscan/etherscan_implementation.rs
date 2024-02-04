@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use crate::blockchain::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
@@ -23,8 +25,9 @@ pub struct EtherscanImplementation {
     pub chain: LazyLock<&'static Chain>,
 }
 
+#[async_trait]
 impl BlockExplorer for EtherscanImplementation {
-    fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
+    async fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
         let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let url = format!(
@@ -35,7 +38,7 @@ impl BlockExplorer for EtherscanImplementation {
                 &tag=latest\
                 &apikey={api_key}"
         );
-        let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
+        let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
         let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
         let balance = match resp.result.parse::<f64>() {
             Ok(balance) => balance / (WEI_CONVERSION as f64),
@@ -50,7 +53,11 @@ impl BlockExplorer for EtherscanImplementation {
         }
     }
 
-    fn fetch_erc20_balance(&self, evm_address: &str, token_info: ERC20TokenInfo) -> TokenBalance {
+    async fn fetch_erc20_balance(
+        &self,
+        evm_address: &str,
+        token_info: ERC20TokenInfo,
+    ) -> TokenBalance {
         let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let contract_address = &token_info.contract_address;
@@ -62,7 +69,7 @@ impl BlockExplorer for EtherscanImplementation {
                 &address={evm_address}\
                 &tag=latest&apikey={api_key}"
         );
-        let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
+        let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
         let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
         let balance = resp.result.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
 
@@ -72,7 +79,7 @@ impl BlockExplorer for EtherscanImplementation {
         }
     }
 
-    fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
         // Step 1. Fetch all ERC20 token transfers for the given address
         // Step 2. For each token, fetch the balance of the token for the given address
         // Attention: wait for 0.25 seconds between each request to avoid rate limiting
@@ -87,9 +94,11 @@ impl BlockExplorer for EtherscanImplementation {
             &address={evm_address}\
             &tag=latest&apikey={api_key}"
         );
-        let resp = reqwest::blocking::get(url)
+        let resp = reqwest::get(url)
+            .await
             .expect("Should make GET request")
             .text()
+            .await
             .expect("Should get response text");
         let resp: FetchTokenTxResponse = serde_json::from_str(&resp).expect("Should parse JSON");
 
@@ -107,7 +116,9 @@ impl BlockExplorer for EtherscanImplementation {
                     continue; // Skip if we already fetched the balance for this token
                 }
 
-                let balance = self.fetch_erc20_balance(evm_address, token_info.clone());
+                let balance = self
+                    .fetch_erc20_balance(evm_address, token_info.clone())
+                    .await;
 
                 // Wait for 0.25 seconds between each request to avoid rate limiting
                 std::thread::sleep(std::time::Duration::from_millis(250));
