@@ -23,9 +23,6 @@ jobs:
     - run: rustup toolchain install nightly --profile minimal
     - run: rustup default nightly
 
-    - name: Build
-      run: cargo build --verbose
-
     - name: Cache Rust packages
       uses: actions/cache@v3
       env:
@@ -45,6 +42,9 @@ jobs:
         key: ${{ runner.os }}-cache-rust-deps-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cache-rust-deps-
+
+    - name: Build
+      run: cargo build --verbose
 
     - name: Run tests
       run: cargo test --verbose
