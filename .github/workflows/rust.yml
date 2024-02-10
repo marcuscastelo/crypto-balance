@@ -28,7 +28,7 @@ jobs:
       env:
         cache-name: cache-rust-cargo
       with:
-        key: ${{ runner.os }}-cache-rust-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cache-rust-cargo-${{ hashFiles('**/Cargo.toml') }}
         path: ~/.cargo
         restore-keys: |
           ${{ runner.os }}-cache-rust-cargo-
@@ -39,7 +39,7 @@ jobs:
         cache-name: cache-rust-deps
       with:
         path: target
-        key: ${{ runner.os }}-cache-rust-deps-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cache-rust-deps-${{ hashFiles('**/Cargo.toml') }}
         restore-keys: |
           ${{ runner.os }}-cache-rust-deps-
 
