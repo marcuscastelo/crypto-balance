@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, LazyLock},
-    vec,
-};
+use std::{collections::HashMap, sync::LazyLock, vec};
 
 use crate::blockchain::prelude::*;
 

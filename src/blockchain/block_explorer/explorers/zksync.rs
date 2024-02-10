@@ -24,7 +24,7 @@ impl BlockExplorer for ZkSyncExplorer {
         );
         let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
         let resp: FetchNativeBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = resp.result.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
+        let balance = resp.result.parse::<f64>().unwrap() / WEI_CONVERSION;
 
         TokenBalance {
             token: self.get_chain().native_token.to_owned(),
@@ -32,14 +32,14 @@ impl BlockExplorer for ZkSyncExplorer {
         }
     }
 
-    async fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(&self, _evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
         todo!()
     }
 
     async fn fetch_erc20_balance(
         &self,
-        evm_address: &str,
-        token_info: ERC20TokenInfo,
+        _evm_address: &str,
+        _token_info: ERC20TokenInfo,
     ) -> TokenBalance {
         todo!()
     }

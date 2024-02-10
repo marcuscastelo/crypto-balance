@@ -1,5 +1,3 @@
-use google_sheets4::api::ValueRange;
-
 pub trait MyInto<T> {
     fn my_into(self) -> T;
 }

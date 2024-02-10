@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::user_addresses::UserAddresses;
 
 use std::collections::HashMap;
-use std::hash::Hash;
+
 use std::sync::Arc;
 
 use binance::account::Account;
@@ -118,8 +118,8 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
 
         // Create a set of unique token structs using their names as keys
         let mut unique_tokens: HashMap<String, Arc<Token>> = HashMap::new();
-        for (_, balances) in &chain_balances {
-            for (token, _) in balances {
+        for balances in chain_balances.values() {
+            for token in balances.keys() {
                 match token.as_ref() {
                     Token::Native(token_name) => {
                         unique_tokens.insert(token_name.to_string(), token.clone());
@@ -161,8 +161,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
         println!("Writing token names done!");
 
         let start_letter = 'C';
-        let mut current_chain_idx = 0; // Skip the first column for the token names
-        for chain in chain_names {
+        for (current_chain_idx, chain) in chain_names.iter().enumerate() {
             println!("Writing balances for {}", chain);
 
             spreadsheet_manager
@@ -170,7 +169,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
                     format!(
                         "'{}'!{}2",
                         sheet_title,
-                        (start_letter as u8 + current_chain_idx) as char
+                        number_to_letter(start_letter as u32 + current_chain_idx as u32)
                     )
                     .as_str(),
                     ValueRange::from_str(chain),
@@ -190,8 +189,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
                 );
             }
 
-            let current_letter = (start_letter as u8 + current_chain_idx) as char;
-            current_chain_idx += 1;
+            let current_letter = number_to_letter(start_letter as u32 + current_chain_idx as u32);
 
             let range = format!(
                 "'{}'!{}3:{}{}",

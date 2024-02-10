@@ -136,13 +136,13 @@ impl BlockExplorer for Mintscan {
 
     async fn fetch_erc20_balance(
         &self,
-        evm_address: &str,
-        token_info: ERC20TokenInfo,
+        _evm_address: &str,
+        _token_info: ERC20TokenInfo,
     ) -> TokenBalance {
         todo!()
     }
 
-    async fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(&self, _evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
         todo!()
     }
 
