@@ -20,8 +20,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
   
-    - run: rustup toolchain install beta --profile minimal
-    - run: rustup default beta
+    - run: rustup toolchain install nightly --profile minimal
+    - run: rustup default nightly
 
     - uses: Swatinem/rust-cache@v2
       with:
