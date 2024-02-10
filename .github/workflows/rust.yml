@@ -19,19 +19,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-  
+
     - run: rustup toolchain install nightly --profile minimal
     - run: rustup default nightly
+
+    - name: Build
+      run: cargo build --verbose
 
     - name: Cache Rust packages
       uses: actions/cache@v3
       env:
         cache-name: cache-rust-cargo
       with:
-        key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cache-rust-cargo-${{ hashFiles('**/Cargo.lock') }}
         path: ~/.cargo
         restore-keys: |
-          ${{ runner.os }}-rust-
+          ${{ runner.os }}-cache-rust-cargo-
 
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -39,12 +42,9 @@ jobs:
         cache-name: cache-rust-deps
       with:
         path: target
-        key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cache-rust-deps-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-rust-
+          ${{ runner.os }}-cache-rust-deps-
 
-    - name: Build
-      run: cargo build --verbose
-      
     - name: Run tests
       run: cargo test --verbose
