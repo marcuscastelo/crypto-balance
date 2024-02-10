@@ -11,46 +11,53 @@ use binance::rest_model::Prices;
 use google_sheets4::api::ValueRange;
 use serde_json::Value;
 
-pub struct UpdateBinanceBalanceRoutine;
-pub struct UpdateKrakenBalanceRoutine;
-pub struct UpdateAirdropWalletBalanceRoutine;
-pub struct UpdateTokenPricesRoutine;
+pub struct FetchChainBalancesRoutine;
+pub struct UpdateBinanceBalanceOnSheetsRoutine;
+pub struct UpdateKrakenBalanceOnSheetsRoutine;
+pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
+pub struct UpdateTokenPricesOnSheetsRoutine;
 
-async fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
-    println!("Fetching balance for {}", chain.name);
+impl FetchChainBalancesRoutine {
+    async fn run(&self, chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+        println!("Fetching balance for {}", chain.name);
 
-    println!("Fetching native balance for {}", chain.name);
-    let native_balance = chain.explorer.fetch_native_balance(evm_address).await;
-    println!("Fetching ERC20 balances for {}", chain.name);
-    let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address).await;
-    println!("Merging balances for {}", chain.name);
-    let mut balances = erc20_balances;
-    balances.insert(chain.native_token.to_owned(), native_balance);
-    println!("Balances fetched for {}", chain.name);
+        println!("Fetching native balance for {}", chain.name);
+        let native_balance = chain.explorer.fetch_native_balance(evm_address).await;
+        println!("Fetching ERC20 balances for {}", chain.name);
+        let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address).await;
+        println!("Merging balances for {}", chain.name);
+        let mut balances = erc20_balances;
+        balances.insert(chain.native_token.to_owned(), native_balance);
+        println!("Balances fetched for {}", chain.name);
 
-    // Remove zero balances
-    balances.retain(|_, balance| balance.balance > 0.0);
-    balances
+        // Remove zero balances
+        balances.retain(|_, balance| balance.balance > 0.0);
+        balances
+    }
 }
 
-impl UpdateAirdropWalletBalanceRoutine {
+impl UpdateAirdropWalletOnSheetsBalanceRoutine {
     pub async fn run(&self) {
+        let sheet_title = "Balance - Airdrop Wallet";
+
+        let fetch_chain_balance_routines = CHAINS.values().map(|chain| async {
+            (
+                chain.name,
+                FetchChainBalancesRoutine
+                    .run(chain, &CONFIG.blockchain.evm_address)
+                    .await,
+            )
+        });
+
+        let chain_balances = futures::future::join_all(fetch_chain_balance_routines)
+            .await
+            .into_iter()
+            .collect::<HashMap<_, _>>();
+
         println!("Starting...");
         let evm_address = &CONFIG.blockchain.evm_address;
 
-        let sheet_title = "Balance - Airdrop Wallet";
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
-
-        println!("Creating futures...");
-        let futures = CHAINS
-            .values()
-            .map(|chain| async { (chain.name, get_chain_balance(chain, evm_address).await) });
-
-        println!("Waiting for futures...");
-        let a = futures::future::join_all(futures).await;
-        println!("Futures done...");
-        let chain_balances = a.into_iter().collect::<HashMap<_, _>>();
-        println!("Chain balances: {:#?}", chain_balances);
 
         println!("Creating unique tokens...");
 
@@ -170,7 +177,7 @@ impl UpdateAirdropWalletBalanceRoutine {
     }
 }
 
-impl UpdateBinanceBalanceRoutine {
+impl UpdateBinanceBalanceOnSheetsRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -260,13 +267,13 @@ impl UpdateBinanceBalanceRoutine {
     }
 }
 
-impl UpdateKrakenBalanceRoutine {
+impl UpdateKrakenBalanceOnSheetsRoutine {
     pub async fn run(&self) {
         unimplemented!("Kraken balance update routine is not implemented");
     }
 }
 
-impl UpdateTokenPricesRoutine {
+impl UpdateTokenPricesOnSheetsRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
