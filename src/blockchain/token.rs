@@ -1,6 +1,9 @@
+// Tokens are upper case acronyms on the crypto space
 #![allow(clippy::upper_case_acronyms)]
 
-use std::sync::Arc; // Tokens are upper case acronyms on the crypto space
+use std::sync::Arc;
+
+use strum::EnumString;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -11,31 +14,25 @@ pub struct ERC20TokenInfo {
     pub token_decimal: Box<str>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(strum::Display, Debug, Clone, PartialEq, Eq, Hash, EnumString)]
 pub enum NativeTokenName {
     ETH,
     MATIC,
     BNB,
     BTC,
     SOL,
-}
-
-impl NativeTokenName {
-    pub fn as_str(&self) -> &str {
-        match self {
-            NativeTokenName::ETH => "ETH",
-            NativeTokenName::MATIC => "MATIC",
-            NativeTokenName::BNB => "BNB",
-            NativeTokenName::BTC => "BTC",
-            NativeTokenName::SOL => "SOL",
-        }
-    }
+    ATOM,
+    OSMO,
+    TIA,
+    KUJI,
+    INJ,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Token {
     Native(NativeTokenName),
     ERC20(ERC20TokenInfo),
+    IBC,
 }
 
 #[derive(Debug)]

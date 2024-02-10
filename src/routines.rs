@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use binance::account::Account;
@@ -40,11 +40,11 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
     pub async fn run(&self) {
         let sheet_title = "Balance - Airdrop Wallet";
 
-        let fetch_chain_balance_routines = CHAINS.values().map(|chain| async {
+        let fetch_chain_balance_routines = EVM_CHAINS.values().map(|chain| async {
             (
                 chain.name,
                 FetchChainBalancesRoutine
-                    .run(chain, &CONFIG.blockchain.evm_address)
+                    .run(chain, &CONFIG.blockchain.evm.address)
                     .await,
             )
         });
@@ -55,7 +55,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
             .collect::<HashMap<_, _>>();
 
         println!("Starting...");
-        let evm_address = &CONFIG.blockchain.evm_address;
+        let evm_address = &CONFIG.blockchain.evm.address;
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -67,7 +67,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
             for (token, _) in balances {
                 match token.as_ref() {
                     Token::Native(token_name) => {
-                        unique_tokens.insert(token_name.as_str().to_owned(), token.clone());
+                        unique_tokens.insert(token_name.to_string(), token.clone());
                     }
                     Token::ERC20(token_info) => {
                         unique_tokens.insert(token_info.token_symbol.to_string(), token.clone());
@@ -80,21 +80,19 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
         let unique_tokens = unique_tokens;
 
         println!("Writing token names...");
+        let token_names = unique_tokens
+            .iter()
+            .map(|(_, token)| match token.as_ref() {
+                Token::Native(token_name) => token_name.to_string(),
+                Token::ERC20(token_info) => token_info.token_symbol.to_string(),
+            })
+            .collect::<Vec<_>>();
 
         // Write the token names to the spreadsheet (B3:B1000)
         spreadsheet_manager
             .write_range(
                 format!("'{}'!B3:B1000", sheet_title).as_str(),
-                ValueRange::from_rows(
-                    unique_tokens
-                        .iter()
-                        .map(|(_, token)| match token.as_ref() {
-                            Token::Native(token_name) => token_name.as_str(),
-                            Token::ERC20(token_info) => token_info.token_symbol.as_ref(),
-                        })
-                        .collect::<Vec<_>>()
-                        .as_ref(),
-                ),
+                ValueRange::from_rows(token_names.as_ref()),
             )
             .await
             .unwrap();

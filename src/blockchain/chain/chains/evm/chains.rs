@@ -62,19 +62,7 @@ pub static SCROLL: LazyLock<Chain> = LazyLock::new(|| Chain {
     explorer: &*SCROLLSCAN,
 });
 
-pub static BINANCE: LazyLock<Chain> = LazyLock::new(|| Chain {
-    name: "Binance Smart Chain",
-    native_token: Token::Native(NativeTokenName::BNB).into(),
-    explorer: todo!("Binance explorer"),
-});
-
-pub static BITCOIN: LazyLock<Chain> = LazyLock::new(|| Chain {
-    name: "Bitcoin",
-    native_token: Token::Native(NativeTokenName::BTC).into(),
-    explorer: todo!("Bitcoin explorer"),
-});
-
-pub static CHAINS: LazyLock<HashMap<&'static str, &'static Chain>> = LazyLock::new(|| {
+pub static EVM_CHAINS: LazyLock<HashMap<&'static str, &'static Chain>> = LazyLock::new(|| {
     let chains: Vec<&Chain> = vec![
         &ETHEREUM, //
         &ARBITRUM, //
@@ -86,7 +74,6 @@ pub static CHAINS: LazyLock<HashMap<&'static str, &'static Chain>> = LazyLock::n
         // &ZKSYNC, //
         // &ZORA,   //
         &SCROLL, //
-                 // &BINANCE, //
                  // &BITCOIN, //
     ];
 

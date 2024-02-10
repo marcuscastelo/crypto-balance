@@ -1,7 +1,8 @@
 use std::sync::LazyLock;
 
 use super::etherscan_implementation::EtherscanImplementation;
-use crate::{app_config::CONFIG, chain::chains::ETHEREUM};
+use crate::blockchain::prelude::*;
+use lazy_static::lazy_static;
 
 pub static ETHERSCAN: LazyLock<EtherscanImplementation> =
     LazyLock::new(|| EtherscanImplementation {
