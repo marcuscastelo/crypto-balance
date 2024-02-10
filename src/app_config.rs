@@ -19,7 +19,22 @@ pub struct BlockchainConfig {
     pub arbiscan_api_key: Box<str>,
     pub optimistic_etherscan_api_key: Box<str>,
     pub polygonscan_api_key: Box<str>,
-    pub evm_address: String,
+    pub evm: EvmBlockchainConfig,
+    pub cosmos: CosmosBlockchainConfig,
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct EvmBlockchainConfig {
+    pub address: Box<str>,
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct CosmosBlockchainConfig {
+    pub cosmos_address: Box<str>,
+    pub osmosis_address: Box<str>,
+    pub celestia_address: Box<str>,
+    pub injective_address: Box<str>,
+    pub kujira_address: Box<str>,
 }
 
 lazy_static! {

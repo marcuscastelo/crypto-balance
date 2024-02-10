@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use super::etherscan_implementation::EtherscanImplementation;
-use crate::{app_config::CONFIG, chain::chains::OPTIMISM};
+use crate::blockchain::prelude::*;
 use lazy_static::lazy_static;
 
 lazy_static! {

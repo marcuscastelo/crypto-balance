@@ -12,5 +12,7 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    routines::UpdateAirdropWalletBalanceRoutine.run().await
+    routines::UpdateAirdropWalletOnSheetsBalanceRoutine
+        .run()
+        .await
 }

@@ -1,6 +1,8 @@
 use crate::prelude::*;
+use crate::user_addresses::UserAddresses;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::Arc;
 
 use binance::account::Account;
@@ -11,46 +13,106 @@ use binance::rest_model::Prices;
 use google_sheets4::api::ValueRange;
 use serde_json::Value;
 
-pub struct UpdateBinanceBalanceRoutine;
-pub struct UpdateKrakenBalanceRoutine;
-pub struct UpdateAirdropWalletBalanceRoutine;
-pub struct UpdateTokenPricesRoutine;
+pub struct FetchEvmChainBalancesRoutine;
+pub struct FetchCosmosChainBalancesRoutine;
+pub struct UpdateBinanceBalanceOnSheetsRoutine;
+pub struct UpdateKrakenBalanceOnSheetsRoutine;
+pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
+pub struct UpdateTokenPricesOnSheetsRoutine;
 
-async fn get_chain_balance(chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
-    println!("Fetching balance for {}", chain.name);
+impl FetchEvmChainBalancesRoutine {
+    async fn run(&self, chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+        println!("Fetching balance for {}", chain.name);
 
-    println!("Fetching native balance for {}", chain.name);
-    let native_balance = chain.explorer.fetch_native_balance(evm_address).await;
-    println!("Fetching ERC20 balances for {}", chain.name);
-    let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address).await;
-    println!("Merging balances for {}", chain.name);
-    let mut balances = erc20_balances;
-    balances.insert(chain.native_token.to_owned(), native_balance);
-    println!("Balances fetched for {}", chain.name);
+        println!("Fetching native balance for {}", chain.name);
+        let native_balance = chain.explorer.fetch_native_balance(evm_address).await;
+        println!("Fetching ERC20 balances for {}", chain.name);
+        let erc20_balances = chain.explorer.fetch_erc20_balances(evm_address).await;
+        println!("Merging balances for {}", chain.name);
+        let mut balances = erc20_balances;
+        balances.insert(chain.native_token.to_owned(), native_balance);
+        println!("Balances fetched for {}", chain.name);
 
-    // Remove zero balances
-    balances.retain(|_, balance| balance.balance > 0.0);
-    balances
+        // Remove zero balances
+        balances.retain(|_, balance| balance.balance > 0.0);
+        balances
+    }
 }
 
-impl UpdateAirdropWalletBalanceRoutine {
+impl FetchCosmosChainBalancesRoutine {
+    async fn run(&self, chain: &Chain, cosmos_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+        println!("Fetching balance for {}", chain.name);
+
+        println!("Fetching native balance for {}", chain.name);
+        let native_balance = chain.explorer.fetch_native_balance(cosmos_address).await;
+
+        // println!("Fetching IBC balances for {}", chain.name);
+        // let ibc_balances = chain.explorer.fetch_ibc_balances(cosmos_address).await;
+
+        println!("Merging balances for {}", chain.name);
+
+        let mut balances = HashMap::new();
+        balances.insert(chain.native_token.to_owned(), native_balance);
+        // balances.extend(ibc_balances);
+        println!("Balances fetched for {}", chain.name);
+
+        // Remove zero balances
+        balances.retain(|_, balance| balance.balance > 0.0);
+        balances
+    }
+}
+
+impl UpdateAirdropWalletOnSheetsBalanceRoutine {
     pub async fn run(&self) {
-        println!("Starting...");
-        let evm_address = &CONFIG.blockchain.evm_address;
-
+        let user_addresses = UserAddresses::from_config(&CONFIG.blockchain);
         let sheet_title = "Balance - Airdrop Wallet";
-        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
-        println!("Creating futures...");
-        let futures = CHAINS
-            .values()
-            .map(|chain| async { (chain.name, get_chain_balance(chain, evm_address).await) });
+        let evm_chain_balance_routines = EVM_CHAINS.values().map(|chain| async {
+            (
+                chain.name,
+                FetchEvmChainBalancesRoutine
+                    .run(chain, &CONFIG.blockchain.evm.address)
+                    .await,
+            )
+        });
 
-        println!("Waiting for futures...");
-        let a = futures::future::join_all(futures).await;
-        println!("Futures done...");
-        let chain_balances = a.into_iter().collect::<HashMap<_, _>>();
+        let cosmos_chain_balance_routines = COSMOS_CHAINS.values().map(|chain| async {
+            (
+                chain.name,
+                FetchCosmosChainBalancesRoutine
+                    .run(
+                        chain,
+                        user_addresses
+                            .get_addresses(chain)
+                            .unwrap()
+                            .first()
+                            .unwrap(),
+                    )
+                    .await,
+            )
+        });
+
+        let mut chain_balances: HashMap<&str, HashMap<Arc<Token>, TokenBalance>> = HashMap::new();
+
+        chain_balances.extend(
+            futures::future::join_all(cosmos_chain_balance_routines)
+                .await
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+        );
+
+        chain_balances.extend(
+            futures::future::join_all(evm_chain_balance_routines)
+                .await
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+        );
+
         println!("Chain balances: {:#?}", chain_balances);
+
+        println!("Starting sheet manipulation...");
+
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         println!("Creating unique tokens...");
 
@@ -60,11 +122,12 @@ impl UpdateAirdropWalletBalanceRoutine {
             for (token, _) in balances {
                 match token.as_ref() {
                     Token::Native(token_name) => {
-                        unique_tokens.insert(token_name.as_str().to_owned(), token.clone());
+                        unique_tokens.insert(token_name.to_string(), token.clone());
                     }
                     Token::ERC20(token_info) => {
                         unique_tokens.insert(token_info.token_symbol.to_string(), token.clone());
                     }
+                    Token::IBC => todo!("IBC token not implemented yet"),
                 }
             }
         }
@@ -73,21 +136,20 @@ impl UpdateAirdropWalletBalanceRoutine {
         let unique_tokens = unique_tokens;
 
         println!("Writing token names...");
+        let token_names = unique_tokens
+            .iter()
+            .map(|(_, token)| match token.as_ref() {
+                Token::Native(token_name) => token_name.to_string(),
+                Token::ERC20(token_info) => token_info.token_symbol.to_string(),
+                Token::IBC => todo!("IBC token not implemented yet"),
+            })
+            .collect::<Vec<_>>();
 
         // Write the token names to the spreadsheet (B3:B1000)
         spreadsheet_manager
             .write_range(
                 format!("'{}'!B3:B1000", sheet_title).as_str(),
-                ValueRange::from_rows(
-                    unique_tokens
-                        .iter()
-                        .map(|(_, token)| match token.as_ref() {
-                            Token::Native(token_name) => token_name.as_str(),
-                            Token::ERC20(token_info) => token_info.token_symbol.as_ref(),
-                        })
-                        .collect::<Vec<_>>()
-                        .as_ref(),
-                ),
+                ValueRange::from_rows(token_names.as_ref()),
             )
             .await
             .unwrap();
@@ -170,7 +232,7 @@ impl UpdateAirdropWalletBalanceRoutine {
     }
 }
 
-impl UpdateBinanceBalanceRoutine {
+impl UpdateBinanceBalanceOnSheetsRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -260,13 +322,13 @@ impl UpdateBinanceBalanceRoutine {
     }
 }
 
-impl UpdateKrakenBalanceRoutine {
+impl UpdateKrakenBalanceOnSheetsRoutine {
     pub async fn run(&self) {
         unimplemented!("Kraken balance update routine is not implemented");
     }
 }
 
-impl UpdateTokenPricesRoutine {
+impl UpdateTokenPricesOnSheetsRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
