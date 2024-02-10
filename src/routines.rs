@@ -1,6 +1,8 @@
 use crate::prelude::*;
+use crate::user_addresses::UserAddresses;
 
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::Arc;
 
 use binance::account::Account;
@@ -11,13 +13,14 @@ use binance::rest_model::Prices;
 use google_sheets4::api::ValueRange;
 use serde_json::Value;
 
-pub struct FetchChainBalancesRoutine;
+pub struct FetchEvmChainBalancesRoutine;
+pub struct FetchCosmosChainBalancesRoutine;
 pub struct UpdateBinanceBalanceOnSheetsRoutine;
 pub struct UpdateKrakenBalanceOnSheetsRoutine;
 pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
 pub struct UpdateTokenPricesOnSheetsRoutine;
 
-impl FetchChainBalancesRoutine {
+impl FetchEvmChainBalancesRoutine {
     async fn run(&self, chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
         println!("Fetching balance for {}", chain.name);
 
@@ -36,26 +39,78 @@ impl FetchChainBalancesRoutine {
     }
 }
 
+impl FetchCosmosChainBalancesRoutine {
+    async fn run(&self, chain: &Chain, cosmos_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+        println!("Fetching balance for {}", chain.name);
+
+        println!("Fetching native balance for {}", chain.name);
+        let native_balance = chain.explorer.fetch_native_balance(cosmos_address).await;
+
+        // println!("Fetching IBC balances for {}", chain.name);
+        // let ibc_balances = chain.explorer.fetch_ibc_balances(cosmos_address).await;
+
+        println!("Merging balances for {}", chain.name);
+
+        let mut balances = HashMap::new();
+        balances.insert(chain.native_token.to_owned(), native_balance);
+        // balances.extend(ibc_balances);
+        println!("Balances fetched for {}", chain.name);
+
+        // Remove zero balances
+        balances.retain(|_, balance| balance.balance > 0.0);
+        balances
+    }
+}
+
 impl UpdateAirdropWalletOnSheetsBalanceRoutine {
     pub async fn run(&self) {
+        let user_addresses = UserAddresses::from_config(&CONFIG.blockchain);
         let sheet_title = "Balance - Airdrop Wallet";
 
-        let fetch_chain_balance_routines = EVM_CHAINS.values().map(|chain| async {
+        let evm_chain_balance_routines = EVM_CHAINS.values().map(|chain| async {
             (
                 chain.name,
-                FetchChainBalancesRoutine
+                FetchEvmChainBalancesRoutine
                     .run(chain, &CONFIG.blockchain.evm.address)
                     .await,
             )
         });
 
-        let chain_balances = futures::future::join_all(fetch_chain_balance_routines)
-            .await
-            .into_iter()
-            .collect::<HashMap<_, _>>();
+        let cosmos_chain_balance_routines = COSMOS_CHAINS.values().map(|chain| async {
+            (
+                chain.name,
+                FetchCosmosChainBalancesRoutine
+                    .run(
+                        chain,
+                        user_addresses
+                            .get_addresses(chain)
+                            .unwrap()
+                            .first()
+                            .unwrap(),
+                    )
+                    .await,
+            )
+        });
 
-        println!("Starting...");
-        let evm_address = &CONFIG.blockchain.evm.address;
+        let mut chain_balances: HashMap<&str, HashMap<Arc<Token>, TokenBalance>> = HashMap::new();
+
+        chain_balances.extend(
+            futures::future::join_all(cosmos_chain_balance_routines)
+                .await
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+        );
+
+        chain_balances.extend(
+            futures::future::join_all(evm_chain_balance_routines)
+                .await
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+        );
+
+        println!("Chain balances: {:#?}", chain_balances);
+
+        println!("Starting sheet manipulation...");
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -72,6 +127,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
                     Token::ERC20(token_info) => {
                         unique_tokens.insert(token_info.token_symbol.to_string(), token.clone());
                     }
+                    Token::IBC => todo!("IBC token not implemented yet"),
                 }
             }
         }
@@ -85,6 +141,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
             .map(|(_, token)| match token.as_ref() {
                 Token::Native(token_name) => token_name.to_string(),
                 Token::ERC20(token_info) => token_info.token_symbol.to_string(),
+                Token::IBC => todo!("IBC token not implemented yet"),
             })
             .collect::<Vec<_>>();
 

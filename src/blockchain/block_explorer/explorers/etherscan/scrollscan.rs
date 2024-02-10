@@ -8,6 +8,6 @@ lazy_static! {
     pub static ref SCROLLSCAN: EtherscanImplementation = EtherscanImplementation {
         api_key: CONFIG.blockchain.scrollscan_api_key.clone(),
         base_url: "https://api.scrollscan.com/api".to_owned(),
-        chain: LazyLock::new(|| &CELESTIA),
+        chain: LazyLock::new(|| &SCROLL),
     };
 }
