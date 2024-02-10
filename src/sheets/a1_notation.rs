@@ -5,7 +5,7 @@ pub trait A1Notation {
     fn from_a1_notation(a1_notation: &str, sheet_id: i32) -> Self;
 }
 
-fn number_to_letter(number: i32) -> String {
+pub fn number_to_letter(number: u32) -> String {
     let mut number = number;
     let mut result = String::new();
     while number > 0 {
@@ -19,12 +19,13 @@ fn number_to_letter(number: i32) -> String {
 
 impl A1Notation for GridRange {
     fn to_a1_notation(&self, sheet_name: &str) -> String {
-        let start_row = self.start_row_index.unwrap() + 1;
-        let start_col = self.start_column_index.unwrap() + 1;
-        let end_row = self.end_row_index.unwrap();
-        let end_col = self.end_column_index.unwrap();
+        let start_row = (self.start_row_index.unwrap() + 1) as u32;
+        let start_col = (self.start_column_index.unwrap() + 1) as u32;
+        let end_row = self.end_row_index.unwrap() as u32;
+        let end_col = self.end_column_index.unwrap() as u32;
         let start_col_letter = number_to_letter(start_col);
         let end_col_letter = number_to_letter(end_col);
+
         format!(
             "'{}'!{}{}:{}{}",
             sheet_name, start_col_letter, start_row, end_col_letter, end_row
@@ -65,5 +66,7 @@ mod tests {
         assert_eq!(number_to_letter(27), "AA");
         assert_eq!(number_to_letter(52), "AZ");
         assert_eq!(number_to_letter(53), "BA");
+        assert_eq!(number_to_letter(702), "ZZ");
+        assert_eq!(number_to_letter(703), "AAA");
     }
 }
