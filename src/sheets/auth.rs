@@ -12,8 +12,8 @@ pub async fn auth(
             .await
             .expect("secret not found");
 
-    return oauth2::ServiceAccountAuthenticator::with_client(secret, client.clone())
+    oauth2::ServiceAccountAuthenticator::with_client(secret, client.clone())
         .build()
         .await
-        .expect("could not create an authenticator");
+        .expect("could not create an authenticator")
 }

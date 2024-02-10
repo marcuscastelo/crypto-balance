@@ -41,7 +41,7 @@ impl BlockExplorer for EtherscanImplementation {
         let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
         let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
         let balance = match resp.result.parse::<f64>() {
-            Ok(balance) => balance / (WEI_CONVERSION as f64),
+            Ok(balance) => balance / WEI_CONVERSION,
             Err(_) => {
                 panic!("Error fetching balance: {:?}", resp);
             }
@@ -71,7 +71,7 @@ impl BlockExplorer for EtherscanImplementation {
         );
         let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
         let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = resp.result.parse::<f64>().unwrap() / (WEI_CONVERSION as f64);
+        let balance = resp.result.parse::<f64>().unwrap() / WEI_CONVERSION;
 
         TokenBalance {
             token: Token::ERC20(token_info.clone()).into(),

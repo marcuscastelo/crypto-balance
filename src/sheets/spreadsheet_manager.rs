@@ -101,7 +101,7 @@ impl SpreadsheetManager {
             .await
             .ok()?;
 
-        let value_range = response.1;
+        let _value_range = response.1;
         Some(())
     }
 

@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::user_addresses::UserAddresses;
 
 use std::collections::HashMap;
-use std::hash::Hash;
+
 use std::sync::Arc;
 
 use binance::account::Account;
