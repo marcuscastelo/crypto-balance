@@ -65,7 +65,7 @@ impl FetchCosmosChainBalancesRoutine {
 impl UpdateAirdropWalletOnSheetsBalanceRoutine {
     pub async fn run(&self) {
         let user_addresses = UserAddresses::from_config(&CONFIG.blockchain);
-        let sheet_title = "Balance/Chain - Airdrop Wallet";
+        let sheet_title = "Balance per Chain - Airdrop Wallet";
 
         let evm_chain_balance_routines = EVM_CHAINS.values().map(|chain| async {
             (
@@ -160,19 +160,22 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
 
         println!("Writing token names done!");
 
-        let start_letter = 'C';
-        for (current_chain_idx, chain) in chain_names.iter().enumerate() {
-            println!("Writing balances for {}", chain);
+        let starting_col: Column = "C".try_into().unwrap();
+        for (current_chain_idx, chain_name) in chain_names.iter().enumerate() {
+            println!("Writing balances for {}", chain_name);
+
+            let current_col = starting_col + current_chain_idx as u32;
+            let chain_name_position = CellPosition {
+                row: 2_usize.into(),
+                col: current_col,
+            };
 
             spreadsheet_manager
                 .write_range(
-                    format!(
-                        "'{}'!{}2",
-                        sheet_title,
-                        number_to_letter(start_letter as u32 + current_chain_idx as u32)
-                    )
-                    .as_str(),
-                    ValueRange::from_str(chain),
+                    chain_name_position
+                        .to_a1_notation(Some(sheet_title))
+                        .as_ref(),
+                    ValueRange::from_str(chain_name),
                 )
                 .await
                 .unwrap();
@@ -181,28 +184,25 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
             for (_, token) in &unique_tokens {
                 token_balances.push(
                     chain_balances
-                        .get(chain)
-                        .unwrap_or_else(|| panic!("Chain {} should have balance", chain))
+                        .get(chain_name)
+                        .unwrap_or_else(|| panic!("Chain {} should have balance", chain_name))
                         .get(token)
                         .map(|x| x.balance.to_string())
                         .unwrap_or("".to_owned()),
                 );
             }
 
-            let current_letter = number_to_letter(start_letter as u32 + current_chain_idx as u32);
+            let pivot: CellPosition = (current_col, 3_u32).into();
 
-            let range = format!(
-                "'{}'!{}3:{}{}",
-                sheet_title,
-                current_letter,
-                current_letter,
-                4 + token_balances.len()
-            );
+            let balances_range = CellRange {
+                start: pivot.clone(),
+                end: (pivot.col, pivot.row + token_balances.len()).into(),
+            };
 
-            println!("Writing to range: {}", range);
+            println!("Writing to range: {:#?}", balances_range);
             spreadsheet_manager
                 .write_range(
-                    range.as_str(),
+                    balances_range.to_a1_notation(Some(sheet_title)).as_ref(),
                     ValueRange::from_rows(
                         token_balances
                             .iter()
@@ -214,7 +214,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
                 .await
                 .unwrap();
 
-            println!("Writing balances for {} done!", chain);
+            println!("Writing balances for {} done!", chain_name);
             println!(
                 "Written: {:?}",
                 ValueRange::from_rows(

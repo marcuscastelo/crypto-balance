@@ -5,7 +5,7 @@ use google_sheets4::{
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::{sheets::prelude::*, A1Notation};
+use crate::{sheets::prelude::*, CellRange, ToA1Notation};
 
 pub struct SpreadsheetManager {
     pub config: SpreadsheetConfig,
@@ -61,15 +61,19 @@ impl SpreadsheetManager {
         let named_ranges = self.named_ranges().await?;
         let mut map = HashMap::new();
         for named_range in named_ranges {
-            let a1_notation = named_range.range.as_ref()?.to_a1_notation(
+            let cell_range: CellRange = named_range.clone().range?.try_into().ok()?;
+
+            let sheet_title = Some(
                 self.get_sheet_title(named_range.range.as_ref()?.sheet_id.unwrap_or(0))
                     .await
-                    .expect("Sheet title should exist")
-                    .as_str(),
+                    .expect("Sheet title should exist"),
             );
 
-            map.insert(named_range.name?, a1_notation);
+            let a1_notation = cell_range.to_a1_notation(sheet_title.as_deref());
+
+            map.insert(named_range.name?, a1_notation.to_string());
         }
+
         Some(map)
     }
 
@@ -165,8 +169,15 @@ impl SpreadsheetManager {
             .get_sheet_title(named_range.sheet_id.unwrap_or(0))
             .await
             .expect("Sheet title should exist");
-        self.read_range(named_range.to_a1_notation(&sheet_title).as_str())
-            .await
+
+        let cell_range: CellRange = named_range.try_into().ok()?;
+
+        self.read_range(
+            cell_range
+                .to_a1_notation(Some(sheet_title.as_str()))
+                .as_ref(),
+        )
+        .await
     }
 
     pub async fn write_named_range(
@@ -174,19 +185,30 @@ impl SpreadsheetManager {
         name: &str,
         value_range: ValueRange,
     ) -> Result<(), SpreadsheetManagerError> {
-        let named_range = self.get_named_range(name).await.ok_or_else(|| {
+        let grid_range = self.get_named_range(name).await.ok_or_else(|| {
             SpreadsheetManagerError::NamedRangeError(
                 format!("Named range with name {:?} not found", name).into(),
             )
         })?;
 
         let sheet_title = self
-            .get_sheet_title(named_range.sheet_id.unwrap_or(0))
+            .get_sheet_title(grid_range.sheet_id.unwrap_or(0))
             .await
             .expect("Sheet title should exist");
+        let cell_range: CellRange = grid_range.try_into().map_err(|error| {
+            SpreadsheetManagerError::NamedRangeError(
+                format!(
+                    "Named range parsing error for named range {:?}: {:?}",
+                    name, error
+                )
+                .into(),
+            )
+        })?;
 
         self.write_range(
-            named_range.to_a1_notation(&sheet_title).as_str(),
+            cell_range
+                .to_a1_notation(Some(sheet_title.as_str()))
+                .as_ref(),
             value_range,
         )
         .await
