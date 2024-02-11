@@ -1,5 +1,6 @@
+use std::sync::LazyLock;
+
 use config::Config;
-use lazy_static::lazy_static;
 
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct AppConfig {
@@ -37,13 +38,11 @@ pub struct CosmosBlockchainConfig {
     pub kujira_address: Box<str>,
 }
 
-lazy_static! {
-    pub static ref CONFIG: AppConfig = {
-        Config::builder()
-            .add_source(config::File::with_name("Config"))
-            .build()
-            .expect("Should build config from file")
-            .try_deserialize()
-            .expect("Should deserialize built config into struct")
-    };
-}
+pub static CONFIG: LazyLock<AppConfig> = LazyLock::new(|| {
+    Config::builder()
+        .add_source(config::File::with_name("Config"))
+        .build()
+        .expect("Should build config from file")
+        .try_deserialize()
+        .expect("Should deserialize built config into struct")
+});

@@ -65,7 +65,7 @@ impl FetchCosmosChainBalancesRoutine {
 impl UpdateAirdropWalletOnSheetsBalanceRoutine {
     pub async fn run(&self) {
         let user_addresses = UserAddresses::from_config(&CONFIG.blockchain);
-        let sheet_title = "Balance - Airdrop Wallet";
+        let sheet_title = "Balance/Chain - Airdrop Wallet";
 
         let evm_chain_balance_routines = EVM_CHAINS.values().map(|chain| async {
             (
@@ -152,7 +152,7 @@ impl UpdateAirdropWalletOnSheetsBalanceRoutine {
                 ValueRange::from_rows(token_names.as_ref()),
             )
             .await
-            .unwrap();
+            .expect("Should write token names to the spreadsheet");
 
         let mut chain_names = chain_balances.keys().cloned().collect::<Vec<_>>();
         chain_names.sort();

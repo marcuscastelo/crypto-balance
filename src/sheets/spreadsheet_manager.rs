@@ -91,18 +91,19 @@ impl SpreadsheetManager {
         Some(value_range)
     }
 
-    pub async fn write_range(&self, range: &str, value_range: ValueRange) -> Option<()> {
-        let response = self
-            .hub
+    pub async fn write_range(
+        &self,
+        range: &str,
+        value_range: ValueRange,
+    ) -> Result<(), SpreadsheetManagerError> {
+        self.hub
             .spreadsheets()
             .values_update(value_range, &self.config.spreadsheet_id, range)
             .value_input_option("USER_ENTERED")
             .doit()
             .await
-            .ok()?;
-
-        let _value_range = response.1;
-        Some(())
+            .map(|_| ())
+            .map_err(SpreadsheetManagerError::HubError)
     }
 
     pub async fn get_sheet_title(&self, sheet_id: i32) -> Result<String, SpreadsheetManagerError> {
@@ -168,12 +169,22 @@ impl SpreadsheetManager {
             .await
     }
 
-    pub async fn write_named_range(&self, name: &str, value_range: ValueRange) -> Option<()> {
-        let named_range = self.get_named_range(name).await?;
+    pub async fn write_named_range(
+        &self,
+        name: &str,
+        value_range: ValueRange,
+    ) -> Result<(), SpreadsheetManagerError> {
+        let named_range = self.get_named_range(name).await.ok_or_else(|| {
+            SpreadsheetManagerError::NamedRangeError(
+                format!("Named range with name {:?} not found", name).into(),
+            )
+        })?;
+
         let sheet_title = self
             .get_sheet_title(named_range.sheet_id.unwrap_or(0))
             .await
             .expect("Sheet title should exist");
+
         self.write_range(
             named_range.to_a1_notation(&sheet_title).as_str(),
             value_range,
