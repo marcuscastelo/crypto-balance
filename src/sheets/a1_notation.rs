@@ -220,7 +220,7 @@ impl From<Column> for String {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CellPosition {
     pub col: Column,
     pub row: Row,
@@ -301,7 +301,7 @@ impl From<CellPosition> for (u32, u32) {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CellRange {
     pub start: CellPosition,
     pub end: CellPosition,
@@ -347,7 +347,8 @@ impl TryFrom<GridRange> for CellRange {
                 .start_column_index
                 .ok_or(CellRangeParseError::InvalidGridRange(
                     InvalidGridRangeKind::Missing(InvalidGridRangeTarget::StartColumn),
-                ))?;
+                ))?
+                + 1;
 
         let end_column_index =
             grid_range
@@ -361,7 +362,8 @@ impl TryFrom<GridRange> for CellRange {
                 .start_row_index
                 .ok_or(CellRangeParseError::InvalidGridRange(
                     InvalidGridRangeKind::Missing(InvalidGridRangeTarget::StartRow),
-                ))?;
+                ))?
+                + 1;
 
         let end_row_index =
             grid_range
@@ -676,5 +678,25 @@ mod tests {
             cell_range.to_a1_notation(Some("Sheet1")),
             A1Notation("'Sheet1'!A1:ZZ100".to_owned())
         );
+    }
+
+    // Tests that cell range can be parsed to A1Notation and back
+    #[test]
+    fn test_cell_range_from_a1_notation() {
+        let cell_range = CellRange {
+            start: CellPosition {
+                col: Column(1),
+                row: Row(1),
+            },
+            end: CellPosition {
+                col: Column(26),
+                row: Row(26),
+            },
+        };
+
+        let a1_notation = cell_range.to_a1_notation(None);
+        let parsed_cell_range = CellRange::from_a1_notation(&a1_notation, None).unwrap();
+
+        assert_eq!(cell_range, parsed_cell_range);
     }
 }

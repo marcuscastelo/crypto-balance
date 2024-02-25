@@ -13,12 +13,44 @@ use binance::rest_model::Prices;
 use google_sheets4::api::ValueRange;
 use serde_json::Value;
 
+pub struct SheetsGetTokenNamesRoutine;
+pub struct SheetsGetTokenIDsRoutine;
 pub struct FetchEvmChainBalancesRoutine;
 pub struct FetchCosmosChainBalancesRoutine;
 pub struct UpdateBinanceBalanceOnSheetsRoutine;
 pub struct UpdateKrakenBalanceOnSheetsRoutine;
 pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
-pub struct UpdateTokenPricesOnSheetsRoutine;
+pub struct UpdateTokenPricesOnSheetsViaBinanceRoutine;
+
+pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
+
+impl SheetsGetTokenNamesRoutine {
+    pub async fn run(&self) -> Vec<String> {
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        spreadsheet_manager
+            .read_named_range(ranges::tokens::RO_NAMES)
+            .await
+            .expect("Should have content")
+            .values
+            .expect("Should have values")
+            .my_into()
+    }
+}
+
+impl SheetsGetTokenIDsRoutine {
+    pub async fn run(&self) -> Vec<String> {
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        spreadsheet_manager
+            .read_named_range(ranges::tokens::RO_IDS)
+            .await
+            .expect("Should have content")
+            .values
+            .expect("Should have values")
+            .my_into()
+    }
+}
 
 impl FetchEvmChainBalancesRoutine {
     async fn run(&self, chain: &Chain, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
@@ -263,13 +295,7 @@ impl UpdateBinanceBalanceOnSheetsRoutine {
                 .collect::<Vec<_>>()
         );
 
-        let token_names: Vec<String> = spreadsheet_manager
-            .read_named_range(ranges::tokens::RO_NAMES)
-            .await
-            .expect("Should have content")
-            .values
-            .expect("Should have values")
-            .my_into();
+        let token_names: Vec<String> = SheetsGetTokenNamesRoutine.run().await;
 
         let balances = binance_account
             .get_account()
@@ -326,7 +352,7 @@ impl UpdateKrakenBalanceOnSheetsRoutine {
     }
 }
 
-impl UpdateTokenPricesOnSheetsRoutine {
+impl UpdateTokenPricesOnSheetsViaBinanceRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -402,6 +428,58 @@ impl UpdateTokenPricesOnSheetsRoutine {
 
         spreadsheet_manager
             .write_named_range(ranges::tokens::RW_PRICES, a)
+            .await
+            .expect("Should write prices to the spreadsheet");
+    }
+}
+
+impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
+    pub async fn run(&self) {
+        // Below: routine to get native token prices from CoinGecko (failed attempt)
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        let token_ids: Vec<String> = SheetsGetTokenIDsRoutine.run().await;
+
+        // let coins = CoinGeckoApi.list_coins().await;
+        // let coin_tuples = coins
+        //     .into_iter()
+        //     .filter(|coin| token_ids.contains(&coin.id))
+        //     .map(|coin| (coin.id, coin.symbol.to_uppercase()))
+        //     .collect::<Vec<_>>();
+        let prices = CoinGeckoApi.prices(token_ids.as_ref()).await;
+
+        let current_prices_on_sheet = spreadsheet_manager
+            .read_named_range(ranges::tokens::RW_PRICES)
+            .await
+            .expect("Should have content")
+            .values
+            .expect("Should have values")
+            .my_into()
+            .into_iter()
+            .map(|x| {
+                x.replace(['$', ','], "")
+                    .parse::<f64>()
+                    .unwrap_or_else(|_| panic!("Should be a number: {}", x))
+            })
+            .collect::<Vec<_>>();
+
+        let new_prices = token_ids
+            .iter()
+            .enumerate()
+            .map(|(idx, token)| match prices.0.get(token) {
+                Some(price) => price
+                    .usd
+                    .expect("Should have price when PriceResponse exists"),
+                None => current_prices_on_sheet.get(idx).copied().unwrap_or(0.0),
+            })
+            .map(|price| price.to_string())
+            .collect::<Vec<_>>();
+
+        spreadsheet_manager
+            .write_named_range(
+                ranges::tokens::RW_PRICES,
+                ValueRange::from_rows(new_prices.as_ref()),
+            )
             .await
             .expect("Should write prices to the spreadsheet");
     }
