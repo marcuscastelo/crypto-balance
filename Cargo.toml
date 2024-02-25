@@ -17,3 +17,5 @@ futures = "0.3.30"
 thiserror = "1.0"
 async-trait = "0.1.77"
 strum = { version = "0.26", features = ["derive"] }
+krakenrs = { git = "https://github.com/marcuscastelo/krakenrs-async" }
+num-traits = "0.2"

@@ -1,3 +1,4 @@
+use crate::factory::BinanceAccountFactory;
 use crate::prelude::*;
 use crate::user_addresses::UserAddresses;
 
@@ -5,12 +6,13 @@ use std::collections::HashMap;
 
 use std::sync::Arc;
 
-use binance::account::Account;
-use binance::api::Binance;
-use binance::config::Config;
-use binance::market::Market;
-use binance::rest_model::Prices;
+use ::binance::account::Account;
+use ::binance::api::Binance;
+use ::binance::config::Config;
+use ::binance::market::Market;
+use ::binance::rest_model::Prices;
 use google_sheets4::api::ValueRange;
+use num_traits::ToPrimitive;
 use serde_json::Value;
 
 pub struct SheetsGetTokenNamesRoutine;
@@ -266,25 +268,10 @@ impl UpdateBinanceBalanceOnSheetsRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
-        let binance_account: Account = Binance::new_with_config(
-            Some(CONFIG.binance.api_key.to_string()),
-            Some(CONFIG.binance.secret_key.to_string()),
-            &Config {
-                rest_api_endpoint: "https://api.binance.com".into(),
-                ws_endpoint: "wss://stream.binance.com:9443".into(),
-
-                futures_rest_api_endpoint: "https://fapi.binance.com".into(),
-                futures_ws_endpoint: "wss://fstream.binance.com".into(),
-
-                recv_window: 50000,
-                binance_us_api: false,
-
-                timeout: None,
-            },
-        );
+        let binance_account: Account = BinanceAccountFactory::create();
 
         println!(
-            "Binance account: {:#?}",
+            "Binance account balance: {:#?}",
             binance_account
                 .get_account()
                 .await
@@ -348,7 +335,74 @@ impl UpdateBinanceBalanceOnSheetsRoutine {
 
 impl UpdateKrakenBalanceOnSheetsRoutine {
     pub async fn run(&self) {
-        unimplemented!("Kraken balance update routine is not implemented");
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        let kraken_api = KrakenFactory::create();
+
+        println!(
+            "Kraken account balance: {:#?}",
+            kraken_api
+                .get_account_balance()
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(
+                    |(symbol, amount)| amount.to_f64().expect("Should be convertible to f64") > 0.0
+                )
+                .collect::<HashMap<_, _>>()
+        );
+
+        let token_names: Vec<String> = SheetsGetTokenNamesRoutine.run().await;
+
+        let balances = kraken_api
+            .get_account_balance()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|(symbol, amount)| {
+                (
+                    symbol,
+                    amount.to_f64().expect("Should be convertible to f64"),
+                )
+            })
+            .filter(|(_, amount)| *amount > 0.0)
+            .collect::<HashMap<_, _>>();
+
+        // Write to the spreadsheet
+        let mut token_balances = Vec::with_capacity(token_names.len());
+        for token_name in &token_names {
+            token_balances.push(balances.get(token_name).unwrap_or(&0.0));
+        }
+
+        println!(
+            "Balances in order:\n{:#?}",
+            token_names
+                .iter()
+                .zip(token_balances.clone())
+                .collect::<Vec<_>>()
+        );
+
+        spreadsheet_manager
+            .write_named_range(
+                ranges::balances::kraken::RW_AMOUNTS,
+                // TODO: create Vec<T> to ValueRange conversion
+                ValueRange {
+                    range: None,
+                    major_dimension: None,
+                    values: Some(
+                        token_balances
+                            .into_iter()
+                            .map(|balance| {
+                                vec![Value::Number(
+                                    serde_json::Number::from_f64(*balance).unwrap(),
+                                )]
+                            })
+                            .collect::<Vec<_>>(),
+                    ),
+                },
+            )
+            .await
+            .expect("Should write balances to the spreadsheet");
     }
 }
 

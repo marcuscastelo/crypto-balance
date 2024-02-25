@@ -26,6 +26,10 @@ kujira_address = "<REPLACE>"
 api_key = "<REPLACE>"
 secret_key = "<REPLACE>"
 
+[kraken]
+api_key = "<REPLACE>"
+secret_key = "<REPLACE>"
+
 [sheets]
 priv_key = "<REPLACE>"
 spreadsheet_id = "<REPLACE>"

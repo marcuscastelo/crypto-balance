@@ -14,6 +14,10 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
+    routines::UpdateKrakenBalanceOnSheetsRoutine.run().await;
+
+    return;
+
     routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
         .run()
         .await;

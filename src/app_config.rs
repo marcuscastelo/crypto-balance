@@ -6,7 +6,8 @@ use config::Config;
 pub struct AppConfig {
     pub blockchain: BlockchainConfig,
     pub sheets: crate::sheets::config::SpreadsheetConfig,
-    pub binance: crate::exchange::binance_config::BinanceConfig,
+    pub binance: crate::exchange::binance::config::BinanceConfig,
+    pub kraken: crate::exchange::kraken::config::KrakenConfig,
     pub coingecko: crate::price::coingecko::config::CoingeckoConfig,
 }
 

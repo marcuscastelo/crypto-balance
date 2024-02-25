@@ -1,2 +1,3 @@
-pub mod binance_config;
+pub mod binance;
+pub mod kraken;
 pub mod prelude;

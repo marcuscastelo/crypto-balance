@@ -1,7 +1,7 @@
 use google_sheets4::oauth2::{self, authenticator::Authenticator};
 use google_sheets4::{hyper, hyper_rustls};
 
-use crate::config::SpreadsheetConfig;
+use crate::sheets::prelude::*;
 
 pub async fn auth(
     config: &SpreadsheetConfig,
