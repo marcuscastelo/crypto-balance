@@ -15,3 +15,7 @@ pub mod balances {
         pub const RW_AMOUNTS: &str = "Balance_Kraken__vAmounts";
     }
 }
+
+pub mod airdrops {
+    pub const RW_DEBANK_TOTAL_USD: &str = "Airdrops__cDebankTotalUSD";
+}

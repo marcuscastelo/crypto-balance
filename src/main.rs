@@ -6,6 +6,7 @@ mod exchange;
 mod prelude;
 mod price;
 mod routines;
+mod scraping;
 mod sheets;
 
 use coingecko::prelude::CoinGeckoApi;
@@ -14,15 +15,16 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    routines::UpdateKrakenBalanceOnSheetsRoutine.run().await;
-
-    return;
+    routines::UpdateAirdropDebankTotalOnSheetsRoutine
+        .run()
+        .await;
 
     routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
         .run()
         .await;
 
     routines::UpdateBinanceBalanceOnSheetsRoutine.run().await;
+    routines::UpdateKrakenBalanceOnSheetsRoutine.run().await;
 
     return;
 

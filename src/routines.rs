@@ -19,10 +19,16 @@ pub struct SheetsGetTokenNamesRoutine;
 pub struct SheetsGetTokenIDsRoutine;
 pub struct FetchEvmChainBalancesRoutine;
 pub struct FetchCosmosChainBalancesRoutine;
+
+// Hold Balances tabs
 pub struct UpdateBinanceBalanceOnSheetsRoutine;
 pub struct UpdateKrakenBalanceOnSheetsRoutine;
+// TODO: decide where Airdrop Wallet will be (remove from here?)
 pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
 pub struct UpdateTokenPricesOnSheetsViaBinanceRoutine;
+
+// Airdrop tab
+pub struct UpdateAirdropDebankTotalOnSheetsRoutine;
 
 pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
 
@@ -536,5 +542,24 @@ impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
             )
             .await
             .expect("Should write prices to the spreadsheet");
+    }
+}
+
+impl UpdateAirdropDebankTotalOnSheetsRoutine {
+    pub async fn run(&self) {
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        let balance = DebankScraper
+            .get_total_balance(&CONFIG.blockchain.evm.address)
+            .await
+            .unwrap();
+
+        spreadsheet_manager
+            .write_named_range(
+                ranges::airdrops::RW_DEBANK_TOTAL_USD,
+                ValueRange::from_str(&balance.to_string()),
+            )
+            .await
+            .expect("Should write Debank total to the spreadsheet");
     }
 }
