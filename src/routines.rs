@@ -29,6 +29,7 @@ pub struct UpdateTokenPricesOnSheetsViaBinanceRoutine;
 
 // Airdrop tab
 pub struct UpdateAirdropDebankTotalOnSheetsRoutine;
+pub struct UpdateAirdropStepSVMTotalOnSheetsRoutine;
 
 pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
 
@@ -561,5 +562,24 @@ impl UpdateAirdropDebankTotalOnSheetsRoutine {
             )
             .await
             .expect("Should write Debank total to the spreadsheet");
+    }
+}
+
+impl UpdateAirdropStepSVMTotalOnSheetsRoutine {
+    pub async fn run(&self) {
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        let balance = StepSVMScraper
+            .get_total_balance(&CONFIG.blockchain.solana.address)
+            .await
+            .unwrap();
+
+        spreadsheet_manager
+            .write_named_range(
+                ranges::airdrops::RW_STEP_SVM_TOTAL_USD,
+                ValueRange::from_str(&balance.to_string()),
+            )
+            .await
+            .expect("Should write StepSVM total to the spreadsheet");
     }
 }

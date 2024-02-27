@@ -15,6 +15,10 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
+    routines::UpdateAirdropStepSVMTotalOnSheetsRoutine
+        .run()
+        .await;
+
     routines::UpdateAirdropDebankTotalOnSheetsRoutine
         .run()
         .await;

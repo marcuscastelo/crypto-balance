@@ -22,11 +22,17 @@ pub struct BlockchainConfig {
     pub optimistic_etherscan_api_key: Box<str>,
     pub polygonscan_api_key: Box<str>,
     pub evm: EvmBlockchainConfig,
+    pub solana: SolanaBlockchainConfig,
     pub cosmos: CosmosBlockchainConfig,
 }
 
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct EvmBlockchainConfig {
+    pub address: Box<str>,
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct SolanaBlockchainConfig {
     pub address: Box<str>,
 }
 
