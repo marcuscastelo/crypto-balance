@@ -15,6 +15,9 @@ polygonscan_api_key = "<REPLACE>"
 [blockchain.evm]
 address = "<REPLACE>"
 
+[blockchain.solana]
+address = "<REPLACE>"
+
 [blockchain.cosmos]
 cosmos_address = "<REPLACE>"
 osmosis_address = "<REPLACE>"

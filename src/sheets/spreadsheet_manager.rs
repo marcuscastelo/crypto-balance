@@ -42,14 +42,14 @@ impl SpreadsheetManager {
             .get(&self.config.spreadsheet_id)
             .doit()
             .await
-            .ok()?;
+            .expect("Spreadsheet should exist");
 
         let named_ranges = response.1.named_ranges?;
         Some(named_ranges)
     }
 
     pub async fn named_range_map(&self) -> Option<HashMap<String, GridRange>> {
-        let named_ranges = self.named_ranges().await?;
+        let named_ranges = self.named_ranges().await.expect("Named ranges should exist");
         let mut map = HashMap::new();
         for named_range in named_ranges {
             map.insert(named_range.name?, named_range.range?);
@@ -78,7 +78,7 @@ impl SpreadsheetManager {
     }
 
     pub async fn get_named_range(&self, name: &str) -> Option<GridRange> {
-        let named_ranges = self.named_range_map().await?;
+        let named_ranges = self.named_range_map().await.expect("Named range map should exist");
         named_ranges.get(name).cloned()
     }
 
@@ -170,7 +170,7 @@ impl SpreadsheetManager {
             .await
             .expect("Sheet title should exist");
 
-        let cell_range: CellRange = named_range.try_into().ok()?;
+        let cell_range: CellRange = named_range.try_into().expect("Named range parsing error");
 
         self.read_range(
             cell_range

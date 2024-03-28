@@ -1,4 +1,4 @@
-#![feature(lazy_cell)]
+#![feature(once_cell)]
 
 mod app_config;
 mod blockchain;
@@ -10,25 +10,29 @@ mod scraping;
 mod sheets;
 
 use coingecko::prelude::CoinGeckoApi;
+use tokio::process::Command;
 
 use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    routines::UpdateAirdropStepSVMTotalOnSheetsRoutine
-        .run()
-        .await;
+    // routines::UpdateAirdropStepSVMTotalOnSheetsRoutine
+    //     .run()
+    //     .await;
 
-    routines::UpdateAirdropDebankTotalOnSheetsRoutine
-        .run()
-        .await;
+    // routines::UpdateAirdropDebankTotalOnSheetsRoutine
+    //     .run()
+    //     .await;
 
-    routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
-        .run()
-        .await;
+    // routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
+    //     .run()
+    //     .await;
 
     routines::UpdateBinanceBalanceOnSheetsRoutine.run().await;
     routines::UpdateKrakenBalanceOnSheetsRoutine.run().await;
+
+    // Kill all geckodriver processes
+    let _ = Command::new("pkill").arg("geckodriver").output();
 
     return;
 
