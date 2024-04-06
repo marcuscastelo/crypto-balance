@@ -16,17 +16,17 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    // routines::UpdateAirdropStepSVMTotalOnSheetsRoutine
-    //     .run()
-    //     .await;
+    routines::UpdateAirdropStepSVMTotalOnSheetsRoutine
+        .run()
+        .await;
 
-    // routines::UpdateAirdropDebankTotalOnSheetsRoutine
-    //     .run()
-    //     .await;
+    routines::UpdateAirdropDebankTotalOnSheetsRoutine
+        .run()
+        .await;
 
-    // routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
-    //     .run()
-    //     .await;
+    routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
+        .run()
+        .await;
 
     routines::UpdateBinanceBalanceOnSheetsRoutine.run().await;
     routines::UpdateKrakenBalanceOnSheetsRoutine.run().await;

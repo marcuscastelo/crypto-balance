@@ -359,7 +359,7 @@ impl UpdateKrakenBalanceOnSheetsRoutine {
                         "XXBT" => "BTC".to_string(),
                         "XETH" => "ETH".to_string(),
                         "XXRP" => "XRP".to_string(),
-                        "USD" => "USDT".to_string(),
+                        "ZUSD" => "USDT".to_string(),
                         _ => symbol,
                     },
                     amount.to_f64().expect("Should be convertible to f64"),
