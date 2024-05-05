@@ -1,4 +1,5 @@
 #![feature(once_cell)]
+#![feature(async_closure)]
 
 mod app_config;
 mod blockchain;
@@ -16,6 +17,9 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
+    routines::UpdateBybitBalanceOnSheetsRoutine.run().await;
+    return;
+
     futures::join!(
         routines::UpdateAirdropStepSVMTotalOnSheetsRoutine.run(),
         routines::UpdateAirdropDebankTotalOnSheetsRoutine.run(),

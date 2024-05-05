@@ -7,6 +7,7 @@ pub struct AppConfig {
     pub blockchain: BlockchainConfig,
     pub sheets: crate::sheets::config::SpreadsheetConfig,
     pub binance: crate::exchange::binance::config::BinanceConfig,
+    pub bybit: crate::exchange::bybit::config::BybitConfig,
     pub kraken: crate::exchange::kraken::config::KrakenConfig,
     pub coingecko: crate::price::coingecko::config::CoingeckoConfig,
 }

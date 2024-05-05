@@ -6,14 +6,18 @@ use std::collections::HashMap;
 
 use std::sync::Arc;
 
-use ::binance::account::Account;
+use ::binance::account::Account as BinanceAccount;
 use ::binance::api::Binance;
-use ::binance::config::Config;
 use ::binance::market::Market;
 use ::binance::rest_model::Prices;
+use bybit_rs::bybit::account::Account as BybitAccount;
 use google_sheets4::api::ValueRange;
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tokio::sync::mpsc;
+
+use self::bybit::factory::BybitFactory;
 
 pub struct SheetsGetTokenNamesRoutine;
 pub struct SheetsGetTokenIDsRoutine;
@@ -23,6 +27,7 @@ pub struct FetchCosmosChainBalancesRoutine;
 // Hold Balances tabs
 pub struct UpdateBinanceBalanceOnSheetsRoutine;
 pub struct UpdateKrakenBalanceOnSheetsRoutine;
+pub struct UpdateBybitBalanceOnSheetsRoutine;
 // TODO: decide where Airdrop Wallet will be (remove from here?)
 pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
 pub struct UpdateTokenPricesOnSheetsViaBinanceRoutine;
@@ -275,7 +280,7 @@ impl UpdateBinanceBalanceOnSheetsRoutine {
     pub async fn run(&self) {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
-        let binance_account: Account = BinanceAccountFactory::create();
+        let binance_account: BinanceAccount = BinanceAccountFactory::create();
 
         println!(
             "Binance account balance: {:#?}",
@@ -368,7 +373,7 @@ impl UpdateKrakenBalanceOnSheetsRoutine {
             .filter(|(_, amount)| *amount > 0.0)
             .collect::<HashMap<_, _>>();
 
-            println!("Kraken account balance: {:#?}", balances);
+        println!("Kraken account balance: {:#?}", balances);
 
         // Write to the spreadsheet
         let mut token_balances = Vec::with_capacity(token_names.len());
@@ -388,6 +393,104 @@ impl UpdateKrakenBalanceOnSheetsRoutine {
             .write_named_range(
                 ranges::balances::kraken::RW_AMOUNTS,
                 // TODO: create Vec<T> to ValueRange conversion
+                ValueRange {
+                    range: None,
+                    major_dimension: None,
+                    values: Some(
+                        token_balances
+                            .into_iter()
+                            .map(|balance| {
+                                vec![Value::Number(
+                                    serde_json::Number::from_f64(*balance).unwrap(),
+                                )]
+                            })
+                            .collect::<Vec<_>>(),
+                    ),
+                },
+            )
+            .await
+            .expect("Should write balances to the spreadsheet");
+    }
+}
+
+impl UpdateBybitBalanceOnSheetsRoutine {
+    pub async fn run(&self) {
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+
+        let mut bybit_api = BybitFactory::create();
+
+        let token_names: Vec<String> = SheetsGetTokenNamesRoutine.run().await;
+
+        let response_value = bybit_api
+            .get_wallet_balance(HashMap::from([(
+                "accountType".to_owned(),
+                "UNIFIED".to_owned(),
+            )]))
+            .await
+            .expect("Should get wallet balance");
+
+        #[derive(Debug, Deserialize)]
+        struct BybitGetWalletBalanceCoin {
+            coin: String,
+            equity: String,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct BybitGetWalletBalanceAccount {
+            coin: Vec<BybitGetWalletBalanceCoin>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct BybitGetWalletBalanceResult {
+            list: Vec<BybitGetWalletBalanceAccount>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct BybitGetWalletBalanceResponse {
+            result: BybitGetWalletBalanceResult,
+        }
+
+        // println!("Bybit response: {:#?}", result);
+
+        let balances: BybitGetWalletBalanceResponse =
+            serde_json::from_value(response_value).expect("Should deserialize response");
+
+        let balances = HashMap::from(
+            balances
+                .result
+                .list
+                .iter()
+                .map(|account| {
+                    // All account coins as (coin, equity)
+                    account
+                        .coin
+                        .iter()
+                        .map(|coin| (coin.coin.clone(), coin.equity.parse::<f64>().unwrap()))
+                })
+                .flatten()
+                .collect::<HashMap<_, _>>(),
+        );
+
+        println!("Bybit account balance: {:#?}", balances);
+
+        // Write to the spreadsheet
+        let mut token_balances = Vec::with_capacity(token_names.len());
+
+        for token_name in &token_names {
+            token_balances.push(balances.get(token_name).unwrap_or(&0.0));
+        }
+
+        println!(
+            "Balances in order:\n{:#?}",
+            token_names
+                .iter()
+                .zip(token_balances.clone())
+                .collect::<Vec<_>>()
+        );
+
+        spreadsheet_manager
+            .write_named_range(
+                ranges::balances::bybit::RW_AMOUNTS,
                 ValueRange {
                     range: None,
                     major_dimension: None,

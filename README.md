@@ -29,6 +29,10 @@ kujira_address = "<REPLACE>"
 api_key = "<REPLACE>"
 secret_key = "<REPLACE>"
 
+[bybit]
+api_key = "<REPLACE>"
+secret_key = "<REPLACE>"
+
 [kraken]
 api_key = "<REPLACE>"
 secret_key = "<REPLACE>"
