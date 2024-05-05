@@ -17,14 +17,12 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    routines::UpdateBybitBalanceOnSheetsRoutine.run().await;
-    return;
-
     futures::join!(
         routines::UpdateAirdropStepSVMTotalOnSheetsRoutine.run(),
         routines::UpdateAirdropDebankTotalOnSheetsRoutine.run(),
         routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine.run(),
         routines::UpdateBinanceBalanceOnSheetsRoutine.run(),
+        routines::UpdateBybitBalanceOnSheetsRoutine.run(),
         routines::UpdateKrakenBalanceOnSheetsRoutine.run(),
     );
 
