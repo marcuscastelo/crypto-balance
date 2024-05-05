@@ -21,3 +21,4 @@ krakenrs = { git = "https://github.com/marcuscastelo/krakenrs-async" }
 num-traits = "0.2"
 anyhow = "1.0.80"
 fantoccini = "0.19.3"
+rand = "0.8.5"

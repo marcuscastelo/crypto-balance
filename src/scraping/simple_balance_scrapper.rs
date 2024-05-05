@@ -11,14 +11,19 @@ pub struct SimpleBalanceScrapper {
 
 impl SimpleBalanceScrapper {
     pub async fn scrape(&self) -> anyhow::Result<f64> {
+        // Generate random port every time
+        let port = rand::random::<u16>();
+
         let mut driver_process = Command::new("geckodriver")
+            .arg("--port")
+            .arg(port.to_string())
             .spawn()
             .expect("Failed to start geckodriver");
 
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
         let c = ClientBuilder::native()
-            .connect("http://localhost:4444")
+            .connect(format!("http://localhost:{}", port).as_str())
             .await
             .expect("failed to connect to WebDriver");
 

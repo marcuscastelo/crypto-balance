@@ -16,20 +16,13 @@ use crate::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    routines::UpdateAirdropStepSVMTotalOnSheetsRoutine
-        .run()
-        .await;
-
-    routines::UpdateAirdropDebankTotalOnSheetsRoutine
-        .run()
-        .await;
-
-    routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine
-        .run()
-        .await;
-
-    routines::UpdateBinanceBalanceOnSheetsRoutine.run().await;
-    routines::UpdateKrakenBalanceOnSheetsRoutine.run().await;
+    futures::join!(
+        routines::UpdateAirdropStepSVMTotalOnSheetsRoutine.run(),
+        routines::UpdateAirdropDebankTotalOnSheetsRoutine.run(),
+        routines::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine.run(),
+        routines::UpdateBinanceBalanceOnSheetsRoutine.run(),
+        routines::UpdateKrakenBalanceOnSheetsRoutine.run(),
+    );
 
     // Kill all geckodriver processes
     let _ = Command::new("pkill").arg("geckodriver").output();
