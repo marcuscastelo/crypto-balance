@@ -37,17 +37,6 @@ pub static CELESTIA: LazyLock<Chain> = LazyLock::new(|| Chain {
     explorer: &CELESTIA_MINTSCAN_EXPLORER,
 });
 
-// pub static KUJIRA_MINTSCAN_EXPLORER: Mintscan = Mintscan {
-//     lcd_url: "https://lcd-kujira.cosmostation.io",
-//     chain: LazyLock::new(|| &KUJIRA),
-// };
-
-// pub static KUJIRA: LazyLock<Chain> = LazyLock::new(|| Chain {
-//     name: "Kujira",
-//     native_token: Token::Native(NativeTokenName::KUJI).into(),
-//     explorer: &KUJIRA_MINTSCAN_EXPLORER,
-// });
-
 pub static INJECTIVE_MINTSCAN_EXPLORER: Mintscan = Mintscan {
     lcd_url: "https://lcd-injective.cosmostation.io",
     chain: LazyLock::new(|| &INJECTIVE),
@@ -60,13 +49,7 @@ pub static INJECTIVE: LazyLock<Chain> = LazyLock::new(|| Chain {
 });
 
 pub static COSMOS_CHAINS: LazyLock<HashMap<&'static str, &'static Chain>> = LazyLock::new(|| {
-    let chains: Vec<&Chain> = vec![
-        &COSMOS_HUB,
-        &OSMOSIS,
-        &CELESTIA,
-        // &KUJIRA, // TODO: Add Kujira via other block explorer
-        &INJECTIVE,
-    ];
+    let chains: Vec<&Chain> = vec![&COSMOS_HUB, &OSMOSIS, &CELESTIA, &INJECTIVE];
 
     let mut map = HashMap::new();
     for chain in chains {

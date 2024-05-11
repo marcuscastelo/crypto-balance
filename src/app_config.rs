@@ -43,7 +43,6 @@ pub struct CosmosBlockchainConfig {
     pub osmosis_address: Box<str>,
     pub celestia_address: Box<str>,
     pub injective_address: Box<str>,
-    pub kujira_address: Box<str>,
 }
 
 pub static CONFIG: LazyLock<AppConfig> = LazyLock::new(|| {

@@ -23,7 +23,6 @@ cosmos_address = "<REPLACE>"
 osmosis_address = "<REPLACE>"
 celestia_address = "<REPLACE>"
 injective_address = "<REPLACE>"
-kujira_address = "<REPLACE>"
 
 [binance]
 api_key = "<REPLACE>"

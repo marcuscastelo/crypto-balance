@@ -33,7 +33,6 @@ impl UserAddresses {
         user_addresses.add_address(&COSMOS_HUB, config.cosmos.cosmos_address.to_string());
         user_addresses.add_address(&OSMOSIS, config.cosmos.osmosis_address.to_string());
         user_addresses.add_address(&CELESTIA, config.cosmos.celestia_address.to_string());
-        // user_addresses.add_address(&KUJIRA, config.cosmos.kujira_address.to_string());
         user_addresses.add_address(&INJECTIVE, config.cosmos.injective_address.to_string());
 
         user_addresses
