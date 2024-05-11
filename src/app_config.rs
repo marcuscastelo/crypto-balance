@@ -22,6 +22,18 @@ pub struct BlockchainConfig {
     pub arbiscan_api_key: Box<str>,
     pub optimistic_etherscan_api_key: Box<str>,
     pub polygonscan_api_key: Box<str>,
+    pub hold: HoldBlockchainConfig,
+    pub hold_sc: HoldBlockchainConfig,
+    pub airdrops: AirdropsBlockchainConfig,
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct HoldBlockchainConfig {
+    pub evm: EvmBlockchainConfig,
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct AirdropsBlockchainConfig {
     pub evm: EvmBlockchainConfig,
     pub solana: SolanaBlockchainConfig,
     pub cosmos: CosmosBlockchainConfig,

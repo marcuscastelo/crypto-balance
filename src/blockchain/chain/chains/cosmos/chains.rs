@@ -11,7 +11,7 @@ pub static COSMOS_HUB_MINTSCAN_EXPLORER: Mintscan = Mintscan {
 
 pub static COSMOS_HUB: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Cosmos Hub",
-    native_token: Token::Native(NativeTokenName::ATOM).into(),
+    native_token: Token::Native(NativeTokenSymbol::ATOM).into(),
     explorer: &COSMOS_HUB_MINTSCAN_EXPLORER,
 });
 
@@ -22,7 +22,7 @@ pub static OSMOSIS_MINTSCAN_EXPLORER: Mintscan = Mintscan {
 
 pub static OSMOSIS: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Osmosis",
-    native_token: Token::Native(NativeTokenName::OSMO).into(),
+    native_token: Token::Native(NativeTokenSymbol::OSMO).into(),
     explorer: &OSMOSIS_MINTSCAN_EXPLORER,
 });
 
@@ -33,7 +33,7 @@ pub static CELESTIA_MINTSCAN_EXPLORER: Mintscan = Mintscan {
 
 pub static CELESTIA: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Celestia",
-    native_token: Token::Native(NativeTokenName::TIA).into(),
+    native_token: Token::Native(NativeTokenSymbol::TIA).into(),
     explorer: &CELESTIA_MINTSCAN_EXPLORER,
 });
 
@@ -44,7 +44,7 @@ pub static INJECTIVE_MINTSCAN_EXPLORER: Mintscan = Mintscan {
 
 pub static INJECTIVE: LazyLock<Chain> = LazyLock::new(|| Chain {
     name: "Injective",
-    native_token: Token::Native(NativeTokenName::INJ).into(),
+    native_token: Token::Native(NativeTokenSymbol::INJ).into(),
     explorer: &INJECTIVE_MINTSCAN_EXPLORER,
 });
 

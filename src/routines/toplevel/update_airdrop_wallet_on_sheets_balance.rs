@@ -19,8 +19,9 @@ impl Routine for UpdateAirdropWalletOnSheetsBalanceRoutine {
             (
                 chain.name,
                 routines::blockchain::FetchEvmChainBalancesRoutine
-                    .run(chain, &CONFIG.blockchain.evm.address)
-                    .await,
+                    .run(chain, &CONFIG.blockchain.airdrops.evm.address)
+                    .await
+                    .expect("Should fetch EVM chain balances"),
             )
         });
 
@@ -73,11 +74,11 @@ impl Routine for UpdateAirdropWalletOnSheetsBalanceRoutine {
                     Token::ERC20(token_info) => {
                         unique_tokens.insert(token_info.token_symbol.to_string(), token.clone());
                     }
-                    Token::IBC => todo!("IBC token not implemented yet"),
                 }
             }
         }
-        let mut unique_tokens = unique_tokens.into_iter().collect::<Vec<_>>();
+        let mut unique_tokens: Vec<(String, Arc<Token>)> =
+            unique_tokens.into_iter().collect::<Vec<_>>();
         unique_tokens.sort_by(|a, b| a.0.cmp(&b.0));
         let unique_tokens = unique_tokens;
 
@@ -87,7 +88,6 @@ impl Routine for UpdateAirdropWalletOnSheetsBalanceRoutine {
             .map(|(_, token)| match token.as_ref() {
                 Token::Native(token_name) => token_name.to_string(),
                 Token::ERC20(token_info) => token_info.token_symbol.to_string(),
-                Token::IBC => todo!("IBC token not implemented yet"),
             })
             .collect::<Vec<_>>();
 

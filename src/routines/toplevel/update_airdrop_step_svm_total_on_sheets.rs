@@ -11,7 +11,7 @@ impl Routine for UpdateAirdropStepSVMTotalOnSheetsRoutine {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         let balance = StepSVMScraper
-            .get_total_balance(&CONFIG.blockchain.solana.address)
+            .get_total_balance(&CONFIG.blockchain.airdrops.solana.address)
             .await
             .unwrap();
 

@@ -8,7 +8,7 @@ use async_trait::async_trait;
 
 use crate::blockchain::prelude::*;
 
-use self::mintscan_responses::DelegationsResponse;
+use self::{block_explorer::explorer::FetchBalanceError, mintscan_responses::DelegationsResponse};
 
 mod mintscan_responses {
 
@@ -74,10 +74,10 @@ impl Mintscan {
 
         //TODO: move to other place
         balance /= match *self.get_chain().native_token {
-            Token::Native(NativeTokenName::ATOM) => ATOM_U_CONVERSION,
-            Token::Native(NativeTokenName::OSMO) => OSMO_U_CONVERSION,
-            Token::Native(NativeTokenName::TIA) => CELESTIA_U_CONVERSION,
-            Token::Native(NativeTokenName::INJ) => INJECTIVE_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::ATOM) => ATOM_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::OSMO) => OSMO_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::TIA) => CELESTIA_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::INJ) => INJECTIVE_U_CONVERSION,
             _ => unreachable!("Unsupported token"),
         };
 
@@ -111,10 +111,10 @@ impl Mintscan {
 
         //TODO: move to other place
         balance /= match *self.get_chain().native_token {
-            Token::Native(NativeTokenName::ATOM) => ATOM_U_CONVERSION,
-            Token::Native(NativeTokenName::OSMO) => OSMO_U_CONVERSION,
-            Token::Native(NativeTokenName::TIA) => CELESTIA_U_CONVERSION,
-            Token::Native(NativeTokenName::INJ) => INJECTIVE_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::ATOM) => ATOM_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::OSMO) => OSMO_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::TIA) => CELESTIA_U_CONVERSION,
+            Token::Native(NativeTokenSymbol::INJ) => INJECTIVE_U_CONVERSION,
             _ => unreachable!("Unsupported token"),
         };
 
@@ -124,25 +124,31 @@ impl Mintscan {
 
 #[async_trait]
 impl BlockExplorer for Mintscan {
-    async fn fetch_native_balance(&self, cosmos_address: &str) -> TokenBalance {
+    async fn fetch_native_balance(
+        &self,
+        cosmos_address: &str,
+    ) -> Result<TokenBalance, FetchBalanceError> {
         let bank_balance = self.fetch_bank_balance(cosmos_address).await;
         let staking_balance = self.fetch_staking_balance(cosmos_address).await;
 
-        TokenBalance {
-            token: self.get_chain().native_token.to_owned(),
+        Ok(TokenBalance {
+            symbol: self.get_chain().native_token.symbol(),
             balance: bank_balance + staking_balance,
-        }
+        })
     }
 
     async fn fetch_erc20_balance(
         &self,
         _evm_address: &str,
         _token_info: ERC20TokenInfo,
-    ) -> TokenBalance {
+    ) -> Result<TokenBalance, FetchBalanceError> {
         todo!()
     }
 
-    async fn fetch_erc20_balances(&self, _evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(
+        &self,
+        _evm_address: &str,
+    ) -> Result<HashMap<Arc<Token>, TokenBalance>, FetchBalanceError> {
         todo!()
     }
 

@@ -11,7 +11,7 @@ impl Routine for UpdateAirdropDebankTotalOnSheetsRoutine {
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         let balance = DebankScraper
-            .get_total_balance(&CONFIG.blockchain.evm.address)
+            .get_total_balance(&CONFIG.blockchain.airdrops.evm.address)
             .await
             .expect("Should get Debank total balance");
 

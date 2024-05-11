@@ -27,13 +27,22 @@ impl UserAddresses {
     pub fn from_config(config: &BlockchainConfig) -> Self {
         let mut user_addresses = UserAddresses::new();
         for chain in EVM_CHAINS.values() {
-            user_addresses.add_address(chain, config.evm.address.to_string());
+            user_addresses.add_address(chain, config.airdrops.evm.address.to_string());
         }
 
-        user_addresses.add_address(&COSMOS_HUB, config.cosmos.cosmos_address.to_string());
-        user_addresses.add_address(&OSMOSIS, config.cosmos.osmosis_address.to_string());
-        user_addresses.add_address(&CELESTIA, config.cosmos.celestia_address.to_string());
-        user_addresses.add_address(&INJECTIVE, config.cosmos.injective_address.to_string());
+        user_addresses.add_address(
+            &COSMOS_HUB,
+            config.airdrops.cosmos.cosmos_address.to_string(),
+        );
+        user_addresses.add_address(&OSMOSIS, config.airdrops.cosmos.osmosis_address.to_string());
+        user_addresses.add_address(
+            &CELESTIA,
+            config.airdrops.cosmos.celestia_address.to_string(),
+        );
+        user_addresses.add_address(
+            &INJECTIVE,
+            config.airdrops.cosmos.injective_address.to_string(),
+        );
 
         user_addresses
     }

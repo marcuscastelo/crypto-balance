@@ -1,8 +1,15 @@
 use async_trait::async_trait;
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
 
 use crate::blockchain::prelude::*;
+use core::fmt;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
+
+use error_stack::{ensure, Context, Result, ResultExt};
+
+use self::block_explorer::explorer::FetchBalanceError;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchBalanceResponse {
@@ -25,9 +32,41 @@ pub struct EtherscanImplementation {
     pub chain: LazyLock<&'static Chain>,
 }
 
+async fn fetch_and_deserialize<T: DeserializeOwned>(url: &str) -> Result<T, FetchBalanceError> {
+    let resp = reqwest::get(url)
+        .await
+        .change_context(FetchBalanceError::ReqwestError)
+        .attach_printable("Failed to make GET request")
+        .attach_printable_lazy(|| format!("URL: {}", url))?;
+    let resp = resp
+        .text()
+        .await
+        .change_context(FetchBalanceError::ReqwestError)
+        .attach_printable("Failed to get response text")
+        .attach_printable_lazy(|| format!("URL: {}", url))?;
+    let resp = serde_json::from_str(resp.as_str())
+        .change_context(FetchBalanceError::DataFormatError)
+        .attach_printable("Failed to parse balance response as json")
+        .attach_printable_lazy(|| format!("Response: {}", resp))?;
+    Ok(resp)
+}
+
+async fn parse_balance_from_response(resp: FetchBalanceResponse) -> Result<f64, FetchBalanceError> {
+    let balance = resp
+        .result
+        .parse::<f64>()
+        .change_context(FetchBalanceError::DataFormatError)
+        .attach_printable_lazy(|| format!("Result was not a float! Result: {}", resp.result))?;
+    Ok(balance)
+}
+
+// TODO: change panic to error
 #[async_trait]
 impl BlockExplorer for EtherscanImplementation {
-    async fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
+    async fn fetch_native_balance(
+        &self,
+        evm_address: &str,
+    ) -> Result<TokenBalance, FetchBalanceError> {
         let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let url = format!(
@@ -38,26 +77,21 @@ impl BlockExplorer for EtherscanImplementation {
                 &tag=latest\
                 &apikey={api_key}"
         );
-        let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
-        let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = match resp.result.parse::<f64>() {
-            Ok(balance) => balance / WEI_CONVERSION,
-            Err(_) => {
-                panic!("Error fetching balance: {:?}", resp);
-            }
-        };
 
-        TokenBalance {
-            token: self.get_chain().native_token.to_owned(),
+        let resp = fetch_and_deserialize(&url).await?;
+        let balance = parse_balance_from_response(resp).await? / WEI_CONVERSION;
+
+        Ok(TokenBalance {
+            symbol: self.get_chain().native_token.symbol(),
             balance,
-        }
+        })
     }
 
     async fn fetch_erc20_balance(
         &self,
         evm_address: &str,
         token_info: ERC20TokenInfo,
-    ) -> TokenBalance {
+    ) -> Result<TokenBalance, FetchBalanceError> {
         let api_key = self.api_key.as_ref();
         let base_url = self.base_url.as_str();
         let contract_address = &token_info.contract_address;
@@ -69,17 +103,20 @@ impl BlockExplorer for EtherscanImplementation {
                 &address={evm_address}\
                 &tag=latest&apikey={api_key}"
         );
-        let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
-        let resp: FetchBalanceResponse = serde_json::from_str(&resp).unwrap();
-        let balance = resp.result.parse::<f64>().unwrap() / WEI_CONVERSION;
 
-        TokenBalance {
-            token: Token::ERC20(token_info.clone()).into(),
+        let resp = fetch_and_deserialize(&url).await?;
+        let balance = parse_balance_from_response(resp).await? / WEI_CONVERSION;
+
+        Ok(TokenBalance {
+            symbol: token_info.token_symbol.into_string(),
             balance,
-        }
+        })
     }
 
-    async fn fetch_erc20_balances(&self, evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(
+        &self,
+        evm_address: &str,
+    ) -> Result<HashMap<Arc<Token>, TokenBalance>, FetchBalanceError> {
         // Step 1. Fetch all ERC20 token transfers for the given address
         // Step 2. For each token, fetch the balance of the token for the given address
         // Attention: wait for 0.25 seconds between each request to avoid rate limiting
@@ -94,13 +131,8 @@ impl BlockExplorer for EtherscanImplementation {
             &address={evm_address}\
             &tag=latest&apikey={api_key}"
         );
-        let resp = reqwest::get(url)
-            .await
-            .expect("Should make GET request")
-            .text()
-            .await
-            .expect("Should get response text");
-        let resp: FetchTokenTxResponse = serde_json::from_str(&resp).expect("Should parse JSON");
+
+        let resp: FetchTokenTxResponse = fetch_and_deserialize(&url).await?;
 
         let tokens: Vec<_> = resp
             .result
@@ -118,7 +150,10 @@ impl BlockExplorer for EtherscanImplementation {
 
                 let balance = self
                     .fetch_erc20_balance(evm_address, token_info.clone())
-                    .await;
+                    .await
+                    .attach_printable_lazy(|| {
+                        format!("Failed to fetch balance for token: {:?}", token)
+                    })?;
 
                 // Wait for 0.25 seconds between each request to avoid rate limiting
                 std::thread::sleep(std::time::Duration::from_millis(250));
@@ -129,7 +164,7 @@ impl BlockExplorer for EtherscanImplementation {
             }
         }
 
-        balances
+        Ok(balances)
     }
 
     fn get_chain(&self) -> &'static Chain {

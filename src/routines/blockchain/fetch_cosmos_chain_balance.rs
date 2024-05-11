@@ -13,7 +13,11 @@ impl FetchCosmosChainBalancesRoutine {
         println!("Fetching balance for {}", chain.name);
 
         println!("Fetching native balance for {}", chain.name);
-        let native_balance = chain.explorer.fetch_native_balance(cosmos_address).await;
+        let native_balance = chain
+            .explorer
+            .fetch_native_balance(cosmos_address)
+            .await
+            .expect("Should fetch native balance");
 
         // println!("Fetching IBC balances for {}", chain.name);
         // let ibc_balances = chain.explorer.fetch_ibc_balances(cosmos_address).await;

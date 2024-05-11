@@ -3,6 +3,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use self::block_explorer::explorer::FetchBalanceError;
+
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct FetchNativeBalanceResponse {
     status: String,
@@ -15,7 +17,10 @@ pub struct ZkSyncExplorer;
 
 #[async_trait]
 impl BlockExplorer for ZkSyncExplorer {
-    async fn fetch_native_balance(&self, evm_address: &str) -> TokenBalance {
+    async fn fetch_native_balance(
+        &self,
+        evm_address: &str,
+    ) -> Result<TokenBalance, FetchBalanceError> {
         let url = format!(
             "https://block-explorer-api.mainnet.zksync.io/api\
                 ?module=account\
@@ -26,13 +31,16 @@ impl BlockExplorer for ZkSyncExplorer {
         let resp: FetchNativeBalanceResponse = serde_json::from_str(&resp).unwrap();
         let balance = resp.result.parse::<f64>().unwrap() / WEI_CONVERSION;
 
-        TokenBalance {
-            token: self.get_chain().native_token.to_owned(),
+        Ok(TokenBalance {
+            symbol: self.get_chain().native_token.symbol(),
             balance,
-        }
+        })
     }
 
-    async fn fetch_erc20_balances(&self, _evm_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    async fn fetch_erc20_balances(
+        &self,
+        _evm_address: &str,
+    ) -> Result<HashMap<Arc<Token>, TokenBalance>, FetchBalanceError> {
         todo!()
     }
 
@@ -40,7 +48,7 @@ impl BlockExplorer for ZkSyncExplorer {
         &self,
         _evm_address: &str,
         _token_info: ERC20TokenInfo,
-    ) -> TokenBalance {
+    ) -> Result<TokenBalance, FetchBalanceError> {
         todo!()
     }
 

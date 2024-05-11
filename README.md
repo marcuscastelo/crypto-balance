@@ -12,13 +12,19 @@ arbiscan_api_key = "<REPLACE>"
 optimistic_etherscan_api_key = "<REPLACE>"
 polygonscan_api_key = "<REPLACE>"
 
-[blockchain.evm]
+[blockchain.hold.evm]
 address = "<REPLACE>"
 
-[blockchain.solana]
+[blockchain.hold_sc.evm]
 address = "<REPLACE>"
 
-[blockchain.cosmos]
+[blockchain.airdrops.evm]
+address = "<REPLACE>"
+
+[blockchain.airdrops.solana]
+address = "<REPLACE>"
+
+[blockchain.airdrops.cosmos]
 cosmos_address = "<REPLACE>"
 osmosis_address = "<REPLACE>"
 celestia_address = "<REPLACE>"
