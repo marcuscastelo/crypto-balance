@@ -10,6 +10,7 @@ mod routines;
 mod scraping;
 mod sheets;
 
+use log::info;
 use tokio::process::Command;
 
 use crate::prelude::*;
@@ -48,6 +49,8 @@ async fn run_routines(parallel: bool) {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = true;
     run_routines(parallel).await;

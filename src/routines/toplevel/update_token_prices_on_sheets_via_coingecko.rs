@@ -6,6 +6,8 @@ pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
     async fn run(&self) {
+        info!("Running UpdateTokenPricesOnSheetsViaCoinGeckoRoutine");
+
         // Below: routine to get native token prices from CoinGecko (failed attempt)
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 

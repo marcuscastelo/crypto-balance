@@ -10,6 +10,8 @@ pub struct UpdateAirdropWalletOnSheetsBalanceRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateAirdropWalletOnSheetsBalanceRoutine {
     async fn run(&self) {
+        info!("Running UpdateAirdropWalletOnSheetsBalanceRoutine");
+
         let user_addresses = UserAddresses::from_config(&CONFIG.blockchain);
         let sheet_title = "Balance per Chain - Airdrop Wallet";
 

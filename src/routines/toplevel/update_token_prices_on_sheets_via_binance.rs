@@ -11,6 +11,8 @@ pub struct UpdateTokenPricesOnSheetsViaBinanceRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateTokenPricesOnSheetsViaBinanceRoutine {
     async fn run(&self) {
+        info!("Running UpdateTokenPricesOnSheetsViaBinanceRoutine");
+
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         let token_names: Vec<String> = spreadsheet_manager

@@ -10,6 +10,8 @@ pub struct UpdateBinanceBalanceOnSheetsRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
     async fn run(&self) {
+        info!("Running UpdateBinanceBalanceOnSheetsRoutine");
+
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         let binance_account: BinanceAccount = BinanceAccountFactory::create();

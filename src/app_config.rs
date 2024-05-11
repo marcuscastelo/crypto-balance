@@ -47,10 +47,20 @@ pub struct CosmosBlockchainConfig {
 }
 
 pub static CONFIG: LazyLock<AppConfig> = LazyLock::new(|| {
-    Config::builder()
+    match Config::builder()
         .add_source(config::File::with_name("Config"))
         .build()
-        .expect("Should build config from file")
-        .try_deserialize()
-        .expect("Should deserialize built config into struct")
+    {
+        Ok(config) => config,
+        Err(e) => match e {
+            config::ConfigError::NotFound(property) => {
+                panic!("Missing config property: {:?}", property);
+            }
+            _ => {
+                panic!("Error reading config file: {:?}", e);
+            }
+        },
+    }
+    .try_deserialize()
+    .expect("Should deserialize built config into struct")
 });

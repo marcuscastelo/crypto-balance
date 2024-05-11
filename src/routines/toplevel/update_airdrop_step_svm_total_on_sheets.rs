@@ -6,6 +6,8 @@ pub struct UpdateAirdropStepSVMTotalOnSheetsRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateAirdropStepSVMTotalOnSheetsRoutine {
     async fn run(&self) {
+        info!("Running UpdateAirdropStepSVMTotalOnSheetsRoutine");
+
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         let balance = StepSVMScraper
