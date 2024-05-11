@@ -35,21 +35,11 @@ impl Routine for UpdateKrakenBalanceOnSheetsRoutine {
             .filter(|(_, amount)| *amount > 0.0)
             .collect::<HashMap<_, _>>();
 
-        println!("Kraken account balance: {:#?}", balances);
-
         // Write to the spreadsheet
         let mut token_balances = Vec::with_capacity(token_names.len());
         for token_name in &token_names {
             token_balances.push(balances.get(token_name).unwrap_or(&0.0));
         }
-
-        println!(
-            "Balances in order:\n{:#?}",
-            token_names
-                .iter()
-                .zip(token_balances.clone())
-                .collect::<Vec<_>>()
-        );
 
         spreadsheet_manager
             .write_named_range(

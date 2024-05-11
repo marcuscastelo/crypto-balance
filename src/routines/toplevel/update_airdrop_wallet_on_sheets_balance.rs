@@ -54,8 +54,6 @@ impl Routine for UpdateAirdropWalletOnSheetsBalanceRoutine {
                 .collect::<HashMap<_, _>>(),
         );
 
-        println!("Chain balances: {:#?}", chain_balances);
-
         println!("Starting sheet manipulation...");
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
@@ -159,18 +157,6 @@ impl Routine for UpdateAirdropWalletOnSheetsBalanceRoutine {
                 )
                 .await
                 .unwrap();
-
-            println!("Writing balances for {} done!", chain_name);
-            println!(
-                "Written: {:?}",
-                ValueRange::from_rows(
-                    token_balances
-                        .iter()
-                        .map(|x| x.as_str())
-                        .collect::<Vec<_>>()
-                        .as_ref(),
-                )
-            );
         }
         println!("Writing balances done!");
     }

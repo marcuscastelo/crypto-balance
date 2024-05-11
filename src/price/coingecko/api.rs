@@ -33,11 +33,8 @@ impl CoinGeckoApi {
             "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=usd",
             tokens.join(",")
         );
-        println!("{}", url);
         let response = reqwest::get(&url).await.unwrap().text().await.unwrap();
-        println!("{:#?}", response);
         let prices: PricesResponse = serde_json::from_str(&response).unwrap();
-        println!("{:#?}", prices);
         prices
     }
 }

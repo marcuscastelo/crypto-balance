@@ -14,18 +14,6 @@ impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
 
         let binance_account: BinanceAccount = BinanceAccountFactory::create();
 
-        println!(
-            "Binance account balance: {:#?}",
-            binance_account
-                .get_account()
-                .await
-                .unwrap()
-                .balances
-                .into_iter()
-                .filter(|x| x.free > 0.0)
-                .collect::<Vec<_>>()
-        );
-
         let token_names: Vec<String> = routines::sheets::SheetsGetTokenNamesRoutine.run().await;
 
         let balances = binance_account
@@ -44,14 +32,6 @@ impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
         for token_name in &token_names {
             token_balances.push(balances.get(token_name).unwrap_or(&0.0));
         }
-
-        println!(
-            "Balances in order:\n{:#?}",
-            token_names
-                .iter()
-                .zip(token_balances.clone())
-                .collect::<Vec<_>>()
-        );
 
         spreadsheet_manager
             .write_named_range(
