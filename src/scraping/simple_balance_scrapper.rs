@@ -11,12 +11,15 @@ pub struct SimpleBalanceScrapper {
 
 impl SimpleBalanceScrapper {
     pub async fn scrape(&self) -> anyhow::Result<f64> {
-        // Generate random port every time
-        let port = rand::random::<u16>();
+        // Generate random port every time (above 1024 to avoid permission issues)
+        let port = rand::random::<u16>() % (65535 - 1024) + 1024;
 
         let mut driver_process = Command::new("geckodriver")
             .arg("--port")
             .arg(port.to_string())
+            .arg("--log")
+            .arg("fatal")
+            .stdout(std::process::Stdio::null())
             .spawn()
             .expect("Failed to start geckodriver");
 
@@ -47,7 +50,6 @@ impl SimpleBalanceScrapper {
             .ok_or_else(|| anyhow::anyhow!("Failed to split balance on dollar sign"))?
             .replace(',', "");
 
-        println!("Balance: {:?}", balance);
         let balance = balance
             .parse::<f64>()
             .map_err(|_| anyhow::anyhow!(format!("Failed to parse balance: {:?}", balance)))?;
