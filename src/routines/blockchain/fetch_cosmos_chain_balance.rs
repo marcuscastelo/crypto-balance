@@ -5,7 +5,11 @@ use std::sync::Arc;
 pub struct FetchCosmosChainBalancesRoutine;
 
 impl FetchCosmosChainBalancesRoutine {
-    pub async fn run(&self, chain: &Chain, cosmos_address: &str) -> HashMap<Arc<Token>, TokenBalance> {
+    pub async fn run(
+        &self,
+        chain: &Chain,
+        cosmos_address: &str,
+    ) -> HashMap<Arc<Token>, TokenBalance> {
         println!("Fetching balance for {}", chain.name);
 
         println!("Fetching native balance for {}", chain.name);

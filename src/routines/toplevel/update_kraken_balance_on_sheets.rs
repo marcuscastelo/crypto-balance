@@ -1,8 +1,8 @@
 use crate::prelude::*;
-use num_traits::ToPrimitive;
-use std::collections::HashMap;
 use google_sheets4::api::ValueRange;
+use num_traits::ToPrimitive;
 use serde_json::Value;
+use std::collections::HashMap;
 pub struct UpdateKrakenBalanceOnSheetsRoutine;
 
 #[async_trait::async_trait]

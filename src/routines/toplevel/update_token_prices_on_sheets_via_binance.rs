@@ -1,10 +1,10 @@
 use crate::prelude::*;
-use ::binance::market::Market;
 use ::binance::api::Binance;
+use ::binance::market::Market;
 use ::binance::rest_model::Prices;
-use std::collections::HashMap;
 use google_sheets4::api::ValueRange;
 use serde_json::Value;
+use std::collections::HashMap;
 
 pub struct UpdateTokenPricesOnSheetsViaBinanceRoutine;
 

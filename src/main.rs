@@ -46,7 +46,6 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output();
 }
 
-
 #[tokio::main]
 async fn main() {
     // TODO: Add a CLI flag to toggle parallelism

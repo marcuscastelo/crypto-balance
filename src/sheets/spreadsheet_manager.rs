@@ -49,7 +49,10 @@ impl SpreadsheetManager {
     }
 
     pub async fn named_range_map(&self) -> Option<HashMap<String, GridRange>> {
-        let named_ranges = self.named_ranges().await.expect("Named ranges should exist");
+        let named_ranges = self
+            .named_ranges()
+            .await
+            .expect("Named ranges should exist");
         let mut map = HashMap::new();
         for named_range in named_ranges {
             map.insert(named_range.name?, named_range.range?);
@@ -78,7 +81,10 @@ impl SpreadsheetManager {
     }
 
     pub async fn get_named_range(&self, name: &str) -> Option<GridRange> {
-        let named_ranges = self.named_range_map().await.expect("Named range map should exist");
+        let named_ranges = self
+            .named_range_map()
+            .await
+            .expect("Named range map should exist");
         named_ranges.get(name).cloned()
     }
 

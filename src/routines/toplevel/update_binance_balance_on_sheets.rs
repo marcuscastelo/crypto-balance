@@ -1,9 +1,9 @@
-use crate::prelude::*;
-use google_sheets4::api::ValueRange;
-use ::binance::account::Account as BinanceAccount;
 use crate::exchange::binance::factory::BinanceAccountFactory;
-use std::collections::HashMap;
+use crate::prelude::*;
+use ::binance::account::Account as BinanceAccount;
+use google_sheets4::api::ValueRange;
 use serde_json::Value;
+use std::collections::HashMap;
 
 pub struct UpdateBinanceBalanceOnSheetsRoutine;
 
