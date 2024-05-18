@@ -26,7 +26,7 @@ impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
             .await
             .expect("Should have content")
             .values
-            .expect("Should have values")
+            .unwrap_or(vec![])
             .my_into()
             .into_iter()
             .map(|x| {
@@ -47,6 +47,8 @@ impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
             })
             .map(|price| price.to_string())
             .collect::<Vec<_>>();
+
+        info!("[Coingecko] New prices: {:?}", new_prices);
 
         spreadsheet_manager
             .write_named_range(

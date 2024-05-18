@@ -51,13 +51,13 @@ async fn run_routines(parallel: bool) {
 async fn main() {
     env_logger::init();
 
-    let balances = routines::toplevel::hold::FetchHoldBalances.run().await;
+    // let balances = routines::toplevel::hold::FetchHoldBalances.run().await;
 
-    for (token, balance) in balances {
-        println!("{:?}: {:#?}", token, balance);
-    }
+    // for (token, balance) in balances {
+    //     println!("{:?}: {:#?}", token, balance);
+    // }
 
-    // // TODO: Add a CLI flag to toggle parallelism
-    // let parallel = true;
-    // run_routines(parallel).await;
+    // TODO: Add a CLI flag to toggle parallelism
+    let parallel = true;
+    run_routines(parallel).await;
 }

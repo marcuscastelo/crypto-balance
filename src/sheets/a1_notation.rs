@@ -513,7 +513,11 @@ impl FromA1Notation for CellPosition {
         let parts: A1NotationParts = generic_a1_notation_split(a1_notation);
 
         Ok(CellPosition {
-            row: parts.start.as_str().parse().unwrap(),
+            row: parts
+                .start
+                .as_str()
+                .parse()
+                .expect(format!("Error parsing row: {}", parts.start).as_str()),
             col: parse_col(&parts.end).map_err(A1NotationParseError::ColumnParseError)?,
         })
     }

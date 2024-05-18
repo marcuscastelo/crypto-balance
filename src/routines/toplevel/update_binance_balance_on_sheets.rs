@@ -29,6 +29,8 @@ impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
             .map(|token| (token.asset, token.free))
             .collect::<HashMap<_, _>>();
 
+        info!("Binance Balances: {:?}", balances);
+
         // Write to the spreadsheet
         let mut token_balances = Vec::with_capacity(token_names.len());
         for token_name in &token_names {
