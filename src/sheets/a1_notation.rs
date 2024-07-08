@@ -61,10 +61,10 @@ pub struct SheetIdentification {
 
 // TODO: Forbid 0 or change to 0-indexed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Row(u32);
+pub struct Row(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Column(u32);
+pub struct Column(pub u32);
 
 /// All u32 operations are delegated to the inner value
 ///
@@ -220,10 +220,100 @@ impl From<Column> for String {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CellPosition {
     pub col: Column,
     pub row: Row,
+}
+
+/// CellPosition operations
+
+impl std::ops::Add<(u32, u32)> for CellPosition {
+    type Output = CellPosition;
+
+    fn add(self, rhs: (u32, u32)) -> Self::Output {
+        CellPosition {
+            col: self.col + rhs.0,
+            row: self.row + rhs.1,
+        }
+    }
+}
+
+impl std::ops::Sub<(u32, u32)> for CellPosition {
+    type Output = CellPosition;
+
+    fn sub(self, rhs: (u32, u32)) -> Self::Output {
+        CellPosition {
+            col: self.col - rhs.0,
+            row: self.row - rhs.1,
+        }
+    }
+}
+
+impl std::ops::Add<CellPosition> for CellPosition {
+    type Output = CellPosition;
+
+    fn add(self, rhs: CellPosition) -> Self::Output {
+        CellPosition {
+            col: self.col + rhs.col,
+            row: self.row + rhs.row,
+        }
+    }
+}
+
+impl std::ops::Sub<CellPosition> for CellPosition {
+    type Output = CellPosition;
+
+    fn sub(self, rhs: CellPosition) -> Self::Output {
+        CellPosition {
+            col: self.col - rhs.col,
+            row: self.row - rhs.row,
+        }
+    }
+}
+
+impl std::ops::Add<Row> for CellPosition {
+    type Output = CellPosition;
+
+    fn add(self, rhs: Row) -> Self::Output {
+        CellPosition {
+            col: self.col,
+            row: self.row + rhs,
+        }
+    }
+}
+
+impl std::ops::Sub<Row> for CellPosition {
+    type Output = CellPosition;
+
+    fn sub(self, rhs: Row) -> Self::Output {
+        CellPosition {
+            col: self.col,
+            row: self.row - rhs,
+        }
+    }
+}
+
+impl std::ops::Add<Column> for CellPosition {
+    type Output = CellPosition;
+
+    fn add(self, rhs: Column) -> Self::Output {
+        CellPosition {
+            col: self.col + rhs,
+            row: self.row,
+        }
+    }
+}
+
+impl std::ops::Sub<Column> for CellPosition {
+    type Output = CellPosition;
+
+    fn sub(self, rhs: Column) -> Self::Output {
+        CellPosition {
+            col: self.col - rhs,
+            row: self.row,
+        }
+    }
 }
 
 /// Conversions: Others -> CellPosition

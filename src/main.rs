@@ -25,6 +25,7 @@ async fn run_routines(parallel: bool) {
         &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
         &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
         &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,
+        &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
     ];
 
     let mut futures = Vec::new();
@@ -51,13 +52,7 @@ async fn run_routines(parallel: bool) {
 async fn main() {
     env_logger::init();
 
-    let balances = routines::toplevel::hold::FetchHoldBalances.run().await;
-
-    for (token, balance) in balances {
-        println!("{:?}: {:#?}", token, balance);
-    }
-
     // TODO: Add a CLI flag to toggle parallelism
-    // let parallel = true;
-    // run_routines(parallel).await;
+    let parallel = true;
+    run_routines(parallel).await;
 }

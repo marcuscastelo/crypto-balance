@@ -18,6 +18,10 @@ pub mod balances {
     pub mod kraken {
         pub const RW_AMOUNTS: &str = "Balance_Kraken__vAmounts";
     }
+
+    pub mod hold {
+        pub const RW_DATA: &str = "Balance_Hold__mData";
+    }
 }
 
 pub mod airdrops {
