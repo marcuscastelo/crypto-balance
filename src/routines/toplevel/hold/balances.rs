@@ -8,13 +8,12 @@ use self::routines::blockchain::FetchEvmChainBalancesRoutine;
 
 pub struct FetchHoldBalances;
 
-fn translate_aave_supply_token(token: &str) -> String {
+fn translate_aave_supply_token(token: &str) -> (String, bool) {
     let aave_regex = Regex::new(r"^a(?:Opt)?(\w+)$").unwrap();
-    aave_regex
-        .captures(token)
-        .map_or(token.to_owned(), |captures| {
-            captures.get(1).unwrap().as_str().to_owned()
-        })
+    match aave_regex.captures(token) {
+        None => return (token.to_owned(), false),
+        Some(captures) => return (captures.get(1).unwrap().as_str().to_owned(), true),
+    }
 }
 
 impl FetchHoldBalances {
@@ -45,8 +44,13 @@ impl FetchHoldBalances {
                     .into_iter()
                     .chain(hold_sc_balances.into_iter())
                     .fold(HashMap::new(), |mut acc, (token, entry)| {
-                        let translated_symbol =
+                        let (translated_symbol, was_aave) =
                             translate_aave_supply_token(token.symbol().as_str());
+
+                        let mul = match translated_symbol.as_str() {
+                            "WBTC" => 1e10,
+                            _ => 1f64,
+                        };
 
                         let acc_entry = acc.entry(translated_symbol.clone()).or_insert(
                             TokenBalance::<String> {
@@ -55,7 +59,8 @@ impl FetchHoldBalances {
                             },
                         );
 
-                        acc_entry.balance += entry.balance;
+                        acc_entry.balance += entry.balance * mul;
+                        log::info!("{}: {}", acc_entry.symbol, acc_entry.balance);
                         acc
                     })
             }
@@ -90,10 +95,25 @@ mod tests {
 
     #[test]
     fn test_translate_aave_supply_token() {
-        assert_eq!(translate_aave_supply_token("aUSDC"), "USDC");
-        assert_eq!(translate_aave_supply_token("aOptUSDC"), "USDC");
-        assert_eq!(translate_aave_supply_token("aOptBTC"), "BTC");
-        assert_eq!(translate_aave_supply_token("USDT"), "USDT");
-        assert_eq!(translate_aave_supply_token("BTC"), "BTC");
+        assert_eq!(
+            translate_aave_supply_token("aUSDC"),
+            ("USDC".to_owned(), true)
+        );
+        assert_eq!(
+            translate_aave_supply_token("aOptUSDC"),
+            ("USDC".to_owned(), true)
+        );
+        assert_eq!(
+            translate_aave_supply_token("aOptBTC"),
+            ("BTC".to_owned(), true)
+        );
+        assert_eq!(
+            translate_aave_supply_token("USDT"),
+            ("USDT".to_owned(), false)
+        );
+        assert_eq!(
+            translate_aave_supply_token("BTC"),
+            ("BTC".to_owned(), false)
+        );
     }
 }
