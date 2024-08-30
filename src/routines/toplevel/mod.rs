@@ -1,6 +1,6 @@
 pub mod prelude;
 pub mod update_airdrop_debank_total_on_sheets;
-pub mod update_airdrop_step_svm_total_on_sheets;
+pub mod update_airdrop_solana_total_on_sheets;
 pub mod update_airdrop_wallet_on_sheets_balance;
 pub mod update_binance_balance_on_sheets;
 pub mod update_bybit_balance_on_sheets;

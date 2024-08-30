@@ -49,7 +49,7 @@ impl Routine for UpdateBybitBalanceOnSheetsRoutine {
             result: BybitGetWalletBalanceResult,
         }
 
-        // println!("Bybit response: {:#?}", result);
+        println!("Bybit response: {:#?}", response_value);
 
         let balances: BybitGetWalletBalanceResponse =
             serde_json::from_value(response_value).expect("Should deserialize response");

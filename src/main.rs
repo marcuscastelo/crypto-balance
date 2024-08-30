@@ -19,13 +19,13 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output();
 
     let routines_to_run: Vec<&dyn Routine<()>> = vec![
-        &routines::toplevel::UpdateAirdropStepSVMTotalOnSheetsRoutine,
-        &routines::toplevel::UpdateAirdropDebankTotalOnSheetsRoutine,
-        &routines::toplevel::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine,
-        &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
-        &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
-        &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,
-        &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
+        &routines::toplevel::UpdateSolanaTotalOnSheetsRoutine,
+        // &routines::toplevel::UpdateAirdropDebankTotalOnSheetsRoutine,
+        // &routines::toplevel::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine,
+        // &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
     ];
 
     let mut futures = Vec::new();

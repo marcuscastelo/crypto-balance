@@ -32,7 +32,11 @@ impl SimpleBalanceScrapper {
 
         c.goto(self.url.as_str()).await?;
         let url = c.current_url().await?;
-        assert_eq!(url.as_ref(), self.url.as_str());
+
+        while url.as_ref() != self.url.as_str() {
+            log::info!("Waiting for url to match");
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
 
         tokio::time::sleep(tokio::time::Duration::from_secs(self.wait_time)).await;
 
