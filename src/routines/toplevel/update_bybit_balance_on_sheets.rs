@@ -12,7 +12,7 @@ pub struct UpdateBybitBalanceOnSheetsRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateBybitBalanceOnSheetsRoutine {
     async fn run(&self) {
-        info!("Running UpdateBybitBalanceOnSheetsRoutine");
+        log::info!("Running UpdateBybitBalanceOnSheetsRoutine");
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 

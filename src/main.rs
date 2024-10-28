@@ -10,7 +10,9 @@ mod routines;
 mod scraping;
 mod sheets;
 
-use log::info;
+use std::io::Write;
+
+use chrono::Local;
 use tokio::process::Command;
 
 use crate::prelude::*;
@@ -19,12 +21,12 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output();
 
     let routines_to_run: Vec<&dyn Routine<()>> = vec![
-        &routines::toplevel::UpdateAirdropDebankTotalOnSheetsRoutine,
+        // &routines::toplevel::UpdateAirdropDebankTotalOnSheetsRoutine,
         &routines::toplevel::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine,
-        &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
-        &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
-        &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,
-        &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,
+        // &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
     ];
 
     let mut futures = Vec::new();
@@ -49,7 +51,7 @@ async fn run_routines(parallel: bool) {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    env_logger::builder().init();
 
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = true;

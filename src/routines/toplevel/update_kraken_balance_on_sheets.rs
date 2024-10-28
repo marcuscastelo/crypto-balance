@@ -8,7 +8,7 @@ pub struct UpdateKrakenBalanceOnSheetsRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateKrakenBalanceOnSheetsRoutine {
     async fn run(&self) {
-        info!("Running UpdateKrakenBalanceOnSheetsRoutine");
+        log::info!("Running UpdateKrakenBalanceOnSheetsRoutine");
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 

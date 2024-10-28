@@ -14,9 +14,9 @@ impl FetchEvmChainBalancesRoutine {
         chain: &Chain,
         evm_address: &str,
     ) -> Result<HashMap<Arc<Token>, TokenBalance>, FetchBalanceError> {
-        info!("Fetching balance for {}", chain.name);
+        log::info!("Fetching balance for {}", chain.name);
 
-        info!("Fetching native balance for {}", chain.name);
+        log::info!("Fetching native balance for {}", chain.name);
         let native_balance = chain
             .explorer
             .fetch_native_balance(evm_address)
@@ -28,7 +28,7 @@ impl FetchEvmChainBalancesRoutine {
                 )
             })?;
 
-        info!("Fetching ERC20 balances for {}", chain.name);
+        log::info!("Fetching ERC20 balances for {}", chain.name);
         let erc20_balances = chain
             .explorer
             .fetch_erc20_balances(evm_address)
@@ -40,11 +40,11 @@ impl FetchEvmChainBalancesRoutine {
                 )
             })?;
 
-        info!("Merging balances for {}", chain.name);
+        log::info!("Merging balances for {}", chain.name);
         let mut balances = erc20_balances;
         balances.insert(chain.native_token.to_owned(), native_balance);
 
-        info!("Balances fetched for {}", chain.name);
+        log::info!("Balances fetched for {}", chain.name);
 
         // Remove zero balances
         balances.retain(|_, balance| balance.balance > 0.0);

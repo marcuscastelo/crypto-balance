@@ -10,7 +10,7 @@ pub struct UpdateBinanceBalanceOnSheetsRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
     async fn run(&self) {
-        info!("Running UpdateBinanceBalanceOnSheetsRoutine");
+        log::info!("Running UpdateBinanceBalanceOnSheetsRoutine");
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -29,7 +29,7 @@ impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
             .map(|token| (token.asset, token.free))
             .collect::<HashMap<_, _>>();
 
-        info!("Binance Balances: {:?}", balances);
+        log::info!("Binance Balances: {:?}", balances);
 
         // Write to the spreadsheet
         let mut token_balances = Vec::with_capacity(token_names.len());

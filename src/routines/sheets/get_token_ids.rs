@@ -1,5 +1,6 @@
 pub use crate::prelude::*;
 
+#[deprecated = "This routine is not used anymore"]
 pub struct SheetsGetTokenIDsRoutine;
 
 #[async_trait::async_trait]

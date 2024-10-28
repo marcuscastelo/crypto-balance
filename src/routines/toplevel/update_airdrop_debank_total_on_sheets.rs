@@ -6,7 +6,7 @@ pub struct UpdateAirdropDebankTotalOnSheetsRoutine;
 #[async_trait::async_trait]
 impl Routine for UpdateAirdropDebankTotalOnSheetsRoutine {
     async fn run(&self) {
-        info!("Running UpdateAirdropDebankTotalOnSheetsRoutine");
+        log::info!("Running UpdateAirdropDebankTotalOnSheetsRoutine");
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
