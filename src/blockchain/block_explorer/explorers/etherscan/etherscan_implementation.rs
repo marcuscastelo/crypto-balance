@@ -1,13 +1,11 @@
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
 
 use crate::blockchain::prelude::*;
-use core::fmt;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-use error_stack::{ensure, Context, Result, ResultExt};
+use error_stack::{Result, ResultExt};
 
 use self::block_explorer::explorer::FetchBalanceError;
 

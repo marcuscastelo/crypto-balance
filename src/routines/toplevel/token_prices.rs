@@ -8,7 +8,7 @@ pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
 
 impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
-        SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
+        SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
     }
 
     async fn get_tokens_from_spreadsheet(

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::prelude::*;
-
 use ::bybit_rs::bybit::{account::Account, http_manager::HttpManager};
 use bybit_rs::bybit::account::AccountHTTP;
+
+use crate::config::app_config::CONFIG;
 
 pub struct BybitFactory;
 

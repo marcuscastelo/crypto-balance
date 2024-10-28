@@ -12,7 +12,8 @@ impl Routine for UpdateBinanceBalanceOnSheetsRoutine {
     async fn run(&self) {
         log::info!("Running UpdateBinanceBalanceOnSheetsRoutine");
 
-        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+        let spreadsheet_manager =
+            SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await;
 
         let binance_account: BinanceAccount = BinanceAccountFactory::create();
 

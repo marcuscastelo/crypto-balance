@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use super::etherscan_implementation::EtherscanImplementation;
-use crate::blockchain::prelude::*;
+use crate::{blockchain::prelude::*, config::app_config::CONFIG};
 
 pub static LINEASCAN: LazyLock<EtherscanImplementation> =
     LazyLock::new(|| EtherscanImplementation {

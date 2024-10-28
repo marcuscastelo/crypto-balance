@@ -1,8 +1,8 @@
 #![feature(lazy_cell)]
 #![feature(async_closure)]
 
-mod app_config;
 mod blockchain;
+mod config;
 mod exchange;
 mod prelude;
 mod price;
@@ -10,9 +10,6 @@ mod routines;
 mod scraping;
 mod sheets;
 
-use std::io::Write;
-
-use chrono::Local;
 use tokio::process::Command;
 
 use crate::prelude::*;

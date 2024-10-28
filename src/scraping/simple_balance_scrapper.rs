@@ -1,6 +1,5 @@
 use std::process::Command;
 
-use crate::prelude::app_config;
 use fantoccini::{ClientBuilder, Locator};
 
 pub struct SimpleBalanceScrapper {

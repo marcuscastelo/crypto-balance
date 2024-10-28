@@ -5,7 +5,9 @@ use google_sheets4::{
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::{sheets::prelude::*, CellRange, ToA1Notation};
+use crate::{
+    config::sheets_config::SpreadsheetConfig, sheets::prelude::*, CellRange, ToA1Notation,
+};
 
 pub struct SpreadsheetManager {
     pub config: SpreadsheetConfig,

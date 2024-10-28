@@ -1,18 +1,3 @@
-use std::sync::LazyLock;
-
-use config::Config;
-
-#[derive(serde::Deserialize, Debug, Clone)]
-pub struct AppConfig {
-    pub blockchain: BlockchainConfig,
-    pub sheets: crate::sheets::config::SpreadsheetConfig,
-    pub binance: crate::exchange::binance::config::BinanceConfig,
-    pub bybit: crate::exchange::bybit::config::BybitConfig,
-    pub kraken: crate::exchange::kraken::config::KrakenConfig,
-    pub coingecko: crate::price::data::coingecko::config::CoingeckoConfig,
-}
-
-// TODO: move to blockchain module
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct BlockchainConfig {
     pub etherscan_api_key: Box<str>,
@@ -56,22 +41,3 @@ pub struct CosmosBlockchainConfig {
     pub celestia_address: Box<str>,
     pub injective_address: Box<str>,
 }
-
-pub static CONFIG: LazyLock<AppConfig> = LazyLock::new(|| {
-    match Config::builder()
-        .add_source(config::File::with_name("Config"))
-        .build()
-    {
-        Ok(config) => config,
-        Err(e) => match e {
-            config::ConfigError::NotFound(property) => {
-                panic!("Missing config property: {:?}", property);
-            }
-            _ => {
-                panic!("Error reading config file: {:?}", e);
-            }
-        },
-    }
-    .try_deserialize()
-    .expect("Should deserialize built config into struct")
-});

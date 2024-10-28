@@ -1,6 +1,6 @@
 use ::binance::{account::Account, api::Binance, config::Config};
 
-use crate::prelude::*;
+use crate::config::app_config::CONFIG;
 
 pub struct BinanceAccountFactory;
 

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use krakenrs::{KrakenCredentials, KrakenRestAPI, KrakenRestConfig};
 
-use crate::CONFIG;
+use crate::config::app_config::CONFIG;
 
 pub struct KrakenFactory;
 

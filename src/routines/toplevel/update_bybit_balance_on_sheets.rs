@@ -14,7 +14,8 @@ impl Routine for UpdateBybitBalanceOnSheetsRoutine {
     async fn run(&self) {
         log::info!("Running UpdateBybitBalanceOnSheetsRoutine");
 
-        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+        let spreadsheet_manager =
+            SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await;
 
         let mut bybit_api = BybitFactory::create();
 

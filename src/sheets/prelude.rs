@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 pub use super::auth::*;
-pub use super::config::*;
 pub use super::http_client::*;
 pub use super::into::*;
 pub use super::sheets::*;

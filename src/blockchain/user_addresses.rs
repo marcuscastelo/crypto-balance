@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::blockchain::prelude::*;
+use crate::{blockchain::prelude::*, config::blockchain_config::BlockchainConfig};
 
 pub struct UserAddresses {
     chain_addresses: HashMap<String, Vec<String>>,
