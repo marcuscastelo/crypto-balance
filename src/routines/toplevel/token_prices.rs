@@ -1,14 +1,12 @@
+use std::collections::HashMap;
+
 use crate::prelude::*;
-use crate::price::prelude::CoinGeckoApi;
+use domain::price::get_token_prices;
 use google_sheets4::api::ValueRange;
 
 pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
 
 impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
-    fn create_coingecko_api(&self) -> CoinGeckoApi {
-        CoinGeckoApi
-    }
-
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
@@ -24,14 +22,6 @@ impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
             .values
             .expect("Should have values")
             .my_into()
-    }
-
-    async fn get_prices_from_coingecko(
-        &self,
-        coingecko_api: &CoinGeckoApi,
-        tokens: &Vec<String>,
-    ) -> price::prelude::PricesResponse {
-        coingecko_api.prices(tokens.as_ref()).await
     }
 
     async fn get_current_prices_from_spreadsheet(
@@ -57,16 +47,16 @@ impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
     fn order_prices(
         &self,
         tokens: &Vec<String>,
-        prices: price::prelude::PricesResponse,
+        prices: &HashMap<String, Option<f64>>,
         fallback_prices: Vec<f64>,
     ) -> Vec<f64> {
         tokens
             .iter()
             .enumerate()
-            .map(|(i, token)| match prices.0.get(token) {
-                Some(price) => price
-                    .usd
-                    .expect("Should have price when PriceResponse exists"),
+            .map(|(i, token)| match prices.get(token) {
+                Some(price) => {
+                    price.expect("Should have a price since token was found on CoinGecko")
+                }
                 None => fallback_prices.get(i).copied().unwrap_or(0.0),
             })
             .collect()
@@ -96,9 +86,6 @@ impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
     async fn run(&self) {
         log::info!("Running UpdateTokenPricesOnSheetsViaCoinGeckoRoutine");
 
-        log::trace!("Creating Coingecko API instance");
-        let coingecko_api = self.create_coingecko_api();
-
         log::trace!("Creating SpreadsheetManager instance");
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
@@ -106,9 +93,7 @@ impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
         let tokens = self.get_tokens_from_spreadsheet(&spreadsheet_manager).await;
 
         log::trace!("Getting prices of all tokens from Coingecko");
-        let prices = self
-            .get_prices_from_coingecko(&coingecko_api, &tokens)
-            .await;
+        let prices = get_token_prices(tokens.as_ref()).await;
 
         log::trace!("Reading the current prices from the spreadsheet");
         let spreadsheet_prices = self
@@ -116,7 +101,7 @@ impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
             .await;
 
         log::trace!("Updating the prices on the spreadsheet");
-        let new_prices = self.order_prices(&tokens, prices, spreadsheet_prices);
+        let new_prices = self.order_prices(&tokens, &prices, spreadsheet_prices);
         self.update_prices_on_spreadsheet(&spreadsheet_manager, new_prices)
             .await;
 

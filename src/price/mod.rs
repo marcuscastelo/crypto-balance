@@ -1,2 +1,2 @@
-pub mod coingecko;
-pub mod prelude;
+pub mod data;
+pub mod domain;

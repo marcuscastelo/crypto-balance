@@ -9,7 +9,7 @@ pub struct AppConfig {
     pub binance: crate::exchange::binance::config::BinanceConfig,
     pub bybit: crate::exchange::bybit::config::BybitConfig,
     pub kraken: crate::exchange::kraken::config::KrakenConfig,
-    pub coingecko: crate::price::coingecko::config::CoingeckoConfig,
+    pub coingecko: crate::price::data::coingecko::config::CoingeckoConfig,
 }
 
 // TODO: move to blockchain module
