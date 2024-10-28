@@ -7,8 +7,12 @@ use crate::{
     config::app_config::{self, CONFIG},
     ranges,
     routines::{blockchain::FetchEvmChainBalancesRoutine, sheets::SheetsGetTokenNamesRoutine},
-    CellPosition, CellRange, Chain, Column, Routine, Row, SpreadsheetManager, ToA1Notation, Token,
-    TokenBalance, ValueRangeFactory, ARBITRUM, OPTIMISM, POLYGON,
+    sheets::domain::{
+        a1_notation::ToA1Notation, cell_position::CellPosition, cell_range::CellRange,
+        column::Column, row::Row,
+    },
+    Chain, Routine, SpreadsheetManager, Token, TokenBalance, ValueRangeFactory, ARBITRUM, OPTIMISM,
+    POLYGON,
 };
 
 pub struct UpdateHoldBalanceOnSheetsRoutine;

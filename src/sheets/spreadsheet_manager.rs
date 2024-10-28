@@ -1,3 +1,4 @@
+use domain::{a1_notation::ToA1Notation, cell_range::CellRange};
 use google_sheets4::{
     api::{GridRange, NamedRange, ValueRange},
     Error as Sheets4Error, Sheets,
@@ -5,9 +6,7 @@ use google_sheets4::{
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::{
-    config::sheets_config::SpreadsheetConfig, sheets::prelude::*, CellRange, ToA1Notation,
-};
+use crate::{config::sheets_config::SpreadsheetConfig, sheets::prelude::*};
 
 pub struct SpreadsheetManager {
     pub config: SpreadsheetConfig,
