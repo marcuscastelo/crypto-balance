@@ -1,6 +1,5 @@
 use fantoccini::Locator;
 use indicatif::ProgressBar;
-use undetected_chromedriver::chrome;
 
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},

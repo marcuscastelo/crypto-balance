@@ -25,12 +25,12 @@ impl SonarWatch {
             .expect("Should get SonarWatch total balance")
     }
 
-    async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
+    async fn update_sonar_watch_balance_on_spreadsheet(&self, balance: f64) {
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         spreadsheet_manager
             .write_named_range(
-                ranges::airdrops::RW_DEBANK_TOTAL_USD,
+                ranges::airdrops::RW_SONAR_WATCH_TOTAL_USD,
                 ValueRange::from_str(&balance.to_string()),
             )
             .await
@@ -52,7 +52,8 @@ impl Routine for SonarWatch {
             "SonarWatch: 📝 Updating balance with ${:.2}",
             balance,
         ));
-        self.update_debank_balance_on_spreadsheet(balance).await;
+        self.update_sonar_watch_balance_on_spreadsheet(balance)
+            .await;
 
         progress.info("SonarWatch: ✅ Updated SonarWatch balance on the spreadsheet");
         finish_progress(&progress);

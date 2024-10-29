@@ -1,3 +1,4 @@
+pub mod backend_scraper;
 pub mod debank;
 pub mod formatting;
 pub mod scraper_driver;
