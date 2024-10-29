@@ -15,11 +15,11 @@ use tokio::process::Command;
 use crate::prelude::*;
 
 async fn run_routines(parallel: bool) {
-    let _ = Command::new("pkill").arg("geckodriver").output();
+    let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<&dyn Routine<()>> = vec![
-        // &routines::toplevel::UpdateAirdropDebankTotalOnSheetsRoutine,
-        &routines::toplevel::UpdateTokenPricesOnSheetsViaCoinGeckoRoutine,
+        &routines::toplevel::debank_routine::DebankRoutine,
+        // &routines::toplevel::token_prices::TokenPricesRoutine,
         // &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
         // &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
         // &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,

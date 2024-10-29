@@ -7,9 +7,9 @@ use price::domain::price::get_token_prices;
 use spreadsheet_manager::SpreadsheetManager;
 use value_range_factory::ValueRangeFactory;
 
-pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
+pub struct TokenPricesRoutine;
 
-impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
+impl TokenPricesRoutine {
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
     }
@@ -85,9 +85,9 @@ impl UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
 }
 
 #[async_trait::async_trait]
-impl Routine for UpdateTokenPricesOnSheetsViaCoinGeckoRoutine {
+impl Routine for TokenPricesRoutine {
     async fn run(&self) {
-        log::info!("Running UpdateTokenPricesOnSheetsViaCoinGeckoRoutine");
+        log::info!("Running TokenPricesRoutine");
 
         log::trace!("Creating SpreadsheetManager instance");
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
