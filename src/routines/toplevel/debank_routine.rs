@@ -46,13 +46,13 @@ impl Routine for DebankRoutine {
 
         let progress = new_progress(ProgressBar::new_spinner());
 
-        progress.trace("🌐 Fetching Debank balance");
+        progress.trace("Debank: ☁️ Fetching Debank balance");
         let balance = self.get_debank_balance().await;
 
-        progress.trace(format!("📝 Updating Debank balance with ${:.2}", balance,));
+        progress.trace(format!("Debank: 📝 Updating balance with ${:.2}", balance,));
         self.update_debank_balance_on_spreadsheet(balance).await;
 
-        progress.info("✅ Updated Debank balance on the spreadsheet");
+        progress.info("Debank: ✅ Updated Debank balance on the spreadsheet");
         finish_progress(&progress);
     }
 }

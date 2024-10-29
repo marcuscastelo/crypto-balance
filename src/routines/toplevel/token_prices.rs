@@ -16,7 +16,7 @@ impl TokenPricesRoutine {
         SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
     }
 
-    async fn get_tokens_from_spreadsheet(
+    async fn get_token_ids_from_spreadsheet(
         &self,
         spreadsheet_manager: &SpreadsheetManager,
     ) -> Vec<String> {
@@ -93,26 +93,28 @@ impl Routine for TokenPricesRoutine {
 
         let progress = new_progress(ProgressBar::new_spinner());
 
-        progress.trace("Creating SpreadsheetManager instance");
+        progress.trace("Prices: Creating SpreadsheetManager instance");
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
-        progress.trace("📋 Listing all tokens in the spreadsheet");
-        let tokens = self.get_tokens_from_spreadsheet(&spreadsheet_manager).await;
+        progress.trace("Prices: 📋 Listing all tokens in the spreadsheet");
+        let tokens = self
+            .get_token_ids_from_spreadsheet(&spreadsheet_manager)
+            .await;
 
-        progress.trace("🌐 Getting prices of all tokens from Coingecko");
+        progress.trace("Prices: ☁️ Getting prices of all tokens from Coingecko");
         let prices = get_token_prices(tokens.as_ref()).await;
 
-        progress.trace("📝 Reading the current prices from the spreadsheet");
+        progress.trace("Prices: 📝 Reading the current prices from the spreadsheet");
         let spreadsheet_prices = self
             .get_current_prices_from_spreadsheet(&spreadsheet_manager)
             .await;
 
-        progress.trace("📝 Updating the prices on the spreadsheet");
+        progress.trace("Prices: 📝 Updating the prices on the spreadsheet");
         let new_prices = self.order_prices(&tokens, &prices, spreadsheet_prices);
         self.update_prices_on_spreadsheet(&spreadsheet_manager, new_prices)
             .await;
 
-        progress.info("✅ Updated token prices on the spreadsheet");
+        progress.info("Prices: ✅ Updated token prices on the spreadsheet");
         finish_progress(&progress);
     }
 }
