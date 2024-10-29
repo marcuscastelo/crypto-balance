@@ -70,11 +70,9 @@ pub static EVM_CHAINS: LazyLock<HashMap<&'static str, &'static Chain>> = LazyLoc
         &POLYGON,  //
         &BASE,     //
         &LINEA,    //
-        // &SOLANA, //
         // &ZKSYNC, //
         // &ZORA,   //
         &SCROLL, //
-                 // &BITCOIN, //
     ];
 
     let mut map = HashMap::new();

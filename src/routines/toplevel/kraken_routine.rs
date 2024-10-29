@@ -1,9 +1,8 @@
 use crate::{
     cli::progress::{new_progress, ProgressBarExt},
-    config::app_config,
     exchange::kraken::factory::KrakenFactory,
     into::MyInto,
-    ranges, routines,
+    ranges,
     spreadsheet_manager::SpreadsheetManager,
     Routine,
 };
