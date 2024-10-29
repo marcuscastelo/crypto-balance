@@ -1,5 +1,6 @@
 #![feature(lazy_cell)]
 #![feature(async_closure)]
+#![feature(iter_next_chunk)]
 
 mod blockchain;
 mod cli;
@@ -21,11 +22,12 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<&dyn Routine<()>> = vec![
-        &routines::toplevel::debank_routine::DebankRoutine,
-        &routines::toplevel::token_prices::TokenPricesRoutine,
-        &routines::toplevel::binance_routine::BinanceRoutine,
-        &routines::toplevel::bybit_routine::BybitRoutine,
-        &routines::toplevel::kraken_routine::KrakenRoutine,
+        // &routines::toplevel::debank_routine::DebankRoutine,
+        &routines::toplevel::sonar_watch_routine::SonarWatch,
+        // &routines::toplevel::token_prices::TokenPricesRoutine,
+        // &routines::toplevel::binance_routine::BinanceRoutine,
+        // &routines::toplevel::bybit_routine::BybitRoutine,
+        // &routines::toplevel::kraken_routine::KrakenRoutine,
         // &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
     ];
 

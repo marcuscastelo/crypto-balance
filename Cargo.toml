@@ -12,7 +12,7 @@ serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.113"
 binance-rs-async = "1.3.2"
 krakenrs = { git = "https://github.com/marcuscastelo/krakenrs-async" }
-bybit_rs = { git = "https://github.com/marcuscastelo/bybit_rs"}
+bybit_rs = { git = "https://github.com/marcuscastelo/bybit_rs" }
 google-sheets4 = "*"
 tokio = { version = "1.36.0", features = ["macros"] }
 futures = "0.3.30"
@@ -32,3 +32,4 @@ error-stack = { version = "0.4.1", features = ["anyhow"] }
 regex = "1.10.4"
 indicatif-log-bridge = "0.2.3"
 indicatif = "0.17.8"
+undetected-chromedriver = "0.1.2"

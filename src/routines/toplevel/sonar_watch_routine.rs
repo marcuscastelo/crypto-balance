@@ -4,25 +4,25 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
-    debank::DebankBalanceScraper,
     ranges,
+    sonar_watch::SonarWatchScraper,
     spreadsheet_manager::SpreadsheetManager,
     value_range_factory::ValueRangeFactory,
     Routine,
 };
 
-pub struct DebankRoutine;
+pub struct SonarWatch;
 
-impl DebankRoutine {
+impl SonarWatch {
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
-    async fn get_debank_balance(&self) -> f64 {
-        DebankBalanceScraper
-            .get_total_balance(&CONFIG.blockchain.airdrops.evm.address)
+    async fn get_sonar_watch_balance(&self) -> f64 {
+        SonarWatchScraper
+            .get_total_balance(&CONFIG.blockchain.airdrops.solana.address)
             .await
-            .expect("Should get Debank total balance")
+            .expect("Should get SonarWatch total balance")
     }
 
     async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
@@ -34,24 +34,27 @@ impl DebankRoutine {
                 ValueRange::from_str(&balance.to_string()),
             )
             .await
-            .expect("Should write Debank total to the spreadsheet");
+            .expect("Should write SonarWatch total to the spreadsheet");
     }
 }
 
 #[async_trait::async_trait]
-impl Routine for DebankRoutine {
+impl Routine for SonarWatch {
     async fn run(&self) {
-        log::info!("Running UpdateAirdropDebankTotalOnSheetsRoutine");
+        log::info!("Running UpdateAirdropSonarWatchTotalOnSheetsRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 
-        progress.trace("Debank: ☁️  Fetching Debank balance");
-        let balance = self.get_debank_balance().await;
+        progress.trace("SonarWatch: ☁️  Fetching SonarWatch balance");
+        let balance = self.get_sonar_watch_balance().await;
 
-        progress.trace(format!("Debank: 📝 Updating balance with ${:.2}", balance,));
+        progress.trace(format!(
+            "SonarWatch: 📝 Updating balance with ${:.2}",
+            balance,
+        ));
         self.update_debank_balance_on_spreadsheet(balance).await;
 
-        progress.info("Debank: ✅ Updated Debank balance on the spreadsheet");
+        progress.info("SonarWatch: ✅ Updated SonarWatch balance on the spreadsheet");
         finish_progress(&progress);
     }
 }
