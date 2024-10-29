@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
 

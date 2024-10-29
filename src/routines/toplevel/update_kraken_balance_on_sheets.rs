@@ -1,12 +1,14 @@
 use crate::{
-    config::app_config, ranges, routines, spreadsheet_manager::SpreadsheetManager, KrakenFactory,
-    Routine,
+    config::app_config, exchange::kraken::factory::KrakenFactory, ranges, routines,
+    spreadsheet_manager::SpreadsheetManager, Routine,
 };
 use google_sheets4::api::ValueRange;
-use num_traits::ToPrimitive;
 use serde_json::Value;
 use std::collections::HashMap;
 pub struct UpdateKrakenBalanceOnSheetsRoutine;
+
+#[allow(unused_imports)]
+use num_traits::ToPrimitive;
 
 #[async_trait::async_trait]
 impl Routine for UpdateKrakenBalanceOnSheetsRoutine {
@@ -15,7 +17,6 @@ impl Routine for UpdateKrakenBalanceOnSheetsRoutine {
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
-        // TODO: why is KrakenFactory on prelude
         let kraken_api = KrakenFactory::create();
 
         let token_names: Vec<String> = routines::sheets::SheetsGetTokenNamesRoutine.run().await;
