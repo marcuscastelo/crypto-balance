@@ -5,8 +5,9 @@ use regex::Regex;
 
 use crate::{
     config::app_config::{self, CONFIG},
+    into::MyInto,
     ranges,
-    routines::{blockchain::FetchEvmChainBalancesRoutine, sheets::SheetsGetTokenNamesRoutine},
+    routines::blockchain::FetchEvmChainBalancesRoutine,
     sheets::domain::{
         a1_notation::ToA1Notation, cell_position::CellPosition, cell_range::CellRange,
         column::Column, row::Row,
@@ -69,6 +70,22 @@ impl UpdateHoldBalanceOnSheetsRoutine {
             .run(chain, &CONFIG.blockchain.hold_sc.evm.address)
             .await
             .expect(format!("Should fetch '{}' chain balances for hold_sc", chain.name).as_str())
+    }
+
+    async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
+        SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
+    }
+
+    async fn get_token_names_from_spreadsheet(&self) -> Vec<String> {
+        let spreadsheet_manager = self.create_spreadsheet_manager().await;
+
+        spreadsheet_manager
+            .read_named_range(ranges::tokens::RO_NAMES)
+            .await
+            .expect("Should have content")
+            .values
+            .expect("Should have values")
+            .my_into()
     }
 }
 
@@ -191,7 +208,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                 .get(chain.name)
                 .expect(format!("Should get '{}' chain balances", chain.name).as_str());
 
-            let token_names = SheetsGetTokenNamesRoutine.run().await;
+            let token_names = self.get_token_names_from_spreadsheet().await;
 
             let hold_col = chain_title_cell.col;
             let hold_sc_col = chain_title_cell.col + Column(1u32);
