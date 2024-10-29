@@ -1,3 +1,6 @@
+use into::MyInto;
+use spreadsheet_manager::SpreadsheetManager;
+
 pub use crate::prelude::*;
 
 #[deprecated = "This routine is not used anymore"]

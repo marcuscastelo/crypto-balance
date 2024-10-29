@@ -3,6 +3,7 @@ use crate::prelude::*;
 use ::binance::account::Account as BinanceAccount;
 use google_sheets4::api::ValueRange;
 use serde_json::Value;
+use spreadsheet_manager::SpreadsheetManager;
 use std::collections::HashMap;
 
 pub struct UpdateBinanceBalanceOnSheetsRoutine;

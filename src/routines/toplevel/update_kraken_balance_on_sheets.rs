@@ -1,4 +1,7 @@
-use crate::{config::app_config, ranges, routines, KrakenFactory, Routine, SpreadsheetManager};
+use crate::{
+    config::app_config, ranges, routines, spreadsheet_manager::SpreadsheetManager, KrakenFactory,
+    Routine,
+};
 use google_sheets4::api::ValueRange;
 use num_traits::ToPrimitive;
 use serde_json::Value;

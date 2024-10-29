@@ -5,6 +5,7 @@ use bybit_rs::bybit::account::Account;
 use google_sheets4::api::ValueRange;
 use serde::Deserialize;
 use serde_json::Value;
+use spreadsheet_manager::SpreadsheetManager;
 use std::collections::HashMap;
 
 pub struct UpdateBybitBalanceOnSheetsRoutine;
@@ -17,7 +18,7 @@ impl Routine for UpdateBybitBalanceOnSheetsRoutine {
         let spreadsheet_manager =
             SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await;
 
-        let mut bybit_api = BybitFactory::create();
+        let bybit_api = BybitFactory::create();
 
         let token_names: Vec<String> = routines::sheets::SheetsGetTokenNamesRoutine.run().await;
 

@@ -172,10 +172,7 @@ impl From<CellPosition> for (u32, u32) {
 impl FromA1Notation for CellPosition {
     type Err = A1NotationParseError;
 
-    fn from_a1_notation(
-        a1_notation: &A1Notation,
-        sheet_id: Option<&i32>,
-    ) -> Result<Self, Self::Err> {
+    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err> {
         let parts: A1NotationParts = generic_a1_notation_split(a1_notation);
 
         Ok(CellPosition {

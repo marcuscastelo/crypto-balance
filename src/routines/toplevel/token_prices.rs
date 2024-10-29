@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
 use crate::prelude::*;
-use domain::price::get_token_prices;
 use google_sheets4::api::ValueRange;
+use into::MyInto;
+use price::domain::price::get_token_prices;
+use spreadsheet_manager::SpreadsheetManager;
+use value_range_factory::ValueRangeFactory;
 
 pub struct UpdateTokenPricesOnSheetsViaCoinGeckoRoutine;
 

@@ -21,13 +21,6 @@ pub struct PriceResponse {
 pub struct PricesResponse(pub HashMap<String, PriceResponse>);
 
 impl CoinGeckoApi {
-    pub async fn list_coins(&self) -> Vec<CoinResponse> {
-        let url = "https://api.coingecko.com/api/v3/coins/list";
-        let response = reqwest::get(url).await.unwrap().text().await.unwrap();
-        let coin_list: CoinListResponse = serde_json::from_str(&response).unwrap();
-        coin_list.0
-    }
-
     pub async fn prices(&self, tokens: &[String]) -> PricesResponse {
         let url = format!(
             "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=usd",

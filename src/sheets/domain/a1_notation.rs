@@ -1,4 +1,4 @@
-use std::{fmt::Formatter, num::ParseIntError, ops::Deref, str::FromStr};
+use std::fmt::Formatter;
 use thiserror::Error;
 
 use super::{
@@ -47,15 +47,7 @@ impl From<String> for A1Notation {
 pub trait FromA1Notation: Sized {
     type Err;
 
-    fn from_a1_notation(
-        a1_notation: &A1Notation,
-        sheet_id: Option<&i32>,
-    ) -> Result<Self, Self::Err>;
-}
-
-#[derive(Debug, Clone)]
-pub struct SheetIdentification {
-    pub name: String,
+    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err>;
 }
 
 impl ToA1Notation for CellPosition {
@@ -90,13 +82,12 @@ impl ToA1Notation for CellRange {
 }
 
 pub struct A1NotationParts {
-    pub sheet_name: Option<String>,
     pub start: String,
     pub end: String,
 }
 
 pub fn generic_a1_notation_split(a1_notation: &A1Notation) -> A1NotationParts {
-    let (sheet_name, local_a1_notation) = match a1_notation.0.find('!') {
+    let (_, local_a1_notation) = match a1_notation.0.find('!') {
         Some(index) => {
             let (sheet_name, local_a1_notation) = a1_notation.0.split_at(index);
             (
@@ -116,7 +107,6 @@ pub fn generic_a1_notation_split(a1_notation: &A1Notation) -> A1NotationParts {
     };
 
     A1NotationParts {
-        sheet_name,
         start: start.to_owned(),
         end: end.to_owned(),
     }
@@ -125,15 +115,12 @@ pub fn generic_a1_notation_split(a1_notation: &A1Notation) -> A1NotationParts {
 impl FromA1Notation for CellRange {
     type Err = A1NotationParseError;
 
-    fn from_a1_notation(
-        a1_notation: &A1Notation,
-        sheet_id: Option<&i32>,
-    ) -> Result<Self, Self::Err> {
+    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err> {
         let parts = generic_a1_notation_split(a1_notation);
 
         Ok(CellRange {
-            start: CellPosition::from_a1_notation(&A1Notation(parts.start), sheet_id)?,
-            end: CellPosition::from_a1_notation(&A1Notation(parts.end), sheet_id)?,
+            start: CellPosition::from_a1_notation(&A1Notation(parts.start))?,
+            end: CellPosition::from_a1_notation(&A1Notation(parts.end))?,
         })
     }
 }

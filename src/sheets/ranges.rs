@@ -26,5 +26,4 @@ pub mod balances {
 
 pub mod airdrops {
     pub const RW_DEBANK_TOTAL_USD: &str = "Airdrops__cDebankTotalUSD";
-    pub const RW_STEP_SVM_TOTAL_USD: &str = "Airdrops__cStepSVMTotalUSD";
 }

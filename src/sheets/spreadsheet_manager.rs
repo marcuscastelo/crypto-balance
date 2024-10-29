@@ -61,26 +61,6 @@ impl SpreadsheetManager {
         Some(map)
     }
 
-    pub async fn named_range_map_a1_notation(&self) -> Option<HashMap<String, String>> {
-        let named_ranges = self.named_ranges().await?;
-        let mut map = HashMap::new();
-        for named_range in named_ranges {
-            let cell_range: CellRange = named_range.clone().range?.try_into().ok()?;
-
-            let sheet_title = Some(
-                self.get_sheet_title(named_range.range.as_ref()?.sheet_id.unwrap_or(0))
-                    .await
-                    .expect("Sheet title should exist"),
-            );
-
-            let a1_notation = cell_range.to_a1_notation(sheet_title.as_deref());
-
-            map.insert(named_range.name?, a1_notation.to_string());
-        }
-
-        Some(map)
-    }
-
     pub async fn get_named_range(&self, name: &str) -> Option<GridRange> {
         let named_ranges = self
             .named_range_map()

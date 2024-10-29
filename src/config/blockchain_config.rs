@@ -1,3 +1,4 @@
+#[allow(unused)]
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct BlockchainConfig {
     pub etherscan_api_key: Box<str>,
@@ -17,6 +18,7 @@ pub struct HoldBlockchainConfig {
     pub evm: EvmBlockchainConfig,
 }
 
+#[allow(unused)]
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct AirdropsBlockchainConfig {
     pub evm: EvmBlockchainConfig,
@@ -29,11 +31,13 @@ pub struct EvmBlockchainConfig {
     pub address: Box<str>,
 }
 
+#[allow(unused)]
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct SolanaBlockchainConfig {
     pub address: Box<str>,
 }
 
+#[allow(unused)]
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct CosmosBlockchainConfig {
     pub cosmos_address: Box<str>,

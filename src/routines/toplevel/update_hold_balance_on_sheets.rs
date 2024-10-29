@@ -11,8 +11,9 @@ use crate::{
         a1_notation::ToA1Notation, cell_position::CellPosition, cell_range::CellRange,
         column::Column, row::Row,
     },
-    Chain, Routine, SpreadsheetManager, Token, TokenBalance, ValueRangeFactory, ARBITRUM, OPTIMISM,
-    POLYGON,
+    spreadsheet_manager::SpreadsheetManager,
+    value_range_factory::ValueRangeFactory,
+    Chain, Routine, Token, TokenBalance, ARBITRUM, OPTIMISM, POLYGON,
 };
 
 pub struct UpdateHoldBalanceOnSheetsRoutine;

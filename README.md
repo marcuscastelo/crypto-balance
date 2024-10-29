@@ -46,7 +46,6 @@ secret_key = "<REPLACE>"
 priv_key = "<REPLACE>"
 spreadsheet_id = "<REPLACE>"
 
-[coingecko]
 api_key = "<REPLACE>"
 ```
 3. Change output sheets and ranges under sheets/ranges.rs (these are Google Sheets' named ranges)
