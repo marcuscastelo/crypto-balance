@@ -7,7 +7,7 @@ impl SonarWatchScraper {
         SimpleBalanceScrapper {
             url: format!("https://sonar.watch/portfolio/{}", user_id),
             xpath: "//*[@id=\"root\"]/section/section/main/div/div[1]/div[2]/div/div/div[1]/div/div/div[1]/span[1]".to_owned(),
-            wait_time: 60,
+            wait_time_secs: 60,
         }.scrape().await
     }
 }

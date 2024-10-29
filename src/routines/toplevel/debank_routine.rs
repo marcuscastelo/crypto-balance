@@ -1,6 +1,10 @@
+use std::time::Duration;
+
 use google_sheets4::api::ValueRange;
+use indicatif::ProgressBar;
 
 use crate::{
+    cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
     ranges,
     spreadsheet_manager::SpreadsheetManager,
@@ -40,12 +44,16 @@ impl Routine for DebankRoutine {
     async fn run(&self) {
         log::info!("Running UpdateAirdropDebankTotalOnSheetsRoutine");
 
-        log::trace!("Fetching debank balance");
+        let progress_bar = new_progress(ProgressBar::new_spinner());
+        progress_bar.enable_steady_tick(Duration::from_millis(10));
+
+        progress_bar.trace("🌐 Fetching Debank balance");
         let balance = self.get_debank_balance().await;
 
-        log::trace!("Updating Debank balance on the spreadsheet");
+        progress_bar.trace(format!("📝 Updating Debank balance with ${:.2}", balance,));
         self.update_debank_balance_on_spreadsheet(balance).await;
 
-        log::info!("Updated Debank balance on the spreadsheet");
+        progress_bar.info("✅ Updated Debank balance on the spreadsheet");
+        finish_progress(&progress_bar);
     }
 }

@@ -1,11 +1,14 @@
-use std::{error::Error, process::Command};
+use std::process::Command;
 
 use fantoccini::{error::NewSessionError, ClientBuilder, Locator};
+use indicatif::ProgressBar;
+
+use crate::cli::progress::{finish_progress, new_progress};
 
 pub struct SimpleBalanceScrapper {
     pub url: String,
     pub xpath: String,
-    pub wait_time: u64,
+    pub wait_time_secs: u64,
 }
 
 impl SimpleBalanceScrapper {
@@ -20,6 +23,7 @@ impl SimpleBalanceScrapper {
             .arg("--log")
             .arg("fatal")
             .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .expect("Failed to start geckodriver");
 
@@ -48,9 +52,15 @@ impl SimpleBalanceScrapper {
 
         log::trace!(
             "Waiting for {} seconds so that debank finishes loading",
-            self.wait_time
+            self.wait_time_secs
         );
-        tokio::time::sleep(tokio::time::Duration::from_secs(self.wait_time)).await;
+        let progress_bar = new_progress(ProgressBar::new(self.wait_time_secs));
+        progress_bar.set_message("Waiting for page to fully load");
+        for _ in 0..self.wait_time_secs {
+            progress_bar.inc(1);
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+        finish_progress(&progress_bar);
 
         log::trace!("Finding element with xpath {}", self.xpath);
         let element = c.find(Locator::XPath(self.xpath.as_str())).await?;

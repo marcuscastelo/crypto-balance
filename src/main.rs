@@ -2,6 +2,7 @@
 #![feature(async_closure)]
 
 mod blockchain;
+mod cli;
 mod config;
 mod exchange;
 mod prelude;
@@ -10,6 +11,8 @@ mod routines;
 mod scraping;
 mod sheets;
 
+use cli::progress::CLI_MULTI_PROGRESS;
+use indicatif_log_bridge::LogWrapper;
 use tokio::process::Command;
 
 use crate::prelude::*;
@@ -48,7 +51,15 @@ async fn run_routines(parallel: bool) {
 
 #[tokio::main]
 async fn main() {
-    env_logger::builder().init();
+    let logger = env_logger::builder().build();
+
+    let level = logger.filter();
+
+    LogWrapper::new(CLI_MULTI_PROGRESS.clone(), logger)
+        .try_init()
+        .expect("Failed to initialize logger");
+
+    log::set_max_level(level);
 
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = true;
