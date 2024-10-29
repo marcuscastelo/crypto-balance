@@ -15,10 +15,10 @@ pub struct SimpleXPathScraper {
 
 impl SimpleXPathScraper {
     pub async fn scrape(&self) -> anyhow::Result<String> {
-        // let scraper = ScraperDriver::new().await?;
+        let scraper = ScraperDriver::new().await?;
 
-        // let client = &scraper.client;
-        let client = chrome().await.expect("Failed to start chrome");
+        let client = &scraper.client;
+        // let client = chrome().await.expect("Failed to start chrome");
 
         log::trace!("Navigating to {}", self.url);
         client.goto(self.url.as_str()).await?;
