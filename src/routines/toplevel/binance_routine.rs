@@ -48,7 +48,6 @@ impl BinanceRoutine {
         token_names: &[String],
         balances: &HashMap<String, f64>,
     ) -> Vec<f64> {
-        // Write to the spreadsheet
         let mut token_balances = Vec::with_capacity(token_names.len());
         for token_name in token_names {
             let token_balance = balances.get(token_name).unwrap_or(&0.0);
@@ -86,14 +85,14 @@ impl BinanceRoutine {
 #[async_trait::async_trait]
 impl Routine for BinanceRoutine {
     async fn run(&self) {
-        log::info!("Binance: Running UpdateBinanceBalanceOnSheetsRoutine");
+        log::info!("Binance: Running BinanceRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 
         progress.trace("Binance: 📋 Listing all tokens from the spreadsheet");
         let token_names = self.get_token_names_from_spreadsheet().await;
 
-        progress.trace("Binance: ☁️ Getting balances from Binance");
+        progress.trace("Binance: ☁️  Getting balances from Binance");
         let balance_by_token = self.get_binance_balances().await;
 
         progress.trace("Binance: 📊 Ordering balances");

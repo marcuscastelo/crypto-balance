@@ -101,7 +101,7 @@ impl Routine for TokenPricesRoutine {
             .get_token_ids_from_spreadsheet(&spreadsheet_manager)
             .await;
 
-        progress.trace("Prices: ☁️ Getting prices of all tokens from Coingecko");
+        progress.trace("Prices: ☁️  Getting prices of all tokens from Coingecko");
         let prices = get_token_prices(tokens.as_ref()).await;
 
         progress.trace("Prices: 📝 Reading the current prices from the spreadsheet");
