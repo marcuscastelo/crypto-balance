@@ -44,16 +44,15 @@ impl Routine for DebankRoutine {
     async fn run(&self) {
         log::info!("Running UpdateAirdropDebankTotalOnSheetsRoutine");
 
-        let progress_bar = new_progress(ProgressBar::new_spinner());
-        progress_bar.enable_steady_tick(Duration::from_millis(10));
+        let progress = new_progress(ProgressBar::new_spinner());
 
-        progress_bar.trace("🌐 Fetching Debank balance");
+        progress.trace("🌐 Fetching Debank balance");
         let balance = self.get_debank_balance().await;
 
-        progress_bar.trace(format!("📝 Updating Debank balance with ${:.2}", balance,));
+        progress.trace(format!("📝 Updating Debank balance with ${:.2}", balance,));
         self.update_debank_balance_on_spreadsheet(balance).await;
 
-        progress_bar.info("✅ Updated Debank balance on the spreadsheet");
-        finish_progress(&progress_bar);
+        progress.info("✅ Updated Debank balance on the spreadsheet");
+        finish_progress(&progress);
     }
 }

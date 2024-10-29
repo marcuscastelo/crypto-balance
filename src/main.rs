@@ -22,7 +22,7 @@ async fn run_routines(parallel: bool) {
 
     let routines_to_run: Vec<&dyn Routine<()>> = vec![
         &routines::toplevel::debank_routine::DebankRoutine,
-        // &routines::toplevel::token_prices::TokenPricesRoutine,
+        &routines::toplevel::token_prices::TokenPricesRoutine,
         // &routines::toplevel::UpdateBinanceBalanceOnSheetsRoutine,
         // &routines::toplevel::UpdateBybitBalanceOnSheetsRoutine,
         // &routines::toplevel::UpdateKrakenBalanceOnSheetsRoutine,
@@ -64,4 +64,6 @@ async fn main() {
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = true;
     run_routines(parallel).await;
+
+    CLI_MULTI_PROGRESS.clear().unwrap();
 }

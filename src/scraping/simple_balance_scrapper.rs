@@ -3,7 +3,7 @@ use std::process::Command;
 use fantoccini::{error::NewSessionError, ClientBuilder, Locator};
 use indicatif::ProgressBar;
 
-use crate::cli::progress::{finish_progress, new_progress};
+use crate::cli::progress::{finish_progress, new_progress, ProgressBarExt};
 
 pub struct SimpleBalanceScrapper {
     pub url: String,
@@ -50,17 +50,14 @@ impl SimpleBalanceScrapper {
         }
         log::trace!("Page loaded successfully");
 
-        log::trace!(
-            "Waiting for {} seconds so that debank finishes loading",
-            self.wait_time_secs
-        );
-        let progress_bar = new_progress(ProgressBar::new(self.wait_time_secs));
-        progress_bar.set_message("Waiting for page to fully load");
+        let progress = new_progress(ProgressBar::new(self.wait_time_secs));
+        let message = format!("Waiting {} seconds for page to load", self.wait_time_secs);
+        progress.trace(message);
         for _ in 0..self.wait_time_secs {
-            progress_bar.inc(1);
+            progress.inc(1);
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
-        finish_progress(&progress_bar);
+        finish_progress(&progress);
 
         log::trace!("Finding element with xpath {}", self.xpath);
         let element = c.find(Locator::XPath(self.xpath.as_str())).await?;

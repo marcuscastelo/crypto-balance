@@ -1,11 +1,14 @@
 use std::{borrow::Cow, sync::LazyLock};
 
 use indicatif::{MultiProgress, ProgressBar};
+use std::time::Duration;
 
 pub static CLI_MULTI_PROGRESS: LazyLock<MultiProgress> = LazyLock::new(|| MultiProgress::new());
 
 pub fn new_progress(progress_bar: ProgressBar) -> ProgressBar {
-    CLI_MULTI_PROGRESS.add(progress_bar)
+    let progress_bar = CLI_MULTI_PROGRESS.add(progress_bar);
+    progress_bar.enable_steady_tick(Duration::from_millis(10));
+    progress_bar
 }
 
 pub fn finish_progress(progress_bar: &ProgressBar) {

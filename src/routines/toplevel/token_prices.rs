@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::prelude::*;
+use cli::progress::{finish_progress, new_progress, ProgressBarExt};
 use google_sheets4::api::ValueRange;
+use indicatif::ProgressBar;
 use into::MyInto;
 use price::domain::price::get_token_prices;
 use spreadsheet_manager::SpreadsheetManager;
@@ -89,26 +91,29 @@ impl Routine for TokenPricesRoutine {
     async fn run(&self) {
         log::info!("Running TokenPricesRoutine");
 
-        log::trace!("Creating SpreadsheetManager instance");
+        let progress = new_progress(ProgressBar::new_spinner());
+
+        progress.trace("Creating SpreadsheetManager instance");
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
-        log::trace!("Listing all tokens in the spreadsheet");
+        progress.trace("📋 Listing all tokens in the spreadsheet");
         let tokens = self.get_tokens_from_spreadsheet(&spreadsheet_manager).await;
 
-        log::trace!("Getting prices of all tokens from Coingecko");
+        progress.trace("🌐 Getting prices of all tokens from Coingecko");
         let prices = get_token_prices(tokens.as_ref()).await;
 
-        log::trace!("Reading the current prices from the spreadsheet");
+        progress.trace("📝 Reading the current prices from the spreadsheet");
         let spreadsheet_prices = self
             .get_current_prices_from_spreadsheet(&spreadsheet_manager)
             .await;
 
-        log::trace!("Updating the prices on the spreadsheet");
+        progress.trace("📝 Updating the prices on the spreadsheet");
         let new_prices = self.order_prices(&tokens, &prices, spreadsheet_prices);
         self.update_prices_on_spreadsheet(&spreadsheet_manager, new_prices)
             .await;
 
-        log::info!("Updated token prices on the spreadsheet");
+        progress.info("✅ Updated token prices on the spreadsheet");
+        finish_progress(&progress);
     }
 }
 // async fn run_old(&self) {
