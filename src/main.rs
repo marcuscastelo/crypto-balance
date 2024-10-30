@@ -1,4 +1,5 @@
 #![feature(async_closure)]
+#![feature(try_trait_v2)]
 #![feature(iter_next_chunk)]
 
 mod blockchain;
@@ -12,6 +13,8 @@ mod scraping;
 mod script;
 mod sheets;
 
+use std::collections::HashMap;
+
 use cli::progress::CLI_MULTI_PROGRESS;
 use indicatif_log_bridge::LogWrapper;
 use tokio::process::Command;
@@ -21,7 +24,7 @@ use crate::prelude::*;
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
-    let routines_to_run: Vec<&dyn Routine<()>> = vec![
+    let routines_to_run: Vec<&dyn Routine> = vec![
         &routines::toplevel::debank_routine::DebankRoutine,
         &routines::toplevel::sonar_watch_routine::SonarWatch,
         &routines::toplevel::token_prices::TokenPricesRoutine,
@@ -33,16 +36,30 @@ async fn run_routines(parallel: bool) {
 
     let mut futures = Vec::new();
 
-    for routine in routines_to_run {
+    let mut routine_results: HashMap<String, RoutineResult> = HashMap::new();
+
+    for routine in routines_to_run.iter() {
         if parallel {
-            futures.push(tokio::spawn(routine.run()));
+            let future = tokio::spawn(routine.run());
+            futures.push(future);
         } else {
-            routine.run().await;
+            let result = routine.run().await;
+            routine_results.insert(routine.name().to_string(), result);
         }
     }
 
     if parallel {
-        futures::future::join_all(futures).await;
+        let future_results = futures::future::join_all(futures).await;
+        for (routine, result) in routines_to_run.iter().zip(future_results) {
+            routine_results.insert(
+                routine.name().to_string(),
+                result.expect(format!("Failed to run routine: {}", routine.name()).as_str()),
+            );
+        }
+    }
+
+    for result in routine_results {
+        log::info!("Routine result: {:?}", result);
     }
 
     // Kill all geckodriver processes

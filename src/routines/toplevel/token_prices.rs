@@ -88,7 +88,11 @@ impl TokenPricesRoutine {
 
 #[async_trait::async_trait]
 impl Routine for TokenPricesRoutine {
-    async fn run(&self) {
+    fn name(&self) -> &'static str {
+        "TokenPricesRoutine"
+    }
+
+    async fn run(&self) -> RoutineResult {
         log::info!("Running TokenPricesRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
@@ -116,6 +120,8 @@ impl Routine for TokenPricesRoutine {
 
         progress.info("Prices: ✅ Updated token prices on the spreadsheet");
         finish_progress(&progress);
+
+        Ok(())
     }
 }
 // async fn run_old(&self) {

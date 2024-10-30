@@ -5,10 +5,10 @@ use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
     ranges,
-    sonar_watch::SonarWatchScraper,
+    sonar_watch_scraper::SonarWatchScraper,
     spreadsheet_manager::SpreadsheetManager,
     value_range_factory::ValueRangeFactory,
-    Routine,
+    Routine, RoutineFailureInfo, RoutineResult,
 };
 
 pub struct SonarWatch;
@@ -18,11 +18,13 @@ impl SonarWatch {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
-    async fn get_sonar_watch_balance(&self) -> f64 {
-        SonarWatchScraper
-            .get_total_balance(&CONFIG.blockchain.airdrops.solana.address)
+    async fn get_sonar_watch_balance(&self) -> Option<f64> {
+        let sonar_response = SonarWatchScraper
+            .scrape()
             .await
-            .expect("Should get SonarWatch total balance")
+            .expect("Should get SonarWatch total balance");
+
+        sonar_response.value
     }
 
     async fn update_sonar_watch_balance_on_spreadsheet(&self, balance: f64) {
@@ -40,13 +42,19 @@ impl SonarWatch {
 
 #[async_trait::async_trait]
 impl Routine for SonarWatch {
-    async fn run(&self) {
-        log::info!("Running UpdateAirdropSonarWatchTotalOnSheetsRoutine");
+    fn name(&self) -> &'static str {
+        "SonarWatch"
+    }
+
+    async fn run(&self) -> RoutineResult {
+        log::info!("Running SonarWatch");
 
         let progress = new_progress(ProgressBar::new_spinner());
 
         progress.trace("SonarWatch: ☁️  Fetching SonarWatch balance");
-        let balance = self.get_sonar_watch_balance().await;
+        let balance = self.get_sonar_watch_balance().await.ok_or_else(|| {
+            RoutineFailureInfo::new("Unable to get SonarWatch balance".to_owned())
+        })?;
 
         progress.trace(format!(
             "SonarWatch: 📝 Updating balance with ${:.2}",
@@ -57,5 +65,7 @@ impl Routine for SonarWatch {
 
         progress.info("SonarWatch: ✅ Updated SonarWatch balance on the spreadsheet");
         finish_progress(&progress);
+
+        Ok(())
     }
 }

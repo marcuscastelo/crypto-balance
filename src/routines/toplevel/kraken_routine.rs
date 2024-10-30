@@ -4,7 +4,7 @@ use crate::{
     into::MyInto,
     ranges,
     spreadsheet_manager::SpreadsheetManager,
-    Routine,
+    Routine, RoutineResult,
 };
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
@@ -96,8 +96,12 @@ impl KrakenRoutine {
 
 #[async_trait::async_trait]
 impl Routine for KrakenRoutine {
-    async fn run(&self) {
-        log::info!("Running UpdateKrakenBalanceOnSheetsRoutine");
+    fn name(&self) -> &'static str {
+        "KrakenRoutine"
+    }
+
+    async fn run(&self) -> RoutineResult {
+        log::info!("Running KrakenRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 
@@ -117,5 +121,7 @@ impl Routine for KrakenRoutine {
             .await;
 
         progress.info("Kraken: ✅ Updated Kraken balances on the spreadsheet");
+
+        Ok(())
     }
 }

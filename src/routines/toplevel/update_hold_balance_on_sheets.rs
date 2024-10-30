@@ -14,7 +14,7 @@ use crate::{
     },
     spreadsheet_manager::SpreadsheetManager,
     value_range_factory::ValueRangeFactory,
-    Chain, Routine, Token, TokenBalance, ARBITRUM, OPTIMISM, POLYGON,
+    Chain, Routine, RoutineResult, Token, TokenBalance, ARBITRUM, OPTIMISM, POLYGON,
 };
 
 pub struct UpdateHoldBalanceOnSheetsRoutine;
@@ -91,7 +91,11 @@ impl UpdateHoldBalanceOnSheetsRoutine {
 
 #[async_trait::async_trait]
 impl Routine for UpdateHoldBalanceOnSheetsRoutine {
-    async fn run(&self) {
+    fn name(&self) -> &'static str {
+        "UpdateHoldBalanceOnSheetsRoutine"
+    }
+
+    async fn run(&self) -> RoutineResult {
         let chains = vec![&POLYGON, &OPTIMISM, &ARBITRUM];
 
         //Parallelize fetching balances from multiple chains
@@ -285,6 +289,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
 
             chain_title_cell = chain_title_cell + Column(2u32);
         }
+        Ok(())
     }
 }
 

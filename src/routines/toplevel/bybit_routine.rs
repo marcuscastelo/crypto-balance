@@ -122,7 +122,11 @@ impl BybitRoutine {
 
 #[async_trait::async_trait]
 impl Routine for BybitRoutine {
-    async fn run(&self) {
+    fn name(&self) -> &'static str {
+        "BybitRoutine"
+    }
+
+    async fn run(&self) -> RoutineResult {
         log::info!("Running BybitRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
@@ -141,5 +145,7 @@ impl Routine for BybitRoutine {
             .await;
 
         progress.info("Bybit: ✅ Updated Bybit balances on the spreadsheet");
+
+        Ok(())
     }
 }

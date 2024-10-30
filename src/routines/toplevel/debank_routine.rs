@@ -4,11 +4,11 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
-    debank::DebankBalanceScraper,
+    debank_scraper::DebankBalanceScraper,
     ranges,
     spreadsheet_manager::SpreadsheetManager,
     value_range_factory::ValueRangeFactory,
-    Routine,
+    Routine, RoutineResult,
 };
 
 pub struct DebankRoutine;
@@ -40,8 +40,12 @@ impl DebankRoutine {
 
 #[async_trait::async_trait]
 impl Routine for DebankRoutine {
-    async fn run(&self) {
-        log::info!("Running UpdateAirdropDebankTotalOnSheetsRoutine");
+    fn name(&self) -> &'static str {
+        "DebankRoutine"
+    }
+
+    async fn run(&self) -> RoutineResult {
+        log::info!("Running DebankRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 
@@ -53,5 +57,7 @@ impl Routine for DebankRoutine {
 
         progress.info("Debank: ✅ Updated Debank balance on the spreadsheet");
         finish_progress(&progress);
+
+        Ok(())
     }
 }

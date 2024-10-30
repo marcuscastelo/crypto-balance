@@ -84,7 +84,11 @@ impl BinanceRoutine {
 
 #[async_trait::async_trait]
 impl Routine for BinanceRoutine {
-    async fn run(&self) {
+    fn name(&self) -> &'static str {
+        "BinanceRoutine"
+    }
+
+    async fn run(&self) -> RoutineResult {
         log::info!("Binance: Running BinanceRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
@@ -105,5 +109,7 @@ impl Routine for BinanceRoutine {
             .await;
 
         progress.info("Binance: ✅ Updated Binance balances on the spreadsheet");
+
+        Ok(())
     }
 }

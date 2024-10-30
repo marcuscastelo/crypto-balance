@@ -19,6 +19,7 @@ pub fn finish_progress(progress_bar: &ProgressBar) {
 pub trait ProgressBarExt {
     fn trace(&self, msg: impl Into<Cow<'static, str>>);
     fn info(&self, msg: impl Into<Cow<'static, str>>);
+    fn error(&self, msg: impl Into<Cow<'static, str>>);
 }
 
 impl ProgressBarExt for ProgressBar {
@@ -35,6 +36,14 @@ impl ProgressBarExt for ProgressBar {
         let msg_str: &str = msg_cow.as_ref();
 
         log::info!("{}", msg_str);
+        self.set_message(msg_cow);
+    }
+
+    fn error(&self, msg: impl Into<Cow<'static, str>>) {
+        let msg_cow: Cow<'_, str> = msg.into();
+        let msg_str: &str = msg_cow.as_ref();
+
+        log::error!("{}", msg_str);
         self.set_message(msg_cow);
     }
 }
