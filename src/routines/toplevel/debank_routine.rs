@@ -8,7 +8,7 @@ use crate::{
     ranges,
     spreadsheet_manager::SpreadsheetManager,
     value_range_factory::ValueRangeFactory,
-    Routine, RoutineResult,
+    Routine, RoutineFailureInfo, RoutineResult,
 };
 
 pub struct DebankRoutine;
@@ -18,11 +18,10 @@ impl DebankRoutine {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
-    async fn get_debank_balance(&self) -> f64 {
+    async fn get_debank_balance(&self) -> anyhow::Result<f64> {
         DebankBalanceScraper
             .get_total_balance(&CONFIG.blockchain.airdrops.evm.address)
             .await
-            .expect("Should get Debank total balance")
     }
 
     async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
@@ -50,7 +49,10 @@ impl Routine for DebankRoutine {
         let progress = new_progress(ProgressBar::new_spinner());
 
         progress.trace("Debank: ☁️  Fetching Debank balance");
-        let balance = self.get_debank_balance().await;
+        let balance = self
+            .get_debank_balance()
+            .await
+            .map_err(|error| RoutineFailureInfo::new(error.to_string()))?;
 
         progress.trace(format!("Debank: 📝 Updating balance with ${:.2}", balance,));
         self.update_debank_balance_on_spreadsheet(balance).await;

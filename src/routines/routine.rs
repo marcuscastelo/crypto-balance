@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct RoutineFailureInfo {
-    message: String,
+    pub message: String,
 }
 
 impl RoutineFailureInfo {

@@ -17,7 +17,7 @@ use std::collections::HashMap;
 
 use cli::progress::CLI_MULTI_PROGRESS;
 use indicatif_log_bridge::LogWrapper;
-use tokio::process::Command;
+use tokio::{process::Command, task::JoinError};
 
 use crate::prelude::*;
 
@@ -50,16 +50,25 @@ async fn run_routines(parallel: bool) {
 
     if parallel {
         let future_results = futures::future::join_all(futures).await;
-        for (routine, result) in routines_to_run.iter().zip(future_results) {
-            routine_results.insert(
-                routine.name().to_string(),
-                result.expect(format!("Failed to run routine: {}", routine.name()).as_str()),
-            );
+        for (routine, join_result) in routines_to_run.iter().zip(future_results) {
+            let routine_result = match join_result {
+                Ok(result) => result,
+                Err(e) => Err(RoutineFailureInfo::new(e.to_string())),
+            };
+
+            routine_results.insert(routine.name().to_string(), routine_result);
         }
     }
 
-    for result in routine_results {
-        log::info!("Routine result: {:?}", result);
+    for (name, result) in routine_results {
+        match result {
+            Ok(()) => {
+                log::info!("✅ {}: OK", name);
+            }
+            Err(failure_info) => {
+                log::error!("❌ {}: {}", name, failure_info.message);
+            }
+        }
     }
 
     // Kill all geckodriver processes

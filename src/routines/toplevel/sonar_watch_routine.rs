@@ -18,13 +18,12 @@ impl SonarWatch {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
-    async fn get_sonar_watch_balance(&self) -> Option<f64> {
-        let sonar_response = SonarWatchScraper
-            .scrape()
-            .await
-            .expect("Should get SonarWatch total balance");
+    async fn get_sonar_watch_balance(&self) -> anyhow::Result<f64> {
+        let sonar_response = SonarWatchScraper.scrape().await?;
 
-        sonar_response.value
+        sonar_response
+            .value
+            .ok_or_else(|| anyhow::anyhow!("SonarWatch response did not contain a value"))
     }
 
     async fn update_sonar_watch_balance_on_spreadsheet(&self, balance: f64) {
@@ -52,9 +51,10 @@ impl Routine for SonarWatch {
         let progress = new_progress(ProgressBar::new_spinner());
 
         progress.trace("SonarWatch: ☁️  Fetching SonarWatch balance");
-        let balance = self.get_sonar_watch_balance().await.ok_or_else(|| {
-            RoutineFailureInfo::new("Unable to get SonarWatch balance".to_owned())
-        })?;
+        let balance = self
+            .get_sonar_watch_balance()
+            .await
+            .map_err(|error| RoutineFailureInfo::new(error.to_string()))?;
 
         progress.trace(format!(
             "SonarWatch: 📝 Updating balance with ${:.2}",
