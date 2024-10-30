@@ -1,8 +1,8 @@
-use crate::prelude::*;
+use crate::cli::progress::ProgressBarExt;
+use crate::{cli::progress::new_progress, prelude::*};
 
 use crate::exchange::bybit::factory::BybitFactory;
 use bybit_rs::bybit::account::Account;
-use cli::progress::{new_progress, ProgressBarExt};
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
 use into::MyInto;
@@ -10,6 +10,8 @@ use serde::Deserialize;
 use serde_json::Value;
 use spreadsheet_manager::SpreadsheetManager;
 use std::collections::HashMap;
+
+use super::routine::{Routine, RoutineResult};
 
 pub struct BybitRoutine;
 

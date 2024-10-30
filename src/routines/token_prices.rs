@@ -1,13 +1,17 @@
 use std::collections::HashMap;
 
-use crate::prelude::*;
-use cli::progress::{finish_progress, new_progress, ProgressBarExt};
+use crate::{
+    cli::progress::{finish_progress, new_progress, ProgressBarExt},
+    prelude::*,
+    price::domain::price::get_token_prices,
+};
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
 use into::MyInto;
-use price::domain::price::get_token_prices;
 use spreadsheet_manager::SpreadsheetManager;
 use value_range_factory::ValueRangeFactory;
+
+use super::routine::{Routine, RoutineResult};
 
 pub struct TokenPricesRoutine;
 

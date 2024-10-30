@@ -1,13 +1,15 @@
-use crate::exchange::binance::factory::BinanceAccountFactory;
+use crate::cli::progress::ProgressBarExt;
 use crate::prelude::*;
+use crate::{cli::progress::new_progress, exchange::binance::factory::BinanceAccountFactory};
 use ::binance::account::Account as BinanceAccount;
-use cli::progress::{new_progress, ProgressBarExt};
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
 use into::MyInto;
 use serde_json::Value;
 use spreadsheet_manager::SpreadsheetManager;
 use std::collections::HashMap;
+
+use super::routine::{Routine, RoutineResult};
 
 pub struct BinanceRoutine;
 
