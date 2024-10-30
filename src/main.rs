@@ -17,7 +17,8 @@ use std::collections::HashMap;
 
 use cli::progress::CLI_MULTI_PROGRESS;
 use indicatif_log_bridge::LogWrapper;
-use tokio::{process::Command, task::JoinError};
+use routines::routine::{Routine, RoutineFailureInfo, RoutineResult};
+use tokio::process::Command;
 
 use crate::prelude::*;
 
@@ -25,8 +26,8 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<&dyn Routine> = vec![
-        &routines::toplevel::debank_routine::DebankRoutine,
-        &routines::toplevel::sonar_watch_routine::SonarWatch,
+        // &routines::toplevel::debank_routine::DebankRoutine,
+        // &routines::toplevel::sonar_watch_routine::SonarWatch,
         &routines::toplevel::token_prices::TokenPricesRoutine,
         &routines::toplevel::binance_routine::BinanceRoutine,
         &routines::toplevel::bybit_routine::BybitRoutine,

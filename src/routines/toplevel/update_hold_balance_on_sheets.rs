@@ -1,13 +1,14 @@
 use std::{collections::HashMap, sync::Arc};
 
+use error_stack::ResultExt;
 use google_sheets4::api::ValueRange;
 use regex::Regex;
 
 use crate::{
+    block_explorer::explorer::FetchBalanceError,
     config::app_config::{self, CONFIG},
     into::MyInto,
     ranges,
-    routines::blockchain::FetchEvmChainBalancesRoutine,
     sheets::domain::{
         a1_notation::ToA1Notation, cell_position::CellPosition, cell_range::CellRange,
         column::Column, row::Row,
@@ -55,9 +56,50 @@ impl TokenBalanceProcessor {
 }
 
 impl UpdateHoldBalanceOnSheetsRoutine {
+    pub async fn fetch_all_evm_balances(
+        &self,
+        chain: &Chain,
+        evm_address: &str,
+    ) -> error_stack::Result<HashMap<Arc<Token>, TokenBalance>, FetchBalanceError> {
+        log::info!("Fetching balance for {}", chain.name);
+
+        log::info!("Fetching native balance for {}", chain.name);
+        let native_balance = chain
+            .explorer
+            .fetch_native_balance(evm_address)
+            .await
+            .attach_printable_lazy(|| {
+                format!(
+                    "Failed to fetch native balance for chain '{}', address '{}'",
+                    chain.name, evm_address
+                )
+            })?;
+
+        log::info!("Fetching ERC20 balances for {}", chain.name);
+        let erc20_balances = chain
+            .explorer
+            .fetch_erc20_balances(evm_address)
+            .await
+            .attach_printable_lazy(|| {
+                format!(
+                    "Failed to fetch ERC20 balances for chain '{}', address '{}'",
+                    chain.name, evm_address
+                )
+            })?;
+
+        log::info!("Merging balances for {}", chain.name);
+        let mut balances = erc20_balances;
+        balances.insert(chain.native_token.to_owned(), native_balance);
+
+        log::info!("Balances fetched for {}", chain.name);
+
+        // Remove zero balances
+        balances.retain(|_, balance| balance.balance > 0.0);
+        Ok(balances)
+    }
+
     async fn fetch_balance_hold(&self, chain: &Chain) -> HashMap<Arc<Token>, TokenBalance<String>> {
-        FetchEvmChainBalancesRoutine
-            .run(chain, &CONFIG.blockchain.hold.evm.address)
+        self.fetch_all_evm_balances(chain, &CONFIG.blockchain.hold.evm.address)
             .await
             .expect(format!("Should fetch '{}' chain balances for hold", chain.name).as_str())
     }
@@ -66,8 +108,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
         &self,
         chain: &Chain,
     ) -> HashMap<Arc<Token>, TokenBalance<String>> {
-        FetchEvmChainBalancesRoutine
-            .run(chain, &CONFIG.blockchain.hold_sc.evm.address)
+        self.fetch_all_evm_balances(chain, &CONFIG.blockchain.hold_sc.evm.address)
             .await
             .expect(format!("Should fetch '{}' chain balances for hold_sc", chain.name).as_str())
     }
