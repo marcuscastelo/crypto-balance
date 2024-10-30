@@ -1,14 +1,14 @@
-use crate::cli::progress::ProgressBarExt;
-use crate::{cli::progress::new_progress, prelude::*};
+use crate::{
+    cli::progress::ProgressBarExt,
+    exchange::data::bybit::factory::BybitFactory,
+    sheets::{data::spreadsheet_manager::SpreadsheetManager, into::MyInto, ranges},
+};
 
-use crate::exchange::bybit::factory::BybitFactory;
 use bybit_rs::bybit::account::Account;
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
-use into::MyInto;
 use serde::Deserialize;
 use serde_json::Value;
-use spreadsheet_manager::SpreadsheetManager;
 use std::collections::HashMap;
 
 use super::routine::{Routine, RoutineResult};
@@ -129,24 +129,24 @@ impl Routine for BybitRoutine {
     }
 
     async fn run(&self) -> RoutineResult {
-        log::info!("Running BybitRoutine");
+        // log::info!("Running BybitRoutine");
 
-        let progress = new_progress(ProgressBar::new_spinner());
+        // let progress = new_progress(ProgressBar::new_spinner());
 
-        progress.trace("Bybit: 📋 Listing all tokens from the spreadsheet");
-        let token_names: Vec<String> = self.get_token_names_from_spreadsheet().await;
+        // progress.trace("Bybit: 📋 Listing all tokens from the spreadsheet");
+        // let token_names: Vec<String> = self.get_token_names_from_spreadsheet().await;
 
-        progress.trace("Bybit: ☁️  Getting balances from Bybit");
-        let balances = self.get_bybit_balances().await;
+        // progress.trace("Bybit: ☁️  Getting balances from Bybit");
+        // let balances = self.get_bybit_balances().await;
 
-        progress.trace("Bybit: 📊 Ordering balances");
-        let token_balances = self.order_balances(token_names.as_slice(), &balances).await;
+        // progress.trace("Bybit: 📊 Ordering balances");
+        // let token_balances = self.order_balances(token_names.as_slice(), &balances).await;
 
-        progress.trace("Bybit: 📝 Updating Bybit balances on the spreadsheet");
-        self.update_binance_balances_on_spreadsheet(token_balances.as_slice())
-            .await;
+        // progress.trace("Bybit: 📝 Updating Bybit balances on the spreadsheet");
+        // self.update_binance_balances_on_spreadsheet(token_balances.as_slice())
+        //     .await;
 
-        progress.info("Bybit: ✅ Updated Bybit balances on the spreadsheet");
+        // progress.info("Bybit: ✅ Updated Bybit balances on the spreadsheet");
 
         Ok(())
     }

@@ -1,6 +1,4 @@
-use crate::simple_xpath_scraper::SimpleXPathScraper;
-
-use super::formatting::balance::format_balance;
+use super::{formatting::balance::format_balance, simple_xpath_scraper::SimpleXPathScraper};
 
 pub struct DebankBalanceScraper;
 impl DebankBalanceScraper {

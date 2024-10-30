@@ -4,16 +4,17 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
-    ranges,
-    sonar_watch_scraper::SonarWatchScraper,
-    spreadsheet_manager::SpreadsheetManager,
-    value_range_factory::ValueRangeFactory,
+    scraping::sonar_watch_scraper::SonarWatchScraper,
+    sheets::{
+        data::spreadsheet_manager::SpreadsheetManager, ranges,
+        value_range_factory::ValueRangeFactory,
+    },
     Routine, RoutineFailureInfo, RoutineResult,
 };
 
-pub struct SonarWatch;
+pub struct SonarWatchRoutine;
 
-impl SonarWatch {
+impl SonarWatchRoutine {
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
@@ -40,7 +41,7 @@ impl SonarWatch {
 }
 
 #[async_trait::async_trait]
-impl Routine for SonarWatch {
+impl Routine for SonarWatchRoutine {
     fn name(&self) -> &'static str {
         "SonarWatch"
     }

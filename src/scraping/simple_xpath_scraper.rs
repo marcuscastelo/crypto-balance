@@ -3,7 +3,7 @@ use indicatif::ProgressBar;
 
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
-    scraper_driver::ScraperDriver,
+    scraping::scraper_driver::ScraperDriver,
 };
 
 pub struct SimpleXPathScraper {

@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use crate::BlockExplorer;
 use async_trait::async_trait;
 
 use crate::blockchain::prelude::*;

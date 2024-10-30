@@ -4,10 +4,11 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
-    debank_scraper::DebankBalanceScraper,
-    ranges,
-    spreadsheet_manager::SpreadsheetManager,
-    value_range_factory::ValueRangeFactory,
+    scraping::debank_scraper::DebankBalanceScraper,
+    sheets::{
+        data::spreadsheet_manager::SpreadsheetManager, ranges,
+        value_range_factory::ValueRangeFactory,
+    },
     Routine, RoutineFailureInfo, RoutineResult,
 };
 

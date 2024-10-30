@@ -16,23 +16,32 @@ mod sheets;
 use std::collections::HashMap;
 
 use cli::progress::CLI_MULTI_PROGRESS;
+use exchange::data::binance::binance_use_cases::BinanceUseCases;
 use indicatif_log_bridge::LogWrapper;
-use routines::routine::{Routine, RoutineFailureInfo, RoutineResult};
+use routines::{
+    bybit_routine::BybitRoutine,
+    debank_routine::DebankRoutine,
+    exchange_balances_routine::ExchangeBalancesRoutine,
+    kraken_routine::KrakenRoutine,
+    routine::{Routine, RoutineFailureInfo, RoutineResult},
+    token_prices::TokenPricesRoutine,
+    update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
+};
 use tokio::process::Command;
-
-use crate::prelude::*;
 
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
-    let routines_to_run: Vec<&dyn Routine> = vec![
-        // &routines::toplevel::debank_routine::DebankRoutine,
-        // &routines::toplevel::sonar_watch_routine::SonarWatch,
-        &routines::token_prices::TokenPricesRoutine,
-        &routines::binance_routine::BinanceRoutine,
-        &routines::bybit_routine::BybitRoutine,
-        &routines::kraken_routine::KrakenRoutine,
-        // &routines::toplevel::UpdateHoldBalanceOnSheetsRoutine,
+    let binance_use_cases = &BinanceUseCases;
+
+    let routines_to_run: Vec<Box<dyn Routine>> = vec![
+        Box::new(DebankRoutine),
+        // Box::new(SonarWatchRoutine),
+        Box::new(TokenPricesRoutine),
+        Box::new(ExchangeBalancesRoutine::new(binance_use_cases)),
+        Box::new(BybitRoutine),
+        Box::new(KrakenRoutine),
+        Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 
     let mut futures = Vec::new();
@@ -41,8 +50,7 @@ async fn run_routines(parallel: bool) {
 
     for routine in routines_to_run.iter() {
         if parallel {
-            let future = tokio::spawn(routine.run());
-            futures.push(future);
+            futures.push(routine.run());
         } else {
             let result = routine.run().await;
             routine_results.insert(routine.name().to_string(), result);
@@ -51,13 +59,8 @@ async fn run_routines(parallel: bool) {
 
     if parallel {
         let future_results = futures::future::join_all(futures).await;
-        for (routine, join_result) in routines_to_run.iter().zip(future_results) {
-            let routine_result = match join_result {
-                Ok(result) => result,
-                Err(e) => Err(RoutineFailureInfo::new(e.to_string())),
-            };
-
-            routine_results.insert(routine.name().to_string(), routine_result);
+        for (routine, result) in routines_to_run.iter().zip(future_results) {
+            routine_results.insert(routine.name().to_string(), result);
         }
     }
 
