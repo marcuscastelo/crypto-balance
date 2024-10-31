@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use fantoccini::{elements::Element, error::CmdError, Locator};
 use reqwest::Url;
@@ -142,7 +142,7 @@ pub struct FarmingTokenInfo {
 }
 
 // Contains all fields from before, but optional
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GenericTokenInfo {
     token_name: Option<String>,
     pool: Option<String>,
@@ -152,6 +152,7 @@ pub struct GenericTokenInfo {
     claimable_amount: Option<String>,
     end_time: Option<String>,
     usd_value: Option<String>,
+    variant_header: Option<String>, // Supplied, Borrowed, Rewards, etc. (not to be confused with tracking title)
 }
 
 impl DebankBalanceScraper {
@@ -230,7 +231,7 @@ impl DebankBalanceScraper {
 
         if let Some(wallet) = wallet.as_ref() {
             let wallet_info = self.get_chain_wallet_info(wallet).await?;
-            log::info!("{}: Wallet info: {:#?}", chain_name, wallet_info);
+            log::info!("{}: Wallet info: {:?}", chain_name, wallet_info);
         } else {
             log::info!("{}: No wallet found", chain_name);
         }
@@ -238,10 +239,11 @@ impl DebankBalanceScraper {
         let mut projects_info = Vec::new();
         for project in projects.iter() {
             let project_info = self.get_chain_project_info(project).await?;
+            log::info!("{}: Project info: {:#?}", chain_name, project_info);
             projects_info.push(project_info);
         }
 
-        log::info!("{}: Projects: {:#?}", chain_name, projects_info);
+        log::info!("{}: Projects: {:?}", chain_name, projects_info);
 
         Ok(())
     }
@@ -282,7 +284,7 @@ impl DebankBalanceScraper {
                     .text()
                     .await?,
             });
-            log::trace!("Token: {:#?}", tokens.last().unwrap());
+            log::trace!("Token: {:?}", tokens.last().unwrap());
         }
 
         Ok(ChainWalletInfo { usd_value, tokens })
@@ -304,14 +306,14 @@ impl DebankBalanceScraper {
         let mut trackings = Vec::new();
 
         for tracking_element in tracking_elements.iter() {
-            let tracking = self.get_project_tracking(tracking_element).await?;
+            let tracking = self.explore_tracking(tracking_element).await?;
             trackings.push(tracking);
         }
 
         Ok(ChainProjectInfo { name, trackings })
     }
 
-    async fn get_project_tracking(&self, tracking: &Element) -> anyhow::Result<ProjectTracking> {
+    async fn explore_tracking(&self, tracking: &Element) -> anyhow::Result<ProjectTracking> {
         let tracking_type = tracking
             .find(Locator::XPath("div[1]/div[1]/div[1]"))
             .await?
@@ -348,38 +350,192 @@ impl DebankBalanceScraper {
         let row_selector = "div.table_contentRow__Mi3k5.flex_flexRow__y0UR2";
         let rows = tracking_body.find_all(Locator::Css(row_selector)).await?;
 
-        let mut generic_infos: Vec<(String, String)> = Vec::new();
+        let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
 
         for row in rows.as_slice() {
             let cells = row.find_all(Locator::XPath("div")).await?;
             let mut values = Vec::new();
             for cell in cells.as_slice() {
-                log::trace!("Cell: {:?}", cell.html(true).await?);
                 let cell_info = self.extract_cell_info(cell).await?;
-                log::trace!("Cell info: {}", cell_info);
                 values.push(cell_info);
             }
 
             if headers.len() != values.len() {
                 return Err(anyhow::anyhow!("Headers and values length mismatch"));
             }
-            generic_infos.append(
-                headers
-                    .clone()
+
+            let zipped = headers
+                .clone()
+                .into_iter()
+                .zip(values.into_iter())
+                .collect::<Vec<_>>();
+
+            generic_infos.push(zipped);
+        }
+
+        log::trace!("Generic infos: {:#?}", generic_infos);
+
+        let generic_infos = self.parse_generic_info(generic_infos)?;
+
+        log::trace!("Generic infos: {:#?}", generic_infos);
+
+        let specialized = self.specialize_generic_info(&tracking_type, generic_infos)?;
+
+        Ok(specialized)
+    }
+
+    fn specialize_generic_info(
+        &self,
+        tracking_type: &str,
+        generic_infos: Vec<GenericTokenInfo>,
+    ) -> anyhow::Result<ProjectTracking> {
+        match tracking_type {
+            "Yield" => Ok(ProjectTracking::YieldFarm {
+                yield_farm: generic_infos
                     .into_iter()
-                    .zip(values.into_iter())
-                    .collect::<Vec<_>>()
-                    .as_mut(),
-            );
+                    .map(|generic| YieldFarmTokenInfo {
+                        token_name: generic.token_name,
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                    })
+                    .collect(),
+            }),
+            "Staked" => Ok(ProjectTracking::Staked {
+                staked: generic_infos
+                    .into_iter()
+                    .map(|generic| StakeTokenInfo {
+                        token_name: generic.token_name,
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        rewards: generic.rewards,
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                    })
+                    .collect(),
+            }),
+            "Deposit" => Ok(ProjectTracking::Deposit {
+                deposit: generic_infos
+                    .into_iter()
+                    .map(|generic| DepositTokenInfo {
+                        token_name: generic.token_name,
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                    })
+                    .collect(),
+            }),
+            "Locked" => Ok(ProjectTracking::Locked {
+                locked: generic_infos
+                    .into_iter()
+                    .map(|generic| LockedTokenInfo {
+                        token_name: generic.token_name,
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        unlock_time: generic.unlock_time,
+                        rewards: generic.rewards,
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                    })
+                    .collect(),
+            }),
+            "Vesting" => Ok(ProjectTracking::Vesting {
+                vesting: generic_infos
+                    .into_iter()
+                    .map(|generic| VestingTokenInfo {
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                        end_time: generic.end_time.expect("End time not found"),
+                        claimable_amount: generic.claimable_amount,
+                    })
+                    .collect(),
+            }),
+            "Rewards" => Ok(ProjectTracking::Rewards {
+                rewards: generic_infos
+                    .into_iter()
+                    .map(|generic| RewardTokenInfo {
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                    })
+                    .collect(),
+            }),
+            "Liquidity Pool" => Ok(ProjectTracking::LiquidityPool {
+                liquidity_pool: generic_infos
+                    .into_iter()
+                    .map(|generic| LiquidityPoolTokenInfo {
+                        token_name: generic.token_name,
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                        rewards: generic.rewards,
+                    })
+                    .collect(),
+            }),
+            "Farming" => Ok(ProjectTracking::Farming {
+                farming: generic_infos
+                    .into_iter()
+                    .map(|generic| FarmingTokenInfo {
+                        token_name: generic.token_name,
+                        pool: generic.pool.expect("Pool not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                        rewards: generic.rewards,
+                    })
+                    .collect(),
+            }),
+            "Lending" => Ok(ProjectTracking::Lending {
+                supplied: generic_infos
+                    .into_iter()
+                    .map(|generic| LendingTokenInfo {
+                        token_name: generic.token_name.expect("Token name not found"),
+                        balance: generic.balance.expect("Balance not found"),
+                        usd_value: generic.usd_value.expect("USD value not found"),
+                    })
+                    .collect(),
+                borrowed: None,
+                rewards: None,
+            }),
+            _ => Err(anyhow::anyhow!(format!(
+                "Unknown tracking type: {}",
+                tracking_type
+            ))),
+        }
+    }
+
+    fn parse_generic_info(
+        &self,
+        generic_info: Vec<Vec<(String, String)>>,
+    ) -> anyhow::Result<Vec<GenericTokenInfo>> {
+        let mut infos = Vec::new();
+        for row_values in generic_info.as_slice() {
+            let mut info = GenericTokenInfo::default();
+            for (header, value) in row_values.as_slice() {
+                match header.as_str() {
+                    " " => info.token_name = value.clone().into(),
+                    "Pool" => info.pool = value.clone().into(),
+                    "Balance" => info.balance = value.clone().into(),
+                    "Unlock time" => info.unlock_time = value.clone().into(),
+                    "Claimable Amount" => info.claimable_amount = value.clone().into(),
+                    "End Time" => info.end_time = value.clone().into(),
+                    "USD Value" => info.usd_value = value.clone().into(),
+                    "Supplied" | "Borrowed" | "Rewards" => {
+                        // Variant header
+                        info.variant_header = header.clone().into();
+                        info.token_name = value.clone().into();
+                        if header == "Rewards" {
+                            info.rewards = value.clone().into();
+                        }
+                    }
+                    _ => {
+                        log::warn!("Unknown header: {}", header);
+                        return Err(anyhow::anyhow!(format!("Unknown header: {}", header)));
+                    }
+                }
+            }
+            infos.push(info);
         }
 
-        for info in generic_infos.iter() {
-            log::trace!("Info: {:?}", info);
-        }
-
-        Ok(ProjectTracking::Deposit {
-            deposit: Vec::new(),
-        })
+        Ok(infos)
     }
 
     async fn extract_cell_info(&self, cell: &Element) -> anyhow::Result<String> {
@@ -400,7 +556,7 @@ impl DebankBalanceScraper {
                 .await?;
 
             return Ok(format!(
-                "{};;{}", // 0.001;;ETH
+                "{} {}", // 0.001 ETH
                 div_span_div_and_a_text, div_span_div_and_a_a
             ));
         }
