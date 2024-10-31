@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::exchange::domain::exchange::ExchangeUseCases;
+use crate::{
+    exchange::domain::exchange::ExchangeUseCases, sheets::data::spreadsheet::BalanceUpdateTarget,
+};
 
 use super::factory::BinanceAccountFactory;
 
@@ -14,7 +16,11 @@ impl BinanceUseCases {
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for BinanceUseCases {
-    async fn get_balances(&self) -> HashMap<String, f64> {
+    fn spreadsheet_target(&self) -> BalanceUpdateTarget {
+        BalanceUpdateTarget::Binance
+    }
+
+    async fn fetch_balances(&self) -> HashMap<String, f64> {
         let binance_account = BinanceAccountFactory::create();
 
         binance_account

@@ -16,13 +16,14 @@ mod sheets;
 use std::collections::HashMap;
 
 use cli::progress::CLI_MULTI_PROGRESS;
-use exchange::data::binance::binance_use_cases::BinanceUseCases;
+use exchange::data::{
+    binance::binance_use_cases::BinanceUseCases, bybit::bybit_use_cases::BybitUseCases,
+    kraken::kraken_use_cases::KrakenUseCases,
+};
 use indicatif_log_bridge::LogWrapper;
 use routines::{
-    bybit_routine::BybitRoutine,
     debank_routine::DebankRoutine,
     exchange_balances_routine::ExchangeBalancesRoutine,
-    kraken_routine::KrakenRoutine,
     routine::{Routine, RoutineFailureInfo, RoutineResult},
     token_prices::TokenPricesRoutine,
     update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
@@ -32,15 +33,13 @@ use tokio::process::Command;
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
-    let binance_use_cases = &BinanceUseCases;
-
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
         Box::new(DebankRoutine),
         // Box::new(SonarWatchRoutine),
         Box::new(TokenPricesRoutine),
-        Box::new(ExchangeBalancesRoutine::new(binance_use_cases)),
-        Box::new(BybitRoutine),
-        Box::new(KrakenRoutine),
+        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 

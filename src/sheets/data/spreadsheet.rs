@@ -6,6 +6,20 @@ use crate::sheets::{into::MyInto, ranges};
 
 pub struct SpreadsheetUseCasesImpl;
 
+pub enum BalanceUpdateTarget {
+    Binance,
+    Bybit,
+    Kraken,
+}
+
+fn get_target_range(target: BalanceUpdateTarget) -> &'static str {
+    match target {
+        BalanceUpdateTarget::Binance => ranges::balances::binance::RW_AMOUNTS,
+        BalanceUpdateTarget::Bybit => ranges::balances::bybit::RW_AMOUNTS,
+        BalanceUpdateTarget::Kraken => ranges::balances::kraken::RW_AMOUNTS,
+    }
+}
+
 impl SpreadsheetUseCasesImpl {
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
@@ -22,11 +36,18 @@ impl SpreadsheetUseCasesImpl {
             .my_into()
     }
 
-    pub async fn update_binance_balances_on_spreadsheet(&self, balances: &[f64]) {
+    pub async fn update_balances_on_spreadsheet(
+        &self,
+        target: BalanceUpdateTarget,
+        balances: &[f64],
+    ) {
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
+
+        let range = get_target_range(target);
+
         spreadsheet_manager
             .write_named_range(
-                ranges::balances::binance::RW_AMOUNTS,
+                range,
                 // TODO: create Vec<T> to ValueRange conversion
                 ValueRange {
                     range: None,

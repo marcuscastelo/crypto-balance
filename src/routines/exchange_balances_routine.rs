@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{new_progress, ProgressBarExt},
     exchange::domain::exchange::ExchangeUseCases,
-    sheets::data::spreadsheet::SpreadsheetUseCasesImpl,
+    sheets::data::spreadsheet::{BalanceUpdateTarget, SpreadsheetUseCasesImpl},
 };
 
 use super::routine::{Routine, RoutineResult};
@@ -48,14 +48,17 @@ impl Routine for ExchangeBalancesRoutine {
         let token_names = self.persistence.get_token_names_from_spreadsheet().await;
 
         progress.trace("Binance: ☁️  Getting balances from exchange");
-        let balance_by_token = self.exchange.get_balances().await;
+        let balance_by_token = self.exchange.fetch_balances().await;
 
         progress.trace("Binance: 📊 Ordering balances");
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);
 
         progress.trace("Binance: 📝 Updating Binance balances on the spreadsheet");
         self.persistence
-            .update_binance_balances_on_spreadsheet(token_balances.as_slice())
+            .update_balances_on_spreadsheet(
+                self.exchange.spreadsheet_target(),
+                token_balances.as_slice(),
+            )
             .await;
 
         progress.info("Binance: ✅ Updated Binance balances on the spreadsheet");
