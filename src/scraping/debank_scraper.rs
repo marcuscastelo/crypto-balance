@@ -1,32 +1,39 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use fantoccini::{elements::Element, error::CmdError, Locator};
 use reqwest::Url;
 
-use super::scraper_driver::ScraperDriver;
+use super::{formatting::balance::format_balance, scraper_driver::ScraperDriver};
 
 pub struct DebankBalanceScraper {
     driver: ScraperDriver,
 }
 
 #[derive(Debug, Clone)]
+pub struct ChainInfo {
+    pub name: String,
+    pub wallet_info: Option<ChainWalletInfo>,
+    pub project_info: Vec<ChainProjectInfo>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ChainWalletInfo {
-    usd_value: String,
-    tokens: Vec<SpotTokenInfo>,
+    pub usd_value: String,
+    pub tokens: Vec<SpotTokenInfo>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SpotTokenInfo {
-    name: String,
-    price: String,
-    amount: String,
-    usd_value: String,
+    pub name: String,
+    pub price: String,
+    pub amount: String,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct ChainProjectInfo {
-    name: String,
-    trackings: Vec<ProjectTracking>,
+    pub name: String,
+    pub trackings: Vec<ProjectTracking>,
 }
 
 #[derive(Debug, Clone)]
@@ -67,92 +74,92 @@ pub enum ProjectTracking {
 
 #[derive(Debug, Clone)]
 pub struct LendingTokenInfo {
-    token_name: String,
-    balance: String,
-    usd_value: String,
+    pub token_name: String,
+    pub balance: String,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct StakeTokenInfo {
-    token_name: Option<String>, // When token_name is not available, pool name is used
-    pool: String,
-    balance: String,
-    rewards: Option<String>,
-    usd_value: String,
+    pub token_name: Option<String>, // When token_name is not available, pool name is used
+    pub pool: String,
+    pub balance: String,
+    pub rewards: Option<String>,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct LockedTokenInfo {
-    token_name: Option<String>, // When token_name is not available, pool name is used
-    pool: String,
-    balance: String,
-    rewards: Option<String>,
-    unlock_time: Option<String>,
-    usd_value: String,
+    pub token_name: Option<String>, // When token_name is not available, pool name is used
+    pub pool: String,
+    pub balance: String,
+    pub rewards: Option<String>,
+    pub unlock_time: Option<String>,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct RewardTokenInfo {
-    pool: String,
-    balance: String,
-    usd_value: String,
+    pub pool: String,
+    pub balance: String,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct VestingTokenInfo {
-    pool: String,
-    balance: String,
-    claimable_amount: Option<String>,
-    end_time: String,
-    usd_value: String,
+    pub pool: String,
+    pub balance: String,
+    pub claimable_amount: Option<String>,
+    pub end_time: String,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct YieldFarmTokenInfo {
-    token_name: Option<String>,
-    pool: String,
-    balance: String,
-    usd_value: String,
+    pub token_name: Option<String>,
+    pub pool: String,
+    pub balance: String,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct DepositTokenInfo {
-    token_name: Option<String>, // When token_name is not available, pool name is used
-    pool: String,
-    balance: String,
-    usd_value: String,
+    pub token_name: Option<String>, // When token_name is not available, pool name is used
+    pub pool: String,
+    pub balance: String,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct LiquidityPoolTokenInfo {
-    token_name: Option<String>, // When token_name is not available, pool name is used
-    pool: String,
-    balance: String,
-    rewards: Option<String>,
-    usd_value: String,
+    pub token_name: Option<String>, // When token_name is not available, pool name is used
+    pub pool: String,
+    pub balance: String,
+    pub rewards: Option<String>,
+    pub usd_value: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct FarmingTokenInfo {
-    token_name: Option<String>, // When token_name is not available, pool name is used
-    pool: String,
-    balance: String,
-    rewards: Option<String>,
-    usd_value: String,
+    pub token_name: Option<String>, // When token_name is not available, pool name is used
+    pub pool: String,
+    pub balance: String,
+    pub rewards: Option<String>,
+    pub usd_value: String,
 }
 
 // Contains all fields from before, but optional
 #[derive(Debug, Clone, Default)]
 pub struct GenericTokenInfo {
-    token_name: Option<String>,
-    pool: Option<String>,
-    balance: Option<String>,
-    rewards: Option<String>,
-    unlock_time: Option<String>,
-    claimable_amount: Option<String>,
-    end_time: Option<String>,
-    usd_value: Option<String>,
-    variant_header: Option<String>, // Supplied, Borrowed, Rewards, etc. (not to be confused with tracking title)
+    pub token_name: Option<String>,
+    pub pool: Option<String>,
+    pub balance: Option<String>,
+    pub rewards: Option<String>,
+    pub unlock_time: Option<String>,
+    pub claimable_amount: Option<String>,
+    pub end_time: Option<String>,
+    pub usd_value: Option<String>,
+    pub variant_header: Option<String>, // Supplied, Borrowed, Rewards, etc. (not to be confused with tracking title)
 }
 
 impl DebankBalanceScraper {
@@ -200,7 +207,7 @@ impl DebankBalanceScraper {
         Ok(chains)
     }
 
-    async fn get_chain_balances(&self, chain: &Element) -> anyhow::Result<()> {
+    async fn get_chain_info(&self, chain: &Element) -> anyhow::Result<ChainInfo> {
         let chain_name = chain.find(Locator::XPath("div[1]")).await?.text().await?;
         log::info!("Getting chain balance for chain {}", chain_name);
         let chain_balance = chain
@@ -229,12 +236,13 @@ impl DebankBalanceScraper {
             .find_all(Locator::Css(project_selector))
             .await?;
 
-        if let Some(wallet) = wallet.as_ref() {
-            let wallet_info = self.get_chain_wallet_info(wallet).await?;
-            log::info!("{}: Wallet info: {:?}", chain_name, wallet_info);
+        let wallet_info = if let Some(wallet) = wallet.as_ref() {
+            self.get_chain_wallet_info(wallet).await?.into()
         } else {
-            log::info!("{}: No wallet found", chain_name);
-        }
+            None
+        };
+
+        log::info!("{}: Wallet info: {:?}", chain_name, wallet_info);
 
         let mut projects_info = Vec::new();
         for project in projects.iter() {
@@ -245,7 +253,11 @@ impl DebankBalanceScraper {
 
         log::info!("{}: Projects: {:?}", chain_name, projects_info);
 
-        Ok(())
+        Ok(ChainInfo {
+            name: chain_name,
+            wallet_info,
+            project_info: projects_info,
+        })
     }
 
     async fn get_chain_wallet_info(&self, wallet: &Element) -> anyhow::Result<ChainWalletInfo> {
@@ -585,18 +597,34 @@ impl DebankBalanceScraper {
     pub async fn get_total_balance(&self, user_id: &str) -> anyhow::Result<f64> {
         self.open_debank_url(user_id).await?;
         self.wait_data_updated().await?;
+
+        let xpath = "//*[@id=\"root\"]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]";
+        let balance_text = self
+            .driver
+            .client
+            .find(Locator::XPath(xpath))
+            .await?
+            .text()
+            .await?;
+
+        format_balance(&balance_text)
+    }
+
+    pub async fn get_chain_infos(
+        &self,
+        user_id: &str,
+    ) -> anyhow::Result<HashMap<String, ChainInfo>> {
+        self.open_debank_url(user_id).await?;
+        self.wait_data_updated().await?;
         let chain_summaries: Vec<Element> = self.locate_chain_summary_elements().await?;
+
+        let mut chain_infos = HashMap::new();
+
         for chain in chain_summaries.as_slice() {
-            self.get_chain_balances(chain).await?;
+            let chain_info = self.get_chain_info(chain).await?;
+            chain_infos.insert(chain_info.name.clone(), chain_info);
         }
 
-        // let xpath = "//*[@id=\"root\"]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]";
-        for _ in 0..150 {
-            // progress.inc(1);
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
-
-        // format_balance(&balance_text)
-        Ok(0f64)
+        Ok(chain_infos)
     }
 }

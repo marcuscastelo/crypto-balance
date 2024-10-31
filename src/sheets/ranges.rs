@@ -24,6 +24,12 @@ pub mod balances {
     }
 }
 
+#[allow(non_snake_case)] // To match sheet names
+pub mod AaH {
+    pub const RW_ETH_BALANCES_NAMES: &str = "AaH__vEthBalances_Names";
+    pub const RW_ETH_BALANCES_AMOUNTS: &str = "AaH__vEthBalances_Amounts";
+}
+
 pub mod airdrops {
     pub const RW_DEBANK_TOTAL_USD: &str = "Airdrops__cDebankTotalUSD";
     pub const RW_SONAR_WATCH_TOTAL_USD: &str = "Airdrops__cSonarWatchTotalUSD";
