@@ -28,6 +28,8 @@ pub mod balances {
 pub mod AaH {
     pub const RW_ETH_BALANCES_NAMES: &str = "AaH__vEthBalances_Names";
     pub const RW_ETH_BALANCES_AMOUNTS: &str = "AaH__vEthBalances_Amounts";
+    pub const RW_PENDLE_BALANCES_NAMES: &str = "AaH__vPendleBalances_Names";
+    pub const RW_PENDLE_BALANCES_AMOUNTS: &str = "AaH__vPendleBalances_Amounts";
 }
 
 pub mod airdrops {
