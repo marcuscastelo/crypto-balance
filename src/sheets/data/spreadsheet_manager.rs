@@ -5,6 +5,7 @@ use google_sheets4::{
 };
 use std::collections::HashMap;
 use thiserror::Error;
+use value_range_factory::ValueRangeFactory;
 
 use crate::{config::sheets_config::SpreadsheetConfig, sheets::prelude::*};
 
@@ -191,6 +192,25 @@ impl SpreadsheetManager {
                 .into(),
             )
         })?;
+
+        // Create an empty value range to delete all values in the named range before writing (avoid leaving old values in the named range if the new value range is smaller)
+        let value_count = cell_range.row_count() * cell_range.column_count();
+        let vector_with_empty_values = vec![String::new(); value_count as usize];
+
+        let empty_value_range = ValueRange {
+            range: value_range.range.clone(),
+            major_dimension: value_range.major_dimension.clone(),
+            values: ValueRange::from_rows(vector_with_empty_values.as_slice()).values,
+        };
+
+        self.write_range(
+            cell_range
+                .to_a1_notation(Some(sheet_title.as_str()))
+                .as_ref(),
+            empty_value_range,
+        )
+        .await
+        .expect("Failed to write empty value range to named range");
 
         self.write_range(
             cell_range

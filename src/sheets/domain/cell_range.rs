@@ -11,6 +11,16 @@ pub struct CellRange {
     pub end: CellPosition,
 }
 
+impl CellRange {
+    pub fn row_count(&self) -> u32 {
+        self.end.row.0 - self.start.row.0 + 1
+    }
+
+    pub fn column_count(&self) -> u32 {
+        self.end.col.0 - self.start.col.0 + 1
+    }
+}
+
 /// Conversions: Others -> CellRange
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
