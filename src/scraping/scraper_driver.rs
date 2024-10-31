@@ -51,19 +51,41 @@ impl ScraperDriver {
 
         Ok(scraper)
     }
+
+    pub fn close(&mut self) {
+        log::info!("Closing ScraperDriver");
+        let process = self
+            .driver_process
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No geckodriver process to close"));
+
+        let client_clone = self.client.clone();
+        let client = std::mem::replace(&mut self.client, client_clone);
+
+        let future = async {
+            client
+                .close()
+                .await
+                .unwrap_or_else(|error| log::error!("Failed to close WebDriver client: {}", error));
+
+            if let Ok(mut process) = process {
+                process.kill().unwrap_or_else(|error| {
+                    log::error!("Failed to kill geckodriver process: {}", error)
+                })
+            } else {
+                log::error!("Failed to close geckodriver process")
+            }
+        };
+
+        tokio::spawn(future);
+    }
 }
 
 impl Drop for ScraperDriver {
     fn drop(&mut self) {
-        let process = self
-            .driver_process
-            .take()
-            .ok_or_else(|| log::error!("Driver process not found"));
+        self.close();
 
-        if let Ok(mut process) = process {
-            process.kill().unwrap_or_else(|error| {
-                log::error!("Failed to kill geckodriver process: {}", error)
-            })
-        }
+        // Sleep for a bit to allow future to run (hacky, but it works for now)
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }

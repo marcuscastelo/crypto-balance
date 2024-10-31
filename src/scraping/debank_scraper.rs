@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use fantoccini::{elements::Element, error::CmdError, Locator};
+use fantoccini::{elements::Element, Locator};
 use reqwest::Url;
 
 use super::{formatting::balance::format_balance, scraper_driver::ScraperDriver};
