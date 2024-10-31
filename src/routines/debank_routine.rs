@@ -20,7 +20,8 @@ impl DebankRoutine {
     }
 
     async fn get_debank_balance(&self) -> anyhow::Result<f64> {
-        DebankBalanceScraper
+        let scraper = DebankBalanceScraper::new().await?;
+        scraper
             .get_total_balance(&CONFIG.blockchain.airdrops.evm.address)
             .await
     }
