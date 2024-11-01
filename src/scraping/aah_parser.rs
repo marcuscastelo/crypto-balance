@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::routines::debank_tokens_routine::{RelevantDebankToken, RELEVANT_DEBANK_TOKENS};
 
 use super::debank_scraper::{
-    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, ProjectTracking, SpotTokenInfo,
-    StakeTokenInfo, YieldFarmTokenInfo,
+    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, ProjectTracking,
+    SpotTokenInfo, StakeTokenInfo, YieldFarmTokenInfo,
 };
 
 pub struct AaHParser {
@@ -43,6 +43,13 @@ impl AaHParser {
         token: &str,
         relevant_tokens: &[&RelevantDebankToken],
     ) -> anyhow::Result<()> {
+        log::trace!(
+            "Generic parsing: {} - {} - {} - {:?}",
+            chain,
+            location,
+            amount,
+            token
+        );
         if relevant_tokens.len() > 1 {
             log::error!(
                 "Multiple relevant tokens found for token: {}. Halt!.",
@@ -158,6 +165,7 @@ impl AaHParser {
             );
         });
     }
+
     fn parse_stake_token(&mut self, chain: &str, project_name: &str, token: &StakeTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -189,6 +197,31 @@ impl AaHParser {
         });
     }
 
+    fn parse_lending_token(&mut self, chain: &str, project_name: &str, token: &LendingTokenInfo) {
+        let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
+            .iter()
+            .filter(|relevant_token| {
+                let matches_token_name = relevant_token.matches(&token.token_name);
+                matches_token_name
+            })
+            .collect::<Vec<_>>();
+
+        self.parse_generic(
+            chain,
+            format!("{}(Lending)", project_name).as_str(),
+            token.balance.as_str(),
+            token.token_name.as_str(),
+            matching_relevant_tokens.as_slice(),
+        )
+        .unwrap_or_else(|error| {
+            log::error!(
+                "Failed to parse lending token: {}. Error: {:?}",
+                token.token_name,
+                error
+            );
+        });
+    }
+
     pub fn parse_project(&mut self, chain: &str, project: &ChainProjectInfo) {
         let project_name = project.name.clone();
 
@@ -207,6 +240,33 @@ impl AaHParser {
                 ProjectTracking::Deposit { deposit } => {
                     for token in deposit {
                         self.parse_deposit_token(chain, project_name.as_str(), token);
+                    }
+                }
+                ProjectTracking::Lending {
+                    supplied,
+                    borrowed,
+                    rewards,
+                } => {
+                    for supplied_token in supplied.as_slice() {
+                        self.parse_lending_token(
+                            chain,
+                            format!("{}(Supplied)", project_name).as_str(),
+                            supplied_token,
+                        );
+                    }
+
+                    log::debug!("{} - Borrowed: {:#?}", project.name, borrowed);
+                    if let Some(borrowed_tokens) = borrowed.as_ref() {
+                        for borrowed_token in borrowed_tokens.as_slice() {
+                            let mut borrowed_token = borrowed_token.clone();
+                            borrowed_token.balance =
+                                format!("-{}", borrowed_token.balance.as_str());
+                            self.parse_lending_token(
+                                chain,
+                                format!("{}(Borrowed)", project_name).as_str(),
+                                &borrowed_token,
+                            );
+                        }
                     }
                 }
                 _ => {

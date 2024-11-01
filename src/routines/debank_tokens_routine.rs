@@ -27,7 +27,15 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             token_name: "ETH",
             range_name_rows: ranges::AaH::RW_ETH_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_ETH_BALANCES_AMOUNTS,
-            alternative_names: vec!["WETH", "rswETH", "stETH"],
+            alternative_names: vec![
+                "WETH",
+                "rswETH",
+                "stETH",
+                "wstETH",
+                "wstETH+ETH",
+                "weETH",
+                "wrsETH",
+            ],
         },
         RelevantDebankToken {
             token_name: "PENDLE",
@@ -39,7 +47,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             token_name: "BTC",
             range_name_rows: ranges::AaH::RW_BTC_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_BTC_BALANCES_AMOUNTS,
-            alternative_names: vec!["WBTC", "uniBTC"],
+            alternative_names: vec!["WBTC", "uniBTC", "BTCB"],
         },
     ]
 });
