@@ -6,7 +6,7 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
-    scraping::debank_scraper::{DebankBalanceScraper, ProjectTracking},
+    scraping::{aah_parser::AaHParser, debank_scraper::DebankBalanceScraper},
     sheets::{
         data::spreadsheet_manager::SpreadsheetManager, ranges,
         value_range_factory::ValueRangeFactory,
@@ -14,20 +14,20 @@ use crate::{
     Routine, RoutineFailureInfo, RoutineResult,
 };
 
-struct RelevantDebankToken {
-    token_name: &'static str,
-    range_name_rows: &'static str,
-    range_amount_rows: &'static str,
-    alternative_names: Vec<&'static str>,
+pub struct RelevantDebankToken {
+    pub token_name: &'static str,
+    pub range_name_rows: &'static str,
+    pub range_amount_rows: &'static str,
+    pub alternative_names: Vec<&'static str>,
 }
 
-static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock::new(|| {
+pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock::new(|| {
     vec![
         RelevantDebankToken {
             token_name: "ETH",
             range_name_rows: ranges::AaH::RW_ETH_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_ETH_BALANCES_AMOUNTS,
-            alternative_names: vec!["WETH"],
+            alternative_names: vec!["WETH", "rswETH", "stETH"],
         },
         RelevantDebankToken {
             token_name: "PENDLE",
@@ -54,23 +54,6 @@ impl RelevantDebankToken {
     }
 }
 
-fn parse_amount(amount: &str) -> anyhow::Result<f64> {
-    let amount = amount
-        .replace("₁", "")
-        .replace("₂", "0")
-        .replace("₃", "00")
-        .replace("₄", "000")
-        .replace("₅", "0000")
-        .replace("₆", "00000")
-        .replace("₇", "000000")
-        .replace("₈", "0000000")
-        .replace("₉", "00000000");
-
-    let (amount, _) = amount.split_once(" ").unwrap_or((amount.as_str(), ""));
-
-    Ok(amount.parse()?)
-}
-
 pub struct DebankTokensRoutine;
 
 impl DebankTokensRoutine {
@@ -86,129 +69,18 @@ impl DebankTokensRoutine {
             .get_chain_infos(&CONFIG.blockchain.airdrops.evm.address)
             .await?;
 
-        let mut balances = HashMap::new();
+        let mut aah_parser = AaHParser::new();
+
         for (chain, chain_info) in chain_infos.iter() {
             if let Some(wallet) = chain_info.wallet_info.as_ref() {
-                let wallet_balances: HashMap<String, (String, f64)> = wallet
-                    .tokens
-                    .iter()
-                    .filter_map(|token_info| {
-                        let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
-                            .iter()
-                            .filter(|relevant_token| relevant_token.matches(&token_info.name))
-                            .collect::<Vec<_>>();
-
-                        if matching_relevant_tokens.len() > 1 {
-                            log::error!(
-                                "Multiple relevant tokens found for token: {}. Halt!.",
-                                token_info.name
-                            );
-                            panic!()
-                        }
-
-                        if matching_relevant_tokens.is_empty() {
-                            log::warn!("Ignoring token: {}", token_info.name);
-                            return None;
-                        }
-
-                        let relevant_token = matching_relevant_tokens.first().unwrap();
-
-                        Some((
-                            relevant_token.token_name.to_owned(),
-                            (
-                                token_info.name.clone(),
-                                parse_amount(token_info.amount.as_str()).unwrap_or_else(|e| {
-                                    log::error!(
-                                        "Failed to parse amount for token: {}, amount: {:?}.\n{}",
-                                        token_info.name,
-                                        token_info.amount,
-                                        e
-                                    );
-                                    panic!()
-                                }),
-                            ),
-                        ))
-                    })
-                    .collect();
-
-                for (unbrella_token, (token, amount)) in wallet_balances.into_iter() {
-                    let token_balances = balances
-                        .entry(unbrella_token.clone())
-                        .or_insert(HashMap::new());
-                    token_balances.insert(format!("Wallet@{} ({})", chain, token), amount);
-                }
+                aah_parser.parse_wallet(chain, wallet);
             }
-
             for project in chain_info.project_info.as_slice() {
-                let project_name = project.name.clone();
-
-                for tracking in project.trackings.as_slice() {
-                    match tracking {
-                        ProjectTracking::YieldFarm { yield_farm } => {
-                            for token in yield_farm {
-                                let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
-                                    .iter()
-                                    .filter(|relevant_token| {
-                                        let matches_pool = relevant_token.matches(&token.pool);
-                                        let matches_token_name =
-                                            if let Some(token_name) = token.token_name.as_ref() {
-                                                relevant_token.matches(token_name)
-                                            } else {
-                                                false
-                                            };
-
-                                        matches_pool || matches_token_name
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                if matching_relevant_tokens.len() > 1 {
-                                    log::error!(
-                                        "Multiple relevant tokens found for token: {}. Halt!.",
-                                        token.pool
-                                    );
-                                    panic!()
-                                }
-
-                                if matching_relevant_tokens.is_empty() {
-                                    log::warn!("Ignoring token: {}", token.pool);
-                                    continue;
-                                }
-
-                                let relevant_token = matching_relevant_tokens.first().unwrap();
-
-                                let token_balances = balances
-                                    .entry(relevant_token.token_name.to_owned())
-                                    .or_insert(HashMap::new());
-
-                                let amount =
-                                    parse_amount(&token.balance.as_str()).unwrap_or_else(|_| {
-                                        log::error!(
-                                            "Failed to parse amount for token: {}, amount: {:?}",
-                                            token.pool,
-                                            token.balance
-                                        );
-                                        panic!()
-                                    });
-
-                                let name = format!("{}@{} ({})", project_name, chain, token.pool);
-                                log::trace!(
-                                    "{} - {}; {}",
-                                    relevant_token.range_name_rows,
-                                    name,
-                                    amount
-                                );
-                                token_balances.insert(name, amount);
-                            }
-                        }
-                        _ => {
-                            log::error!("Unsupported tracking: {:?}", tracking);
-                        }
-                    }
-                }
+                aah_parser.parse_project(chain, project);
             }
         }
 
-        Ok(balances)
+        Ok(aah_parser.balances)
     }
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
