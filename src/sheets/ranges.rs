@@ -26,10 +26,17 @@ pub mod balances {
 
 #[allow(non_snake_case)] // To match sheet names
 pub mod AaH {
+    // Ethereum
     pub const RW_ETH_BALANCES_NAMES: &str = "AaH__vEthBalances_Names";
     pub const RW_ETH_BALANCES_AMOUNTS: &str = "AaH__vEthBalances_Amounts";
+
+    // Pendle
     pub const RW_PENDLE_BALANCES_NAMES: &str = "AaH__vPendleBalances_Names";
     pub const RW_PENDLE_BALANCES_AMOUNTS: &str = "AaH__vPendleBalances_Amounts";
+
+    // Bitcoin
+    pub const RW_BTC_BALANCES_NAMES: &str = "AaH__vBtcBalances_Names";
+    pub const RW_BTC_BALANCES_AMOUNTS: &str = "AaH__vBtcBalances_Amounts";
 }
 
 pub mod airdrops {

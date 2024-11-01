@@ -22,7 +22,8 @@ use exchange::data::{
 };
 use indicatif_log_bridge::LogWrapper;
 use routines::{
-    debank_routine::DebankRoutine,
+    debank_tokens_routine::DebankTokensRoutine,
+    debank_total_usd_routine::DebankTotalUSDRoutine,
     exchange_balances_routine::ExchangeBalancesRoutine,
     routine::{Routine, RoutineFailureInfo, RoutineResult},
     token_prices::TokenPricesRoutine,
@@ -34,12 +35,13 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankRoutine),
+        Box::new(DebankTokensRoutine),
+        // Box::new(DebankTotalUSDRoutine),
         // Box::new(SonarWatchRoutine),
-        Box::new(TokenPricesRoutine),
-        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        // Box::new(TokenPricesRoutine),
+        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 
