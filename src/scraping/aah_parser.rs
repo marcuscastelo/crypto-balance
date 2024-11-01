@@ -63,8 +63,12 @@ impl AaHParser {
             .or_insert(HashMap::new());
 
         let amount = parse_amount(amount)?;
-        let name = format!("{}@{} ({})", location, chain, token);
+        let name = format!("{} - {} ({})", chain, location, token);
 
+        if token_balances.contains_key(&name) {
+            log::warn!("Duplicate token found: {}. Halt!", name);
+            return Err(anyhow::anyhow!("Duplicate token found"));
+        }
         token_balances.insert(name, amount);
         Ok(())
     }
@@ -110,7 +114,7 @@ impl AaHParser {
 
         self.parse_generic(
             chain,
-            project_name,
+            format!("{}(Yield)", project_name).as_str(),
             token.balance.as_str(),
             token.pool.as_str(),
             matching_relevant_tokens.as_slice(),
@@ -141,7 +145,7 @@ impl AaHParser {
 
         self.parse_generic(
             chain,
-            project_name,
+            format!("{}(Deposit)", project_name).as_str(),
             token.balance.as_str(),
             token.pool.as_str(),
             matching_relevant_tokens.as_slice(),
@@ -171,7 +175,7 @@ impl AaHParser {
 
         self.parse_generic(
             chain,
-            project_name,
+            format!("{}(Stake)", project_name).as_str(),
             token.balance.as_str(),
             token.pool.as_str(),
             matching_relevant_tokens.as_slice(),

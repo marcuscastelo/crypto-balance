@@ -97,10 +97,16 @@ impl DebankTokensRoutine {
                 );
                 &empty_hashmap
             });
-            let (names, amounts): (Vec<_>, Vec<_>) = token_balances
+            // let (names, amounts): (Vec<_>, Vec<_>) =
+
+            let mut names_amounts_tuples = token_balances
                 .iter()
                 .map(|(name, amount)| (name.clone(), amount.to_string()))
-                .unzip();
+                .collect::<Vec<(String, String)>>();
+
+            names_amounts_tuples.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
+
+            let (names, amounts): (Vec<_>, Vec<_>) = names_amounts_tuples.iter().cloned().unzip();
 
             spreadsheet_manager
                 .write_named_range(
