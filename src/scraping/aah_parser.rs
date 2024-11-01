@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::routines::debank_tokens_routine::{RelevantDebankToken, RELEVANT_DEBANK_TOKENS};
 
 use super::debank_scraper::{
-    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, ProjectTracking,
-    SpotTokenInfo, StakeTokenInfo, YieldFarmTokenInfo,
+    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, LiquidityPoolTokenInfo,
+    ProjectTracking, SpotTokenInfo, StakeTokenInfo, YieldFarmTokenInfo,
 };
 
 pub struct AaHParser {
@@ -166,6 +166,72 @@ impl AaHParser {
         });
     }
 
+    fn parse_liquidity_pool_token(
+        &mut self,
+        chain: &str,
+        project_name: &str,
+        token: &LiquidityPoolTokenInfo,
+    ) {
+        let (balance1, balance2) = token
+            .balance
+            .split_once('\n')
+            .map_or((token.balance.as_str(), None), |(balance1, balance2)| {
+                (balance1, Some(balance2))
+            });
+
+        let (balance1, token1) = balance1.split_once(' ').unwrap_or((balance1, ""));
+        let (balance2, token2) = balance2.map_or((None, None), |balance2| {
+            let (balance2, token2) = balance2.split_once(' ').unwrap_or((balance2, ""));
+            (Some(balance2), Some(token2))
+        });
+
+        let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
+            .iter()
+            .filter(|relevant_token| {
+                let matches_pool = relevant_token.matches(&token.pool);
+                let matches_token_name = if let Some(token_name) = token.token_name.as_ref() {
+                    relevant_token.matches(token_name)
+                } else {
+                    false
+                };
+
+                matches_pool || matches_token_name
+            })
+            .collect::<Vec<_>>();
+
+        self.parse_generic(
+            chain,
+            format!("{}(Liquidity Pool: {})", project_name, token1).as_str(),
+            balance1,
+            token1,
+            matching_relevant_tokens.as_slice(),
+        )
+        .unwrap_or_else(|error| {
+            log::error!(
+                "Failed to parse liquidity pool token: {}. Error: {:?}",
+                token1,
+                error
+            );
+        });
+
+        if let (Some(balance2), Some(token2)) = (balance2, token2) {
+            self.parse_generic(
+                chain,
+                format!("{}(Liquidity Pool: {})", project_name, token2).as_str(),
+                balance2,
+                token2,
+                matching_relevant_tokens.as_slice(),
+            )
+            .unwrap_or_else(|error| {
+                log::error!(
+                    "Failed to parse liquidity pool token: {}. Error: {:?}",
+                    token2,
+                    error
+                );
+            });
+        }
+    }
+
     fn parse_stake_token(&mut self, chain: &str, project_name: &str, token: &StakeTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -240,6 +306,11 @@ impl AaHParser {
                 ProjectTracking::Deposit { deposit } => {
                     for token in deposit {
                         self.parse_deposit_token(chain, project_name.as_str(), token);
+                    }
+                }
+                ProjectTracking::LiquidityPool { liquidity_pool } => {
+                    for token in liquidity_pool {
+                        self.parse_liquidity_pool_token(chain, project_name.as_str(), token);
                     }
                 }
                 ProjectTracking::Lending {
