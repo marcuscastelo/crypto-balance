@@ -61,6 +61,12 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             range_amount_rows: ranges::AaH::RW_GS_BALANCES_AMOUNTS,
             alternative_names: vec!["GS (GammaSwap)", "esGS"],
         },
+        RelevantDebankToken {
+            token_name: "ETHFI",
+            range_name_rows: ranges::AaH::RW_ETHFI_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_ETHFI_BALANCES_AMOUNTS,
+            alternative_names: vec!["sETHFI"],
+        },
     ]
 });
 

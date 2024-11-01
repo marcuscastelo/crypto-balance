@@ -12,7 +12,12 @@ pub struct AaHParser {
 }
 
 fn parse_amount(amount: &str) -> anyhow::Result<f64> {
+    let more_than_10_zeroes_regex = regex::Regex::new(r"[₁-₉][^\d\w ]+").unwrap();
+
+    let amount = more_than_10_zeroes_regex.replace_all(amount, "₀");
+
     let amount = amount
+        .replace("₀", "000000000")
         .replace("₁", "")
         .replace("₂", "0")
         .replace("₃", "00")

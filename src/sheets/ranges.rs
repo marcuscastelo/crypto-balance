@@ -45,6 +45,10 @@ pub mod AaH {
     // GammaSwap (GS)
     pub const RW_GS_BALANCES_NAMES: &str = "AaH__vGsBalances_Names";
     pub const RW_GS_BALANCES_AMOUNTS: &str = "AaH__vGsBalances_Amounts";
+
+    // ETHFI
+    pub const RW_ETHFI_BALANCES_NAMES: &str = "AaH__vEthfiBalances_Names";
+    pub const RW_ETHFI_BALANCES_AMOUNTS: &str = "AaH__vEthfiBalances_Amounts";
 }
 
 pub mod airdrops {
