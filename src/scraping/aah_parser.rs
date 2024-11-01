@@ -59,7 +59,7 @@ impl AaHParser {
         }
 
         if relevant_tokens.is_empty() {
-            log::warn!("Ignoring token: {}", token);
+            log::warn!("Ignoring token: '{}'", token);
             return Ok(());
         }
 
