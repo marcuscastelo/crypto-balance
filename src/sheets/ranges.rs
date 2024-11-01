@@ -38,9 +38,13 @@ pub mod AaH {
     pub const RW_BTC_BALANCES_NAMES: &str = "AaH__vBtcBalances_Names";
     pub const RW_BTC_BALANCES_AMOUNTS: &str = "AaH__vBtcBalances_Amounts";
 
-    //Ethena
+    // Ethena
     pub const RW_ENA_BALANCES_NAMES: &str = "AaH__vEnaBalances_Names";
     pub const RW_ENA_BALANCES_AMOUNTS: &str = "AaH__vEnaBalances_Amounts";
+
+    // GammaSwap (GS)
+    pub const RW_GS_BALANCES_NAMES: &str = "AaH__vGsBalances_Names";
+    pub const RW_GS_BALANCES_AMOUNTS: &str = "AaH__vGsBalances_Amounts";
 }
 
 pub mod airdrops {

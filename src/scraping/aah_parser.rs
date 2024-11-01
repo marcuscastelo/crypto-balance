@@ -25,7 +25,13 @@ fn parse_amount(amount: &str) -> anyhow::Result<f64> {
 
     let (amount, _) = amount.split_once(" ").unwrap_or((amount.as_str(), ""));
 
-    Ok(amount.parse()?)
+    let amount = amount.replace(",", "");
+
+    Ok(amount.parse().map_err(|error| {
+        let message = format!("Failed to parse amount: '{}'. Error: {:?}", amount, error);
+        log::error!("{}", message);
+        anyhow::anyhow!(message)
+    })?)
 }
 
 impl AaHParser {
@@ -189,78 +195,182 @@ impl AaHParser {
             .iter()
             .filter(|relevant_token| {
                 let matches_pool = relevant_token.matches(&token.pool);
+
+                let (pool_member_left, pool_member_right) =
+                    token.pool.split_once('+').unwrap_or(("", ""));
+
+                let matches_pool_member_left = relevant_token.matches(pool_member_left);
+                let matches_pool_member_right = relevant_token.matches(pool_member_right);
+
                 let matches_token_name = if let Some(token_name) = token.token_name.as_ref() {
                     relevant_token.matches(token_name)
                 } else {
                     false
                 };
 
-                matches_pool || matches_token_name
+                matches_pool
+                    || matches_token_name
+                    || matches_pool_member_left
+                    || matches_pool_member_right
             })
             .collect::<Vec<_>>();
 
-        self.parse_generic(
-            chain,
-            format!("{}(Liquidity Pool: {})", project_name, token1).as_str(),
-            balance1,
-            token1,
-            matching_relevant_tokens.as_slice(),
-        )
-        .unwrap_or_else(|error| {
-            log::error!(
-                "Failed to parse liquidity pool token: {}. Error: {:?}",
-                token1,
-                error
-            );
-        });
+        let is_token1_relevant = matching_relevant_tokens
+            .iter()
+            .any(|relevant_token| relevant_token.matches(&token1));
+        let is_token2_relevant = matching_relevant_tokens
+            .iter()
+            .any(|relevant_token| relevant_token.matches(&token2.unwrap_or("")));
 
-        if let (Some(balance2), Some(token2)) = (balance2, token2) {
+        if !is_token1_relevant && !is_token2_relevant {
+            log::warn!(
+                "No relevant tokens found for liquidity pool: {:?} with tokens: {:?} and {:?}",
+                token.pool,
+                token1,
+                token2
+            );
+            return;
+        }
+
+        if is_token1_relevant {
             self.parse_generic(
                 chain,
-                format!("{}(Liquidity Pool: {})", project_name, token2).as_str(),
-                balance2,
-                token2,
+                format!("{}(Liquidity Pool: {})", project_name, token1).as_str(),
+                balance1,
+                token1,
                 matching_relevant_tokens.as_slice(),
             )
             .unwrap_or_else(|error| {
                 log::error!(
                     "Failed to parse liquidity pool token: {}. Error: {:?}",
-                    token2,
+                    token1,
                     error
                 );
             });
         }
+
+        if is_token2_relevant {
+            if let (Some(balance2), Some(token2)) = (balance2, token2) {
+                self.parse_generic(
+                    chain,
+                    format!("{}(Liquidity Pool: {})", project_name, token2).as_str(),
+                    balance2,
+                    token2,
+                    matching_relevant_tokens.as_slice(),
+                )
+                .unwrap_or_else(|error| {
+                    log::error!(
+                        "Failed to parse liquidity pool token: {}. Error: {:?}",
+                        token2,
+                        error
+                    );
+                });
+            }
+        }
     }
 
     fn parse_stake_token(&mut self, chain: &str, project_name: &str, token: &StakeTokenInfo) {
+        let (balance1, balance2) = token
+            .balance
+            .split_once('\n')
+            .map_or((token.balance.as_str(), None), |(balance1, balance2)| {
+                (balance1, Some(balance2))
+            });
+
+        let (balance1, token1) = balance1.split_once(' ').unwrap_or((balance1, ""));
+        let (balance2, token2) = balance2.map_or((None, None), |balance2| {
+            let (balance2, token2) = balance2.split_once(' ').unwrap_or((balance2, ""));
+            (Some(balance2), Some(token2))
+        });
+
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
             .filter(|relevant_token| {
                 let matches_pool = relevant_token.matches(&token.pool);
+
+                let (pool_member_left, pool_member_right) =
+                    token.pool.split_once('+').unwrap_or(("", ""));
+
+                let matches_pool_member_left = relevant_token.matches(pool_member_left);
+                let matches_pool_member_right = relevant_token.matches(pool_member_right);
+
                 let matches_token_name = if let Some(token_name) = token.token_name.as_ref() {
                     relevant_token.matches(token_name)
                 } else {
                     false
                 };
 
-                matches_pool || matches_token_name
+                matches_pool
+                    || matches_token_name
+                    || matches_pool_member_left
+                    || matches_pool_member_right
             })
             .collect::<Vec<_>>();
 
-        self.parse_generic(
-            chain,
-            format!("{}(Stake)", project_name).as_str(),
-            token.balance.as_str(),
-            token.pool.as_str(),
-            matching_relevant_tokens.as_slice(),
-        )
-        .unwrap_or_else(|error| {
-            log::error!(
-                "Failed to parse stake token: {}. Error: {:?}",
+        let is_token1_relevant = matching_relevant_tokens
+            .iter()
+            .any(|relevant_token| relevant_token.matches(&token1));
+        let is_token2_relevant = matching_relevant_tokens
+            .iter()
+            .any(|relevant_token| relevant_token.matches(&token2.unwrap_or("")));
+
+        if !is_token1_relevant && !is_token2_relevant {
+            log::warn!(
+                "No relevant tokens found for stake token: {:?} with tokens: {:?} and {:?}",
                 token.pool,
-                error
+                token1,
+                token2
             );
-        });
+            return;
+        }
+
+        if is_token1_relevant {
+            self.parse_generic(
+                chain,
+                format!("{}(Stake: {})", project_name, token1).as_str(),
+                balance1,
+                token1,
+                matching_relevant_tokens.as_slice(),
+            )
+            .unwrap_or_else(|error| {
+                log::error!(
+                    "Failed to parse stake token: {}. Error: {:?}",
+                    token1,
+                    error
+                );
+            });
+        } else {
+            log::warn!(
+                "Ignoring token1 for stake token: {:?}, token1: {:?}",
+                token.pool,
+                token1
+            );
+        }
+
+        if is_token2_relevant {
+            if let (Some(balance2), Some(token2)) = (balance2, token2) {
+                self.parse_generic(
+                    chain,
+                    format!("{}(Stake: {})", project_name, token2).as_str(),
+                    balance2,
+                    token2,
+                    matching_relevant_tokens.as_slice(),
+                )
+                .unwrap_or_else(|error| {
+                    log::error!(
+                        "Failed to parse stake token: {}. Error: {:?}",
+                        token2,
+                        error
+                    );
+                });
+            }
+        } else {
+            log::warn!(
+                "Ignoring token2 for stake token: {:?}, token2: {:?}",
+                token.pool,
+                token2
+            );
+        }
     }
 
     fn parse_lending_token(&mut self, chain: &str, project_name: &str, token: &LendingTokenInfo) {

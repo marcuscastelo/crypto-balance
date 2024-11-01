@@ -36,12 +36,12 @@ async fn run_routines(parallel: bool) {
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
         Box::new(DebankTokensRoutine),
-        // Box::new(DebankTotalUSDRoutine),
+        Box::new(DebankTotalUSDRoutine),
+        Box::new(TokenPricesRoutine),
+        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(SonarWatchRoutine),
-        // Box::new(TokenPricesRoutine),
-        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        // Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
-        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 

@@ -55,6 +55,12 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             range_amount_rows: ranges::AaH::RW_ENA_BALANCES_AMOUNTS,
             alternative_names: vec!["ETHENA", "PT-sENA-24APR2025", "sENA"],
         },
+        RelevantDebankToken {
+            token_name: "GS",
+            range_name_rows: ranges::AaH::RW_GS_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_GS_BALANCES_AMOUNTS,
+            alternative_names: vec!["GS (GammaSwap)", "esGS"],
+        },
     ]
 });
 
