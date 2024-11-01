@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::{collections::HashMap, rc::Rc, sync::LazyLock};
 
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
@@ -6,7 +6,7 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
-    scraping::debank_scraper::DebankBalanceScraper,
+    scraping::debank_scraper::{DebankBalanceScraper, ProjectTracking},
     sheets::{
         data::spreadsheet_manager::SpreadsheetManager, ranges,
         value_range_factory::ValueRangeFactory,
@@ -66,6 +66,8 @@ fn parse_amount(amount: &str) -> anyhow::Result<f64> {
         .replace("₈", "0000000")
         .replace("₉", "00000000");
 
+    let (amount, _) = amount.split_once(" ").unwrap_or((amount.as_str(), ""));
+
     Ok(amount.parse()?)
 }
 
@@ -115,11 +117,12 @@ impl DebankTokensRoutine {
                             relevant_token.token_name.to_owned(),
                             (
                                 token_info.name.clone(),
-                                parse_amount(token_info.amount.as_str()).unwrap_or_else(|_| {
+                                parse_amount(token_info.amount.as_str()).unwrap_or_else(|e| {
                                     log::error!(
-                                        "Failed to parse amount for token: {}, amount: {:?}",
+                                        "Failed to parse amount for token: {}, amount: {:?}.\n{}",
                                         token_info.name,
-                                        token_info.amount
+                                        token_info.amount,
+                                        e
                                     );
                                     panic!()
                                 }),
@@ -135,6 +138,74 @@ impl DebankTokensRoutine {
                     token_balances.insert(format!("Wallet@{} ({})", chain, token), amount);
                 }
             }
+
+            for project in chain_info.project_info.as_slice() {
+                let project_name = project.name.clone();
+
+                for tracking in project.trackings.as_slice() {
+                    match tracking {
+                        ProjectTracking::YieldFarm { yield_farm } => {
+                            for token in yield_farm {
+                                let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
+                                    .iter()
+                                    .filter(|relevant_token| {
+                                        let matches_pool = relevant_token.matches(&token.pool);
+                                        let matches_token_name =
+                                            if let Some(token_name) = token.token_name.as_ref() {
+                                                relevant_token.matches(token_name)
+                                            } else {
+                                                false
+                                            };
+
+                                        matches_pool || matches_token_name
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                if matching_relevant_tokens.len() > 1 {
+                                    log::error!(
+                                        "Multiple relevant tokens found for token: {}. Halt!.",
+                                        token.pool
+                                    );
+                                    panic!()
+                                }
+
+                                if matching_relevant_tokens.is_empty() {
+                                    log::warn!("Ignoring token: {}", token.pool);
+                                    continue;
+                                }
+
+                                let relevant_token = matching_relevant_tokens.first().unwrap();
+
+                                let token_balances = balances
+                                    .entry(relevant_token.token_name.to_owned())
+                                    .or_insert(HashMap::new());
+
+                                let amount =
+                                    parse_amount(&token.balance.as_str()).unwrap_or_else(|_| {
+                                        log::error!(
+                                            "Failed to parse amount for token: {}, amount: {:?}",
+                                            token.pool,
+                                            token.balance
+                                        );
+                                        panic!()
+                                    });
+
+                                let name = format!("{}@{} ({})", project_name, chain, token.pool);
+                                log::trace!(
+                                    "{} - {}; {}",
+                                    relevant_token.range_name_rows,
+                                    name,
+                                    amount
+                                );
+                                token_balances.insert(name, amount);
+                            }
+                        }
+                        _ => {
+                            log::error!("Unsupported tracking: {:?}", tracking);
+                        }
+                    }
+                }
+            }
         }
 
         Ok(balances)
@@ -146,7 +217,14 @@ impl DebankTokensRoutine {
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         for token in RELEVANT_DEBANK_TOKENS.iter() {
-            let token_balances = balances.get(token.token_name).unwrap();
+            let empty_hashmap = HashMap::new();
+            let token_balances = balances.get(token.token_name).unwrap_or_else(|| {
+                log::error!(
+                    "Failed to get balances for token: {}. Halt!",
+                    token.token_name
+                );
+                &empty_hashmap
+            });
             let (names, amounts): (Vec<_>, Vec<_>) = token_balances
                 .iter()
                 .map(|(name, amount)| (name.clone(), amount.to_string()))

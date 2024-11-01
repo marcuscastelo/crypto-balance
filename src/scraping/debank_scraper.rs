@@ -623,6 +623,7 @@ impl DebankBalanceScraper {
         for chain in chain_summaries.as_slice() {
             let chain_info = self.get_chain_info(chain).await?;
             chain_infos.insert(chain_info.name.clone(), chain_info);
+            break;
         }
 
         Ok(chain_infos)
