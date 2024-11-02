@@ -12,3 +12,14 @@ pub async fn sonar() -> String {
 
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
+
+pub async fn sonar_verify() -> bool {
+    let output = Command::new("sh")
+        .arg("./src/script/sonar_verify.sh")
+        .arg(CONFIG.scraping.sonar_watch.auth_token.as_ref())
+        .arg(CONFIG.scraping.sonar_watch.turnstile_token.as_ref())
+        .output()
+        .expect("sonar_verify.sh failed to start");
+
+    String::from_utf8_lossy(&output.stdout) == "pong!"
+}

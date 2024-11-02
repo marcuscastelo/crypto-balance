@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::script::sonar_script::sonar;
 
+use super::scraper_driver::ScraperDriver;
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct SonarResponse {
     pub elements: Option<Vec<SonarElement>>,
@@ -90,5 +92,11 @@ impl SonarWatchScraper {
         }
 
         Ok(sonar_response)
+    }
+
+    pub async fn scrape_turnstile_token(&self) -> anyhow::Result<String> {
+        let driver = ScraperDriver::new().await?;
+
+        Ok("".to_owned())
     }
 }

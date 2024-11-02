@@ -26,6 +26,7 @@ use routines::{
     debank_total_usd_routine::DebankTotalUSDRoutine,
     exchange_balances_routine::ExchangeBalancesRoutine,
     routine::{Routine, RoutineFailureInfo, RoutineResult},
+    sonar_watch_routine::SonarWatchRoutine,
     token_prices::TokenPricesRoutine,
     update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
 };
@@ -35,13 +36,13 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankTokensRoutine),
-        Box::new(DebankTotalUSDRoutine),
-        Box::new(TokenPricesRoutine),
-        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
-        // Box::new(SonarWatchRoutine),
+        // Box::new(DebankTokensRoutine),
+        // Box::new(DebankTotalUSDRoutine),
+        // Box::new(TokenPricesRoutine),
+        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 
