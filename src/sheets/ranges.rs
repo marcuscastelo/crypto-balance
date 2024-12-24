@@ -42,13 +42,25 @@ pub mod AaH {
     pub const RW_ENA_BALANCES_NAMES: &str = "AaH__vEnaBalances_Names";
     pub const RW_ENA_BALANCES_AMOUNTS: &str = "AaH__vEnaBalances_Amounts";
 
+    // ETHFI
+    pub const RW_ETHFI_BALANCES_NAMES: &str = "AaH__vEthfiBalances_Names";
+    pub const RW_ETHFI_BALANCES_AMOUNTS: &str = "AaH__vEthfiBalances_Amounts";
+
     // GammaSwap (GS)
     pub const RW_GS_BALANCES_NAMES: &str = "AaH__vGsBalances_Names";
     pub const RW_GS_BALANCES_AMOUNTS: &str = "AaH__vGsBalances_Amounts";
 
-    // ETHFI
-    pub const RW_ETHFI_BALANCES_NAMES: &str = "AaH__vEthfiBalances_Names";
-    pub const RW_ETHFI_BALANCES_AMOUNTS: &str = "AaH__vEthfiBalances_Amounts";
+    // Tango
+    pub const RW_TANGO_BALANCES_NAMES: &str = "AaH__vTangoBalances_Names";
+    pub const RW_TANGO_BALANCES_AMOUNTS: &str = "AaH__vTangoBalances_Amounts";
+
+    // Pear
+    pub const RW_PEAR_BALANCES_NAMES: &str = "AaH__vPearBalances_Names";
+    pub const RW_PEAR_BALANCES_AMOUNTS: &str = "AaH__vPearBalances_Amounts";
+
+    // Instadapp
+    pub const RW_INST_BALANCES_NAMES: &str = "AaH__vInstBalances_Names";
+    pub const RW_INST_BALANCES_AMOUNTS: &str = "AaH__vInstBalances_Amounts";
 }
 
 pub mod airdrops {

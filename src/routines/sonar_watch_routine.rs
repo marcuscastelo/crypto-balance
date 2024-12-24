@@ -5,7 +5,6 @@ use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
     scraping::sonar_watch_scraper::SonarWatchScraper,
-    script::sonar_script::sonar_verify,
     sheets::{
         data::spreadsheet_manager::SpreadsheetManager, ranges,
         value_range_factory::ValueRangeFactory,
@@ -20,16 +19,12 @@ impl SonarWatchRoutine {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
-    async fn update_token_if_needed(&self) {
-        let needs_update = sonar_verify();
-    }
-
     async fn get_sonar_watch_balance(&self) -> anyhow::Result<f64> {
-        let sonar_response = SonarWatchScraper.scrape().await?;
+        let sonar_scraper = SonarWatchScraper::new().await?;
 
-        sonar_response
-            .value
-            .ok_or_else(|| anyhow::anyhow!("SonarWatch response did not contain a value"))
+        sonar_scraper
+            .get_total_balance(&CONFIG.blockchain.airdrops.solana.address)
+            .await
     }
 
     async fn update_sonar_watch_balance_on_spreadsheet(&self, balance: f64) {
@@ -55,9 +50,6 @@ impl Routine for SonarWatchRoutine {
         log::info!("Running SonarWatch");
 
         let progress = new_progress(ProgressBar::new_spinner());
-
-        progress.trace("SonarWatch: 🔄  Updating token if needed");
-        let updated = self.update_token_if_needed().await;
 
         progress.trace("SonarWatch: ☁️  Fetching SonarWatch balance");
         let balance = self

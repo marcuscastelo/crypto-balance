@@ -10,7 +10,6 @@ mod prelude;
 mod price;
 mod routines;
 mod scraping;
-mod script;
 mod sheets;
 
 use std::collections::HashMap;
@@ -36,13 +35,13 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        // Box::new(DebankTokensRoutine),
-        // Box::new(DebankTotalUSDRoutine),
-        // Box::new(TokenPricesRoutine),
-        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        // Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
-        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
-        Box::new(SonarWatchRoutine),
+        Box::new(DebankTokensRoutine),
+        Box::new(DebankTotalUSDRoutine),
+        Box::new(TokenPricesRoutine),
+        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 
@@ -96,7 +95,7 @@ async fn main() {
     log::set_max_level(level);
 
     // TODO: Add a CLI flag to toggle parallelism
-    let parallel = true;
+    let parallel = false;
     run_routines(parallel).await;
 
     CLI_MULTI_PROGRESS.clear().unwrap();

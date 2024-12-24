@@ -35,6 +35,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "wstETH+ETH",
                 "weETH",
                 "wrsETH",
+                "ezETH",
             ],
         },
         RelevantDebankToken {
@@ -47,7 +48,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             token_name: "BTC",
             range_name_rows: ranges::AaH::RW_BTC_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_BTC_BALANCES_AMOUNTS,
-            alternative_names: vec!["WBTC", "uniBTC", "BTCB"],
+            alternative_names: vec!["WBTC", "uniBTC", "BTCB", "LBTC", "LBTCv"],
         },
         RelevantDebankToken {
             token_name: "ENA",
@@ -56,16 +57,34 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             alternative_names: vec!["ETHENA", "PT-sENA-24APR2025", "sENA"],
         },
         RelevantDebankToken {
+            token_name: "ETHFI",
+            range_name_rows: ranges::AaH::RW_ETHFI_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_ETHFI_BALANCES_AMOUNTS,
+            alternative_names: vec!["sETHFI"],
+        },
+        RelevantDebankToken {
             token_name: "GS",
             range_name_rows: ranges::AaH::RW_GS_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_GS_BALANCES_AMOUNTS,
             alternative_names: vec!["GS (GammaSwap)", "esGS"],
         },
         RelevantDebankToken {
-            token_name: "ETHFI",
-            range_name_rows: ranges::AaH::RW_ETHFI_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_ETHFI_BALANCES_AMOUNTS,
-            alternative_names: vec!["sETHFI"],
+            token_name: "TANGO",
+            range_name_rows: ranges::AaH::RW_TANGO_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_TANGO_BALANCES_AMOUNTS,
+            alternative_names: vec![],
+        },
+        RelevantDebankToken {
+            token_name: "PEAR",
+            range_name_rows: ranges::AaH::RW_PEAR_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_PEAR_BALANCES_AMOUNTS,
+            alternative_names: vec![],
+        },
+        RelevantDebankToken {
+            token_name: "INST",
+            range_name_rows: ranges::AaH::RW_INST_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_INST_BALANCES_AMOUNTS,
+            alternative_names: vec!["FLUID"],
         },
     ]
 });
