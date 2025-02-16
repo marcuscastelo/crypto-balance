@@ -33,9 +33,11 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "stETH",
                 "wstETH",
                 "wstETH+ETH",
+                "eETH",
                 "weETH",
                 "wrsETH",
                 "ezETH",
+                "cbETH",
             ],
         },
         RelevantDebankToken {
@@ -78,13 +80,19 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             token_name: "PEAR",
             range_name_rows: ranges::AaH::RW_PEAR_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_PEAR_BALANCES_AMOUNTS,
-            alternative_names: vec![],
+            alternative_names: vec!["PEAR (pear.garden)"],
         },
         RelevantDebankToken {
             token_name: "INST",
             range_name_rows: ranges::AaH::RW_INST_BALANCES_NAMES,
             range_amount_rows: ranges::AaH::RW_INST_BALANCES_AMOUNTS,
             alternative_names: vec!["FLUID"],
+        },
+        RelevantDebankToken {
+            token_name: "SPECTRA",
+            range_name_rows: ranges::AaH::RW_SPECTRA_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_SPECTRA_BALANCES_AMOUNTS,
+            alternative_names: vec![],
         },
     ]
 });

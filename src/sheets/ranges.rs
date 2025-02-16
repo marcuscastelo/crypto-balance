@@ -61,6 +61,10 @@ pub mod AaH {
     // Instadapp
     pub const RW_INST_BALANCES_NAMES: &str = "AaH__vInstBalances_Names";
     pub const RW_INST_BALANCES_AMOUNTS: &str = "AaH__vInstBalances_Amounts";
+
+    // Spectra
+    pub const RW_SPECTRA_BALANCES_NAMES: &str = "AaH__vSpectraBalances_Names";
+    pub const RW_SPECTRA_BALANCES_AMOUNTS: &str = "AaH__vSpectraBalances_Amounts";
 }
 
 pub mod airdrops {
