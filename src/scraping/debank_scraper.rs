@@ -318,7 +318,16 @@ impl DebankBalanceScraper {
         let mut trackings = Vec::new();
 
         for tracking_element in tracking_elements.iter() {
+            if name == "ZeroLend" {
+                log::debug!("{:#?}", tracking_element.html(true).await?);
+            }
+
             let tracking = self.explore_tracking(tracking_element).await?;
+
+            if name == "ZeroLend" {
+                log::debug!("{:#?}", tracking);
+            }
+
             trackings.push(tracking);
         }
 
@@ -334,55 +343,62 @@ impl DebankBalanceScraper {
 
         log::trace!("Tracking type: {}", tracking_type);
 
-        let tracking_header = tracking
-            .find(Locator::XPath("div[2]/div[1]/div[1]"))
-            .await?;
-
-        let tracking_headers = tracking_header.find_all(Locator::XPath("div/span")).await?;
-
-        let headers = futures::future::join_all(
-            tracking_headers
-                .iter()
-                .map(|header| header.text())
-                .collect::<Vec<_>>(),
-        )
-        .await;
-
-        // Convert all results to strings returning an error if any of them fails
-        let headers = headers.into_iter().collect::<Result<Vec<_>, _>>()?;
-
-        for header in headers.iter() {
-            log::trace!("Header: {:?}", header);
-        }
-
-        let tracking_body = tracking
-            .find(Locator::XPath("div[2]/div[1]/div[2]"))
-            .await?;
-
-        let row_selector = "div.table_contentRow__Mi3k5.flex_flexRow__y0UR2";
-        let rows = tracking_body.find_all(Locator::Css(row_selector)).await?;
+        let tables = tracking.find_all(Locator::XPath("div[2]/div")).await?;
+        log::debug!("Found {} tables", tables.len());
 
         let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
 
-        for row in rows.as_slice() {
-            let cells = row.find_all(Locator::XPath("div")).await?;
-            let mut values = Vec::new();
-            for cell in cells.as_slice() {
-                let cell_info = self.extract_cell_info(cell).await?;
-                values.push(cell_info);
+        for table in tables {
+            log::debug!(
+                "Table for {}, html: {}",
+                tracking_type,
+                table.html(true).await?
+            );
+            let tracking_headers = table.find_all(Locator::XPath("div[1]//span")).await?;
+
+            let headers = futures::future::join_all(
+                tracking_headers
+                    .iter()
+                    .map(|header| async {
+                        log::debug!("Header html: {}", header.html(true).await?);
+                        header.text().await
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .await;
+
+            // Convert all results to strings returning an error if any of them fails
+            let headers = headers.into_iter().collect::<Result<Vec<_>, _>>()?;
+
+            for header in headers.iter() {
+                log::trace!("Header: {:?}", header);
             }
 
-            if headers.len() != values.len() {
-                return Err(anyhow::anyhow!("Headers and values length mismatch"));
+            let tracking_body = table.find(Locator::XPath("div[2]")).await?;
+
+            let row_selector = "div.table_contentRow__Mi3k5.flex_flexRow__y0UR2";
+            let rows = tracking_body.find_all(Locator::Css(row_selector)).await?;
+
+            for row in rows.as_slice() {
+                let cells = row.find_all(Locator::XPath("div")).await?;
+                let mut values = Vec::new();
+                for cell in cells.as_slice() {
+                    let cell_info = self.extract_cell_info(cell).await?;
+                    values.push(cell_info);
+                }
+
+                if headers.len() != values.len() {
+                    return Err(anyhow::anyhow!("Headers and values length mismatch"));
+                }
+
+                let zipped = headers
+                    .clone()
+                    .into_iter()
+                    .zip(values.into_iter())
+                    .collect::<Vec<_>>();
+
+                generic_infos.push(zipped);
             }
-
-            let zipped = headers
-                .clone()
-                .into_iter()
-                .zip(values.into_iter())
-                .collect::<Vec<_>>();
-
-            generic_infos.push(zipped);
         }
 
         log::trace!("Generic infos: {:#?}", generic_infos);
@@ -497,15 +513,58 @@ impl DebankBalanceScraper {
             }),
             "Lending" => Ok(ProjectTracking::Lending {
                 supplied: generic_infos
-                    .into_iter()
+                    .iter()
+                    .filter(|generic| generic.variant_header == Some("Supplied".into()))
                     .map(|generic| LendingTokenInfo {
-                        token_name: generic.token_name.expect("Token name not found"),
-                        balance: generic.balance.expect("Balance not found"),
-                        usd_value: generic.usd_value.expect("USD value not found"),
+                        token_name: generic
+                            .token_name
+                            .as_ref()
+                            .expect("Token name not found")
+                            .clone(),
+                        balance: generic.balance.as_ref().expect("Balance not found").clone(),
+                        usd_value: generic
+                            .usd_value
+                            .as_ref()
+                            .expect("USD value not found")
+                            .clone(),
                     })
                     .collect(),
-                borrowed: None,
-                rewards: None,
+                borrowed: generic_infos
+                    .iter()
+                    .filter(|generic| generic.variant_header == Some("Borrowed".into()))
+                    .map(|generic| LendingTokenInfo {
+                        token_name: generic
+                            .token_name
+                            .as_ref()
+                            .expect("Token name not found")
+                            .clone(),
+                        balance: generic.balance.as_ref().expect("Balance not found").clone(),
+                        usd_value: generic
+                            .usd_value
+                            .as_ref()
+                            .expect("USD value not found")
+                            .clone(),
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+                rewards: generic_infos
+                    .iter()
+                    .filter(|generic| generic.variant_header == Some("Rewards".into()))
+                    .map(|generic| LendingTokenInfo {
+                        token_name: generic
+                            .token_name
+                            .as_ref()
+                            .expect("Token name not found")
+                            .clone(),
+                        balance: generic.balance.as_ref().expect("Balance not found").clone(),
+                        usd_value: generic
+                            .usd_value
+                            .as_ref()
+                            .expect("USD value not found")
+                            .clone(),
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }),
             _ => Err(anyhow::anyhow!(format!(
                 "Unknown tracking type: {}",
