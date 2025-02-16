@@ -10,7 +10,7 @@ pub struct AppConfig {
     pub bybit: super::bybit_config::BybitConfig,
     pub kraken: super::kraken_config::KrakenConfig,
     pub coingecko: super::price_config::CoingeckoConfig,
-    pub scraping: super::scraping_config::ScrapingConfig,
+    // pub scraping: super::scraping_config::ScrapingConfig,
 }
 
 pub static CONFIG: LazyLock<AppConfig> = LazyLock::new(|| {
