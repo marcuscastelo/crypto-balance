@@ -30,9 +30,9 @@ impl SpreadsheetUseCasesImpl {
         spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
             .await
-            .expect("Should have content")
+            .expect("Should have content, when getting token names, can't continue without it")
             .values
-            .expect("Should have values")
+            .expect("Should have values when getting token names, can't continue without them")
             .my_into()
     }
 

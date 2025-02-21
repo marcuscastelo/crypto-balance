@@ -29,7 +29,7 @@ use routines::{
     token_prices::TokenPricesRoutine,
     update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
 };
-use tokio::process::Command;
+use tokio::{process::Command, time::sleep};
 
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;

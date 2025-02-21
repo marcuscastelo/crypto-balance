@@ -80,12 +80,12 @@ impl AaHParser {
             .entry(relevant_token.token_name.to_owned())
             .or_insert(HashMap::new());
 
-        let amount = parse_amount(amount)?;
+        let mut amount = parse_amount(amount)?;
         let name = format!("{} - {} ({})", chain, location, token);
 
         if token_balances.contains_key(&name) {
-            log::warn!("Duplicate token found: {}. Halt!", name);
-            return Err(anyhow::anyhow!("Duplicate token found"));
+            log::warn!("Duplicate token found: {}. Proceed with caution!", name);
+            amount += token_balances.get(&name).unwrap();
         }
         token_balances.insert(name, amount);
         Ok(())
@@ -453,6 +453,25 @@ impl AaHParser {
                                 &borrowed_token,
                             );
                         }
+                    }
+                }
+                ProjectTracking::Locked { locked } => {
+                    for token in locked {
+                        // TODO: Create a proper function for parsing locked tokens
+                        self.parse_stake_token(
+                            chain,
+                            project_name.as_str(),
+                            &StakeTokenInfo {
+                                balance: token.balance.clone(),
+                                pool: token.pool.clone(),
+                                token_name: token
+                                    .token_name
+                                    .as_ref()
+                                    .map(|s| s.as_str().to_owned()),
+                                rewards: token.rewards.clone(),
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
                     }
                 }
                 _ => {

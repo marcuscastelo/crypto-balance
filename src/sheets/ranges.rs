@@ -26,6 +26,10 @@ pub mod balances {
 
 #[allow(non_snake_case)] // To match sheet names
 pub mod AaH {
+    // USDT
+    pub const RW_USDT_BALANCES_NAMES: &str = "AaH__vUsdtBalances_Names";
+    pub const RW_USDT_BALANCES_AMOUNTS: &str = "AaH__vUsdtBalances_Amounts";
+
     // Ethereum
     pub const RW_ETH_BALANCES_NAMES: &str = "AaH__vEthBalances_Names";
     pub const RW_ETH_BALANCES_AMOUNTS: &str = "AaH__vEthBalances_Amounts";
