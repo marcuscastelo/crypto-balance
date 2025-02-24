@@ -431,7 +431,7 @@ impl AaHParser {
                 ProjectTracking::Lending {
                     supplied,
                     borrowed,
-                    rewards,
+                    rewards: _,
                 } => {
                     for supplied_token in supplied.as_slice() {
                         self.parse_lending_token(

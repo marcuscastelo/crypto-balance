@@ -1,3 +1,5 @@
+use error_stack::{Context, Result, ResultExt};
+use std::fmt;
 use std::process::{Child, Command};
 
 use fantoccini::{error::NewSessionError, Client, ClientBuilder};
@@ -7,11 +9,25 @@ pub struct ScraperDriver {
     pub client: Client,
 }
 
+#[derive(Debug)]
+pub enum ScraperDriverError {
+    FailedToSpawnGeckodriver,
+    FailedToCreateClient,
+}
+
+impl Context for ScraperDriverError {}
+
+impl fmt::Display for ScraperDriverError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{:?}", self)
+    }
+}
+
 fn random_port() -> u16 {
     rand::random::<u16>() % (65535 - 1024) + 1024
 }
 
-async fn spawn_geckodriver_process(port: u16) -> anyhow::Result<Child> {
+async fn spawn_geckodriver_process(port: u16) -> Result<Child, ScraperDriverError> {
     Command::new("geckodriver")
         .arg("--port")
         .arg(port.to_string())
@@ -20,28 +36,23 @@ async fn spawn_geckodriver_process(port: u16) -> anyhow::Result<Child> {
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
-        .map_err(|error| anyhow::anyhow!(format!("Failed to start geckodriver: {}", error)))
+        .change_context(ScraperDriverError::FailedToSpawnGeckodriver)
 }
 
-async fn create_and_configure_client(port: u16) -> anyhow::Result<Client> {
+async fn create_and_configure_client(port: u16) -> Result<Client, ScraperDriverError> {
     // tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     let client = ClientBuilder::native()
         .connect(format!("http://localhost:{}", port).as_str())
         .await
-        .map_err(|error: NewSessionError| {
-            anyhow::anyhow!(format!(
-                "Failed to connect to WebDriver: {}",
-                error.to_string()
-            ))
-        })?;
+        .change_context(ScraperDriverError::FailedToCreateClient)?;
 
-    client.set_ua("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OPR/112.0.0.0").await?;
+    client.set_ua("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OPR/112.0.0.0").await.change_context(ScraperDriverError::FailedToCreateClient)?;
 
     Ok(client)
 }
 
 impl ScraperDriver {
-    pub async fn new() -> anyhow::Result<Self> {
+    pub async fn new() -> Result<Self, ScraperDriverError> {
         let port = random_port();
 
         let scraper = ScraperDriver {

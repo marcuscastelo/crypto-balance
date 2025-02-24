@@ -25,7 +25,6 @@ use routines::{
     debank_total_usd_routine::DebankTotalUSDRoutine,
     exchange_balances_routine::ExchangeBalancesRoutine,
     routine::{Routine, RoutineFailureInfo, RoutineResult},
-    sonar_watch_routine::SonarWatchRoutine,
     token_prices::TokenPricesRoutine,
     update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
 };
@@ -54,6 +53,11 @@ async fn run_routines(parallel: bool) {
             futures.push(routine.run());
         } else {
             let result = routine.run().await;
+            if let Err(err) = &result {
+                log::error!("❌ {}: {}", routine.name(), err.message);
+            } else {
+                log::info!("✅ {}: OK", routine.name());
+            }
             routine_results.insert(routine.name().to_string(), result);
         }
     }
@@ -65,6 +69,7 @@ async fn run_routines(parallel: bool) {
         }
     }
 
+    log::info!("Routine results:");
     for (name, result) in routine_results {
         match result {
             Ok(()) => {

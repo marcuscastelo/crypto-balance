@@ -1,7 +1,23 @@
 use std::{collections::HashMap, rc::Rc, sync::LazyLock};
 
+use error_stack::{Context, Result, ResultExt};
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
+
+#[derive(Debug)]
+pub enum DebankTokensRoutineError {
+    FailedToFetchRelevantTokenAmounts,
+    FailedToUpdateDebankEthAaHBalancesOnSpreadsheet,
+    FailedToCreateScrapper,
+}
+
+impl std::fmt::Display for DebankTokensRoutineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DebankTokensRoutineError: {:?}", self)
+    }
+}
+
+impl Context for DebankTokensRoutineError {}
 
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
@@ -124,11 +140,14 @@ impl DebankTokensRoutine {
 
     async fn fetch_relevant_token_amounts(
         &self,
-    ) -> anyhow::Result<HashMap<String, HashMap<String, f64>>> {
-        let scraper = DebankBalanceScraper::new().await?;
+    ) -> Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
+        let scraper = DebankBalanceScraper::new()
+            .await
+            .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
         let chain_infos = scraper
             .get_chain_infos(&CONFIG.blockchain.airdrops.evm.address)
-            .await?;
+            .await
+            .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
 
         let mut aah_parser = AaHParser::new();
 

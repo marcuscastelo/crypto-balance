@@ -23,10 +23,13 @@ impl DebankTotalUSDRoutine {
     }
 
     async fn get_debank_balance(&self) -> anyhow::Result<f64> {
-        let scraper = DebankBalanceScraper::new().await?;
+        let scraper = DebankBalanceScraper::new()
+            .await
+            .map_err(|error| anyhow::anyhow!(error))?;
         scraper
             .get_total_balance(&CONFIG.blockchain.airdrops.evm.address)
             .await
+            .map_err(|error| anyhow::anyhow!(error))
     }
 
     async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
