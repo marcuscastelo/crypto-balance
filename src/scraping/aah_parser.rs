@@ -54,13 +54,6 @@ impl AaHParser {
         token: &str,
         relevant_tokens: &[&RelevantDebankToken],
     ) -> anyhow::Result<()> {
-        log::trace!(
-            "Generic parsing: {} - {} - {} - {:?}",
-            chain,
-            location,
-            amount,
-            token
-        );
         if relevant_tokens.len() > 1 {
             log::error!(
                 "Multiple relevant tokens found for token: {}. Halt!.",
