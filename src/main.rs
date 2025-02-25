@@ -12,8 +12,6 @@ mod routines;
 mod scraping;
 mod sheets;
 
-use std::collections::HashMap;
-
 use cli::progress::CLI_MULTI_PROGRESS;
 use exchange::data::{
     binance::binance_use_cases::BinanceUseCases, bybit::bybit_use_cases::BybitUseCases,
@@ -28,7 +26,8 @@ use routines::{
     token_prices::TokenPricesRoutine,
     update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
 };
-use tokio::{process::Command, time::sleep};
+use std::collections::HashMap;
+use tokio::{process::Command, time::sleep, time::Duration};
 
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
@@ -59,6 +58,8 @@ async fn run_routines(parallel: bool) {
                 log::info!("✅ {}: OK", routine.name());
             }
             routine_results.insert(routine.name().to_string(), result);
+            log::info!("Waiting for 30 seconds before running the next routine...");
+            sleep(Duration::from_secs(30)).await;
         }
     }
 

@@ -274,7 +274,6 @@ impl DebankBalanceScraper {
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
-        log::info!("{}: Chain balance: {}", chain_name, chain_balance);
 
         chain
             .click()
@@ -309,19 +308,14 @@ impl DebankBalanceScraper {
             None
         };
 
-        log::info!("{}: Wallet info: {:?}", chain_name, wallet_info);
-
         let mut projects_info = Vec::new();
         for project in projects.iter() {
             let project_info = self
                 .get_chain_project_info(project)
                 .await
                 .change_context(DebankScraperError::FailedToGetChainInfo)?;
-            log::info!("{}: Project info: {:#?}", chain_name, project_info);
             projects_info.push(project_info);
         }
-
-        log::info!("{}: Projects: {:?}", chain_name, projects_info);
 
         Ok(ChainInfo {
             name: chain_name,
@@ -344,7 +338,6 @@ impl DebankBalanceScraper {
 
         let token_table_body_xpath = "div[2]/div[1]/div[1]/div[2]";
 
-        log::trace!("Locating token table body");
         let table_body: Element = wallet
             .find(Locator::XPath(token_table_body_xpath))
             .await
@@ -370,7 +363,6 @@ impl DebankBalanceScraper {
                 .text()
                 .await
                 .change_context(DebankScraperError::ElementTextNotFound)?;
-            log::trace!("Found token on wallet: {}", name);
             tokens.push(SpotTokenInfo {
                 name: row
                     .find(Locator::XPath(name_xpath))
@@ -401,7 +393,6 @@ impl DebankBalanceScraper {
                     .await
                     .change_context(DebankScraperError::ElementTextNotFound)?,
             });
-            log::trace!("Token: {:?}", tokens.last().unwrap());
         }
 
         Ok(ChainWalletInfo { usd_value, tokens })
@@ -419,8 +410,6 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
 
-        log::trace!("Project name: {}", name);
-
         let tracking_elements = project
             .find_all(Locator::Css("div.Panel_container__Vltd1"))
             .await
@@ -429,25 +418,10 @@ impl DebankBalanceScraper {
         let mut trackings = Vec::new();
 
         for tracking_element in tracking_elements.iter() {
-            if name == "ZeroLend" {
-                log::debug!(
-                    "{:#?}",
-                    tracking_element
-                        .html(true)
-                        .await
-                        .change_context(DebankScraperError::ElementHtmlNotFound)?
-                );
-            }
-
             let tracking = self
                 .explore_tracking(tracking_element)
                 .await
                 .change_context(DebankScraperError::FailedToExploreTracking)?;
-
-            if name == "ZeroLend" {
-                log::debug!("{:#?}", tracking);
-            }
-
             trackings.push(tracking);
         }
 
@@ -466,25 +440,14 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
 
-        log::trace!("Tracking type: {}", tracking_type);
-
         let tables = tracking
             .find_all(Locator::XPath("div[2]/div"))
             .await
             .change_context(DebankScraperError::ElementHtmlNotFound)?;
-        log::debug!("Found {} tables", tables.len());
 
         let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
 
         for table in tables {
-            log::debug!(
-                "Table for {}, html: {}",
-                tracking_type,
-                table
-                    .html(true)
-                    .await
-                    .change_context(DebankScraperError::ElementHtmlNotFound)?
-            );
             let tracking_headers = table
                 .find_all(Locator::XPath("div[1]//span"))
                 .await
@@ -494,13 +457,6 @@ impl DebankBalanceScraper {
                 tracking_headers
                     .iter()
                     .map(|header| async {
-                        log::debug!(
-                            "Header html: {}",
-                            header
-                                .html(true)
-                                .await
-                                .change_context(DebankScraperError::ElementHtmlNotFound)?
-                        );
                         header
                             .text()
                             .await
@@ -515,10 +471,6 @@ impl DebankBalanceScraper {
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()
                 .change_context(DebankScraperError::GenericError)?;
-
-            for header in headers.iter() {
-                log::trace!("Header: {:?}", header);
-            }
 
             let tracking_body = table
                 .find(Locator::XPath("div[2]"))
@@ -556,11 +508,7 @@ impl DebankBalanceScraper {
             }
         }
 
-        log::trace!("Generic infos: {:#?}", generic_infos);
-
         let generic_infos = self.parse_generic_info(generic_infos)?;
-
-        log::trace!("Generic infos: {:#?}", generic_infos);
 
         let specialized = self.specialize_generic_info(&tracking_type, generic_infos)?;
 

@@ -434,7 +434,6 @@ impl AaHParser {
                         );
                     }
 
-                    log::debug!("{} - Borrowed: {:#?}", project.name, borrowed);
                     if let Some(borrowed_tokens) = borrowed.as_ref() {
                         for borrowed_token in borrowed_tokens.as_slice() {
                             let mut borrowed_token = borrowed_token.clone();
