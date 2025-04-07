@@ -14,8 +14,7 @@ mod sheets;
 
 use cli::progress::CLI_MULTI_PROGRESS;
 use exchange::data::{
-    binance::binance_use_cases::BinanceUseCases, bybit::bybit_use_cases::BybitUseCases,
-    kraken::kraken_use_cases::KrakenUseCases,
+    binance::binance_use_cases::BinanceUseCases, kraken::kraken_use_cases::KrakenUseCases,
 };
 use indicatif_log_bridge::LogWrapper;
 use routines::{
@@ -37,7 +36,6 @@ async fn run_routines(parallel: bool) {
         Box::new(DebankTotalUSDRoutine),
         Box::new(TokenPricesRoutine),
         Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&BybitUseCases)),
         Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
