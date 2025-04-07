@@ -13,6 +13,6 @@ pub type RoutineResult = Result<(), RoutineFailureInfo>;
 
 #[async_trait::async_trait]
 pub trait Routine {
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
     async fn run(&self) -> RoutineResult;
 }

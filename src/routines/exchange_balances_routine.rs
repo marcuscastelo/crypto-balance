@@ -5,12 +5,14 @@ use indicatif::ProgressBar;
 use crate::{
     cli::progress::{new_progress, ProgressBarExt},
     exchange::domain::exchange::ExchangeUseCases,
+    routines::routine::RoutineFailureInfo,
     sheets::data::spreadsheet::{BalanceUpdateTarget, SpreadsheetUseCasesImpl},
 };
 
 use super::routine::{Routine, RoutineResult};
 
 pub struct ExchangeBalancesRoutine {
+    routine_name: String,
     exchange: &'static dyn ExchangeUseCases,
     persistence: Box<SpreadsheetUseCasesImpl>,
 }
@@ -18,6 +20,7 @@ pub struct ExchangeBalancesRoutine {
 impl ExchangeBalancesRoutine {
     pub fn new(exchange: &'static dyn ExchangeUseCases) -> Self {
         Self {
+            routine_name: format!("{} Balances", exchange.exchange_name()),
             exchange,
             persistence: Box::new(SpreadsheetUseCasesImpl),
         }
@@ -35,8 +38,8 @@ impl ExchangeBalancesRoutine {
 
 #[async_trait::async_trait]
 impl Routine for ExchangeBalancesRoutine {
-    fn name(&self) -> &'static str {
-        "Binance Balances"
+    fn name(&self) -> &str {
+        self.routine_name.as_str()
     }
 
     async fn run(&self) -> RoutineResult {
@@ -44,16 +47,40 @@ impl Routine for ExchangeBalancesRoutine {
 
         let progress = new_progress(ProgressBar::new_spinner());
 
-        progress.trace("Binance: 📋 Listing all tokens from persistence");
+        progress.trace(format!(
+            "{}: 📋 Listing all tokens from persistence",
+            self.name()
+        ));
         let token_names = self.persistence.get_token_names_from_spreadsheet().await;
 
-        progress.trace("Binance: ☁️  Getting balances from exchange");
+        progress.trace(format!(
+            "{}: ☁️  Getting balances from exchange",
+            self.name()
+        ));
         let balance_by_token = self.exchange.fetch_balances().await;
 
-        progress.trace("Binance: 📊 Ordering balances");
+        let balance_by_token = match balance_by_token {
+            Ok(balances) => balances,
+            Err(err) => {
+                progress.error(format!(
+                    "{}: ❌ Error fetching balances: {}",
+                    self.name(),
+                    err
+                ));
+                return Err(RoutineFailureInfo::new(format!(
+                    "Error fetching balances: {}",
+                    err
+                )));
+            }
+        };
+
+        progress.trace(format!("{}: 📊 Ordering balances", self.name()));
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);
 
-        progress.trace("Binance: 📝 Updating Binance balances on the spreadsheet");
+        progress.trace(format!(
+            "{}: 📝 Updating Binance balances on the spreadsheet",
+            self.name()
+        ));
         self.persistence
             .update_balances_on_spreadsheet(
                 self.exchange.spreadsheet_target(),
@@ -61,7 +88,10 @@ impl Routine for ExchangeBalancesRoutine {
             )
             .await;
 
-        progress.info("Binance: ✅ Updated Binance balances on the spreadsheet");
+        progress.info(format!(
+            "{}: ✅ Updated Binance balances on the spreadsheet",
+            self.name()
+        ));
 
         Ok(())
     }

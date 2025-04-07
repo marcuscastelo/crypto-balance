@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use super::factory::KrakenFactory;
 
+use anyhow::Ok;
 #[allow(unused_imports)]
 use num_traits::ToPrimitive;
 
@@ -19,13 +20,17 @@ impl KrakenUseCases {
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for KrakenUseCases {
+    fn exchange_name(&self) -> &'static str {
+        "Kraken"
+    }
+
     fn spreadsheet_target(&self) -> BalanceUpdateTarget {
         BalanceUpdateTarget::Kraken
     }
 
-    async fn fetch_balances(&self) -> HashMap<String, f64> {
+    async fn fetch_balances(&self) -> anyhow::Result<HashMap<String, f64>> {
         let kraken_api = KrakenFactory::create();
-        kraken_api
+        let balances = kraken_api
             .get_account_balance()
             .await
             .unwrap()
@@ -43,6 +48,8 @@ impl ExchangeUseCases for KrakenUseCases {
                 )
             })
             .filter(|(_, amount)| *amount > 0.0)
-            .collect::<HashMap<_, _>>()
+            .collect::<HashMap<_, _>>();
+
+        Ok(balances)
     }
 }

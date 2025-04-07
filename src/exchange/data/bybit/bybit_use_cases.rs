@@ -34,11 +34,15 @@ pub struct BybitUseCases;
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for BybitUseCases {
+    fn exchange_name(&self) -> &'static str {
+        "Bybit"
+    }
+
     fn spreadsheet_target(&self) -> BalanceUpdateTarget {
         BalanceUpdateTarget::Bybit
     }
 
-    async fn fetch_balances(&self) -> HashMap<String, f64> {
+    async fn fetch_balances(&self) -> anyhow::Result<HashMap<String, f64>> {
         let bybit_account = BybitFactory::create();
         let response_value = bybit_account
             .get_wallet_balance(HashMap::from([(
@@ -48,8 +52,17 @@ impl ExchangeUseCases for BybitUseCases {
             .await
             .expect("Should get wallet balance");
 
-        let balances: BybitGetWalletBalanceResponse =
-            serde_json::from_value(response_value).expect("Should deserialize response");
+        let balances: Result<BybitGetWalletBalanceResponse, serde_json::Error> =
+            serde_json::from_value(response_value.clone());
+
+        let balances = match balances {
+            Ok(balances) => balances,
+            Err(err) => {
+                log::error!("Failed to parse wallet balance response: {}", err);
+                log::debug!("Response value: {:?}", response_value);
+                return Err(anyhow::anyhow!("Failed to parse wallet balance response"));
+            }
+        };
 
         let balances = HashMap::from(
             balances
@@ -66,6 +79,6 @@ impl ExchangeUseCases for BybitUseCases {
                 .flatten()
                 .collect::<HashMap<_, _>>(),
         );
-        balances
+        Ok(balances)
     }
 }
