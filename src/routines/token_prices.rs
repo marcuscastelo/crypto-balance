@@ -78,7 +78,7 @@ impl TokenPricesRoutine {
     ) {
         let values = new_prices
             .iter()
-            .map(|x| format!("${:.2}", x))
+            .map(|x| format!("${}", x))
             .collect::<Vec<_>>();
         spreadsheet_manager
             .write_named_range(
