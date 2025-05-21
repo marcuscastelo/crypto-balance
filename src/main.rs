@@ -28,15 +28,18 @@ use routines::{
 use std::collections::HashMap;
 use tokio::{process::Command, time::sleep, time::Duration};
 
+use tracing::{info, warn};
+use tracing_subscriber;
+
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankTokensRoutine),
-        Box::new(DebankTotalUSDRoutine),
-        Box::new(TokenPricesRoutine),
-        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        // Box::new(DebankTokensRoutine),
+        // Box::new(DebankTotalUSDRoutine),
+        // Box::new(TokenPricesRoutine),
+        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
@@ -88,19 +91,18 @@ async fn run_routines(parallel: bool) {
 
 #[tokio::main]
 async fn main() {
-    let logger = env_logger::builder().build();
+    // let logger = env_logger::builder().build(); // TODO: remove env_logger dependency
+    // let level = logger.filter();
+    // LogWrapper::new(CLI_MULTI_PROGRESS.clone(), logger)
+    //     .try_init()
+    //     .expect("Failed to initialize logger");
+    // log::set_max_level(level);
 
-    let level = logger.filter();
-
-    LogWrapper::new(CLI_MULTI_PROGRESS.clone(), logger)
-        .try_init()
-        .expect("Failed to initialize logger");
-
-    log::set_max_level(level);
+    tracing_subscriber::fmt().init();
 
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = false;
     run_routines(parallel).await;
 
-    CLI_MULTI_PROGRESS.clear().unwrap();
+    // CLI_MULTI_PROGRESS.clear().unwrap();
 }
