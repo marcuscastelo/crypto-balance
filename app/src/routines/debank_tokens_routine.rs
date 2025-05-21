@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, sync::LazyLock};
+use std::{collections::HashMap, sync::LazyLock};
 
 use error_stack::{Context, Result, ResultExt};
 use google_sheets4::api::ValueRange;
@@ -7,8 +7,6 @@ use tracing::instrument;
 #[derive(Debug)]
 pub enum DebankTokensRoutineError {
     FailedToFetchRelevantTokenAmounts,
-    FailedToUpdateDebankEthAaHBalancesOnSpreadsheet,
-    FailedToCreateScrapper,
 }
 
 impl std::fmt::Display for DebankTokensRoutineError {
@@ -187,6 +185,8 @@ impl DebankTokensRoutine {
 
         Ok(aah_parser.balances)
     }
+
+    #[allow(non_snake_case)] // Specially allowed for the sake of readability of an acronym
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
         balances: HashMap<String, HashMap<String, f64>>,

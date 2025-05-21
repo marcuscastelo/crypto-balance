@@ -1,0 +1,2 @@
+[workspace]
+members = ["struct_name", "struct_name_derive", "app"]

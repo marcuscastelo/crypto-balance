@@ -14,14 +14,12 @@ mod sheets;
 use exchange::data::{
     binance::binance_use_cases::BinanceUseCases, kraken::kraken_use_cases::KrakenUseCases,
 };
-use indicatif_log_bridge::LogWrapper;
 use routines::{
     debank_tokens_routine::DebankTokensRoutine,
     debank_total_usd_routine::DebankTotalUSDRoutine,
     exchange_balances_routine::ExchangeBalancesRoutine,
     routine::{Routine, RoutineFailureInfo, RoutineResult},
     token_prices::TokenPricesRoutine,
-    update_hold_balance_on_sheets::UpdateHoldBalanceOnSheetsRoutine,
 };
 use std::collections::HashMap;
 use tokio::{process::Command, time::sleep, time::Duration};

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use chrono::format::parse;
 use google_sheets4::api::ValueRange;
+use struct_name::StructName;
+use struct_name_derive::StructName;
 use tracing::instrument;
 
 use crate::{
@@ -14,6 +16,7 @@ use crate::{
     Routine, RoutineFailureInfo, RoutineResult,
 };
 
+#[derive(StructName)]
 pub struct DebankTotalUSDRoutine;
 
 impl DebankTotalUSDRoutine {
@@ -47,7 +50,7 @@ impl DebankTotalUSDRoutine {
 #[async_trait::async_trait]
 impl Routine for DebankTotalUSDRoutine {
     fn name(&self) -> &'static str {
-        "DebankTotalUSDRoutine"
+        self.struct_name()
     }
 
     #[instrument(skip(self))]
