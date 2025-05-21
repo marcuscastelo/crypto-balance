@@ -95,6 +95,7 @@ async fn run_routines(parallel: bool) {
 async fn main() {
     let indicatif_layer = IndicatifLayer::new();
     let subscriber = Registry::default()
+        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
         .with(tracing_subscriber::filter::LevelFilter::INFO)
         .with(tracing_subscriber::fmt::layer().with_writer(indicatif_layer.get_stderr_writer()))
         .with(indicatif_layer);
