@@ -5,10 +5,15 @@ use tracing::instrument;
 
 use fantoccini::{Client, ClientBuilder};
 
-#[derive(Debug)]
 pub struct ScraperDriver {
     driver_process: Option<Child>,
     pub client: Client,
+}
+
+impl fmt::Debug for ScraperDriver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ScraperDriver {{ }}")
+    }
 }
 
 #[derive(Debug)]

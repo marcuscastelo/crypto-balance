@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use tracing::instrument;
 
@@ -15,7 +15,18 @@ pub struct ExchangeBalancesRoutine {
     persistence: Box<SpreadsheetUseCasesImpl>,
 }
 
+impl Debug for ExchangeBalancesRoutine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ExchangeBalancesRoutine {{ routine_name: {} }}",
+            self.routine_name
+        )
+    }
+}
+
 impl ExchangeBalancesRoutine {
+    #[instrument(skip(exchange), fields(exchange = exchange.exchange_name()))]
     pub fn new(exchange: &'static dyn ExchangeUseCases) -> Self {
         Self {
             routine_name: format!("{} Balances", exchange.exchange_name()),
@@ -24,6 +35,7 @@ impl ExchangeBalancesRoutine {
         }
     }
 
+    #[instrument]
     fn order_balances(&self, token_names: &[String], balances: &HashMap<String, f64>) -> Vec<f64> {
         let mut token_balances = Vec::with_capacity(token_names.len());
         for token_name in token_names {

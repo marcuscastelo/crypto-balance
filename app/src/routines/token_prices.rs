@@ -11,14 +11,17 @@ use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
 use super::routine::{Routine, RoutineResult};
+#[derive(Debug)]
 
 pub struct TokenPricesRoutine;
 
 impl TokenPricesRoutine {
+    #[instrument]
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
     }
 
+    #[instrument]
     async fn get_token_ids_from_spreadsheet(
         &self,
         spreadsheet_manager: &SpreadsheetManager,
@@ -32,6 +35,7 @@ impl TokenPricesRoutine {
             .my_into()
     }
 
+    #[instrument]
     async fn get_current_prices_from_spreadsheet(
         &self,
         spreadsheet_manager: &SpreadsheetManager,
@@ -52,6 +56,7 @@ impl TokenPricesRoutine {
             .collect::<Vec<_>>()
     }
 
+    #[instrument]
     fn order_prices(
         &self,
         tokens: &Vec<String>,
@@ -70,6 +75,7 @@ impl TokenPricesRoutine {
             .collect()
     }
 
+    #[instrument]
     async fn update_prices_on_spreadsheet(
         &self,
         spreadsheet_manager: &SpreadsheetManager,

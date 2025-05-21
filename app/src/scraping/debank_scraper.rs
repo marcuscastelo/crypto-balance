@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, fmt::Debug, time::Duration};
 
 use error_stack::{bail, Context, Result, ResultExt};
 use fantoccini::{elements::Element, Locator};
@@ -8,9 +8,14 @@ use tracing::instrument;
 
 use super::{formatting::balance::format_balance, scraper_driver::ScraperDriver};
 
-#[derive(Debug)]
 pub struct DebankBalanceScraper {
     driver: ScraperDriver,
+}
+
+impl Debug for DebankBalanceScraper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DebankBalanceScraper {{}}")
+    }
 }
 
 #[derive(Debug)]

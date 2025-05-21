@@ -154,13 +154,16 @@ impl RelevantDebankToken {
     }
 }
 
+#[derive(Debug)]
 pub struct DebankTokensRoutine;
 
 impl DebankTokensRoutine {
+    #[instrument]
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
+    #[instrument]
     async fn fetch_relevant_token_amounts(
         &self,
     ) -> Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
@@ -186,6 +189,7 @@ impl DebankTokensRoutine {
         Ok(aah_parser.balances)
     }
 
+    #[instrument]
     #[allow(non_snake_case)] // Specially allowed for the sake of readability of an acronym
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,

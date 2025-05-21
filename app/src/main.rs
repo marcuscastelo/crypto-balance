@@ -58,8 +58,17 @@ async fn run_routines(parallel: bool) {
                 tracing::info!("✅ {}: OK", routine.name());
             }
             routine_results.insert(routine.name().to_string(), result);
-            tracing::info!("Waiting for 30 seconds before running the next routine...");
-            sleep(Duration::from_secs(30)).await;
+            {
+                let span =
+                    tracing::span!(tracing::Level::INFO, "wait", last_routine = routine.name());
+                let _enter = span.enter();
+                let secs = 15;
+                tracing::info!(
+                    "Waiting for {} seconds before running the next routine...",
+                    secs
+                );
+                sleep(Duration::from_secs(secs)).await;
+            }
         }
     }
 
@@ -92,10 +101,17 @@ async fn run_routines(parallel: bool) {
 #[instrument]
 async fn main() {
     let indicatif_layer = IndicatifLayer::new();
+
+    let stdout_layer = tracing_subscriber::fmt::layer()
+        .with_writer(indicatif_layer.get_stderr_writer())
+        .with_ansi(true)
+        .with_target(false)
+        .with_line_number(true)
+        .with_file(true);
+
     let subscriber = Registry::default()
-        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
         .with(tracing_subscriber::filter::LevelFilter::INFO)
-        .with(tracing_subscriber::fmt::layer().with_writer(indicatif_layer.get_stderr_writer()))
+        .with(stdout_layer)
         .with(indicatif_layer);
 
     tracing::subscriber::set_global_default(subscriber)

@@ -13,14 +13,16 @@ use crate::{
     Routine, RoutineFailureInfo, RoutineResult,
 };
 
-#[derive(StructName)]
+#[derive(Debug, StructName)]
 pub struct DebankTotalUSDRoutine;
 
 impl DebankTotalUSDRoutine {
+    #[instrument]
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
     }
 
+    #[instrument]
     async fn get_debank_balance(&self) -> anyhow::Result<f64> {
         let scraper = DebankBalanceScraper::new()
             .await
@@ -31,6 +33,7 @@ impl DebankTotalUSDRoutine {
             .map_err(|error| anyhow::anyhow!(error))
     }
 
+    #[instrument]
     async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 

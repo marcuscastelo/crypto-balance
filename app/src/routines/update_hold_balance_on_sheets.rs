@@ -24,6 +24,7 @@ use crate::{
 };
 
 use super::routine::{Routine, RoutineResult};
+#[derive(Debug)]
 
 pub struct UpdateHoldBalanceOnSheetsRoutine;
 
@@ -63,6 +64,7 @@ impl TokenBalanceProcessor {
 }
 
 impl UpdateHoldBalanceOnSheetsRoutine {
+    #[instrument]
     pub async fn fetch_all_evm_balances(
         &self,
         chain: &Chain,
@@ -105,12 +107,14 @@ impl UpdateHoldBalanceOnSheetsRoutine {
         Ok(balances)
     }
 
+    #[instrument]
     async fn fetch_balance_hold(&self, chain: &Chain) -> HashMap<Arc<Token>, TokenBalance<String>> {
         self.fetch_all_evm_balances(chain, &CONFIG.blockchain.hold.evm.address)
             .await
             .expect(format!("Should fetch '{}' chain balances for hold", chain.name).as_str())
     }
 
+    #[instrument]
     async fn fetch_balance_hold_sc(
         &self,
         chain: &Chain,
@@ -120,10 +124,12 @@ impl UpdateHoldBalanceOnSheetsRoutine {
             .expect(format!("Should fetch '{}' chain balances for hold_sc", chain.name).as_str())
     }
 
+    #[instrument]
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
         SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
     }
 
+    #[instrument]
     async fn get_token_names_from_spreadsheet(&self) -> Vec<String> {
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
