@@ -11,8 +11,8 @@ use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
 use super::routine::{Routine, RoutineResult};
-#[derive(Debug)]
 
+#[derive(Debug)]
 pub struct TokenPricesRoutine;
 
 impl TokenPricesRoutine {

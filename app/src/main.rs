@@ -14,6 +14,10 @@ mod sheets;
 use exchange::data::{
     binance::binance_use_cases::BinanceUseCases, kraken::kraken_use_cases::KrakenUseCases,
 };
+use opentelemetry::KeyValue;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::trace as sdktrace;
+use opentelemetry_sdk::Resource;
 use routines::{
     debank_tokens_routine::DebankTokensRoutine,
     debank_total_usd_routine::DebankTotalUSDRoutine,
@@ -21,24 +25,26 @@ use routines::{
     routine::{Routine, RoutineFailureInfo, RoutineResult},
     token_prices::TokenPricesRoutine,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::File};
 use tokio::{process::Command, time::sleep, time::Duration};
 use tracing::instrument;
+use tracing_chrome::ChromeLayerBuilder;
+use tracing_flame::FlameLayer;
 use tracing_indicatif::IndicatifLayer;
-use tracing_subscriber::{layer::SubscriberExt, Registry};
-
+use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{self};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
 #[instrument]
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankTokensRoutine),
-        Box::new(DebankTotalUSDRoutine),
+        // Box::new(DebankTokensRoutine),
+        // Box::new(DebankTotalUSDRoutine),
         Box::new(TokenPricesRoutine),
-        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
@@ -109,15 +115,50 @@ async fn main() {
         .with_line_number(true)
         .with_file(true);
 
-    let subscriber = Registry::default()
+    let file = File::create("log.ndjson").unwrap();
+    let json_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_writer(file)
+        .with_span_events(fmt::format::FmtSpan::FULL);
+
+    let (chrome_layer, _guard) = ChromeLayerBuilder::new()
+        .file("chrome_trace.json") // nome do arquivo final
+        .include_args(true)
+        .build();
+
+    let file = File::create("flame.folded").unwrap();
+    let flame_layer = FlameLayer::new(file);
+
+    // Cria um tracer que envia para o agente Jaeger local
+    let exporter = opentelemetry_otlp::new_exporter()
+        .tonic() // para gRPC
+        .with_endpoint("http://localhost:4317"); // default do OTel Collector ou Tempo
+
+    let tracer =
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(exporter)
+            .with_trace_config(sdktrace::config().with_resource(Resource::new(vec![
+                KeyValue::new("service.name", "crypto_balance"),
+            ])))
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .expect("failed to install OTLP tracer");
+
+    let otel_layer = OpenTelemetryLayer::new(tracer);
+
+    Registry::default()
         .with(tracing_subscriber::filter::LevelFilter::INFO)
         .with(stdout_layer)
-        .with(indicatif_layer);
-
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set global default subscriber");
+        .with(json_layer)
+        .with(chrome_layer)
+        .with(flame_layer)
+        .with(otel_layer)
+        .with(indicatif_layer)
+        .init();
 
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = false;
     run_routines(parallel).await;
+
+    opentelemetry::global::shutdown_tracer_provider();
 }

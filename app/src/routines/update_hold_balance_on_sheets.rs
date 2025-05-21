@@ -24,8 +24,8 @@ use crate::{
 };
 
 use super::routine::{Routine, RoutineResult};
-#[derive(Debug)]
 
+#[derive(Debug)]
 pub struct UpdateHoldBalanceOnSheetsRoutine;
 
 struct TokenBalanceProcessor;

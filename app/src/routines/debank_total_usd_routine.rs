@@ -13,7 +13,7 @@ use crate::{
     Routine, RoutineFailureInfo, RoutineResult,
 };
 
-#[derive(Debug, StructName)]
+#[derive(StructName, Debug)]
 pub struct DebankTotalUSDRoutine;
 
 impl DebankTotalUSDRoutine {
