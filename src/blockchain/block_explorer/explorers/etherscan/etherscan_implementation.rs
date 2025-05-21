@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
 use error_stack::{Result, ResultExt};
+use tracing::instrument;
 
 use self::block_explorer::explorer::FetchBalanceError;
 
@@ -30,6 +31,7 @@ pub struct EtherscanImplementation {
     pub chain: LazyLock<&'static Chain>,
 }
 
+#[instrument]
 async fn fetch_and_deserialize<T: DeserializeOwned>(url: &str) -> Result<T, FetchBalanceError> {
     let resp = reqwest::get(url)
         .await
@@ -49,6 +51,7 @@ async fn fetch_and_deserialize<T: DeserializeOwned>(url: &str) -> Result<T, Fetc
     Ok(resp)
 }
 
+#[instrument]
 async fn parse_balance_from_response(resp: FetchBalanceResponse) -> Result<f64, FetchBalanceError> {
     let balance = resp
         .result
@@ -61,6 +64,7 @@ async fn parse_balance_from_response(resp: FetchBalanceResponse) -> Result<f64, 
 // TODO: change panic to error
 #[async_trait]
 impl BlockExplorer for EtherscanImplementation {
+    #[instrument(skip(self))]
     async fn fetch_native_balance(
         &self,
         evm_address: &str,
@@ -85,6 +89,7 @@ impl BlockExplorer for EtherscanImplementation {
         })
     }
 
+    #[instrument(skip(self))]
     async fn fetch_erc20_balance(
         &self,
         evm_address: &str,
@@ -111,6 +116,7 @@ impl BlockExplorer for EtherscanImplementation {
         })
     }
 
+    #[instrument(skip(self))]
     async fn fetch_erc20_balances(
         &self,
         evm_address: &str,

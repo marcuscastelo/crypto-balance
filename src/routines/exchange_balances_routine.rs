@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use indicatif::ProgressBar;
+use tracing::instrument;
 
 use crate::{
     cli::progress::{new_progress, ProgressBarExt},
@@ -42,6 +43,7 @@ impl Routine for ExchangeBalancesRoutine {
         self.routine_name.as_str()
     }
 
+    #[instrument(skip(self))]
     async fn run(&self) -> RoutineResult {
         tracing::info!("Binance: Running BinanceRoutine");
 

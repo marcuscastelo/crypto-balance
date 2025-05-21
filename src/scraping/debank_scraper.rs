@@ -4,9 +4,11 @@ use std::{collections::HashMap, time::Duration};
 use error_stack::{bail, Context, IntoReport, IntoReportCompat, Result, ResultExt};
 use fantoccini::{elements::Element, error::CmdError, Locator};
 use reqwest::Url;
+use tracing::instrument;
 
 use super::{formatting::balance::format_balance, scraper_driver::ScraperDriver};
 
+#[derive(Debug)]
 pub struct DebankBalanceScraper {
     driver: ScraperDriver,
 }
@@ -192,6 +194,7 @@ pub struct GenericTokenInfo {
 }
 
 impl DebankBalanceScraper {
+    #[instrument]
     pub async fn new() -> Result<Self, DebankScraperError> {
         let driver = ScraperDriver::new()
             .await
@@ -199,6 +202,7 @@ impl DebankBalanceScraper {
         Ok(Self { driver })
     }
 
+    #[instrument]
     async fn open_debank_url(&self, user_id: &str) -> Result<(), DebankScraperError> {
         let url = Url::parse(format!("https://debank.com/profile/{}", user_id).as_str())
             .change_context(DebankScraperError::UrlParseError)?;
@@ -218,6 +222,7 @@ impl DebankBalanceScraper {
         Ok(())
     }
 
+    #[instrument]
     async fn wait_data_updated(&self) -> Result<(), DebankScraperError> {
         let update_xpath =
             "/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[2]/div[2]/span";
@@ -246,6 +251,7 @@ impl DebankBalanceScraper {
         Ok(())
     }
 
+    #[instrument]
     async fn locate_chain_summary_elements(&self) -> Result<Vec<Element>, DebankScraperError> {
         let chains_selector = "div.AssetsOnChain_chainInfo__fKA2k";
         let chains = self
@@ -258,6 +264,7 @@ impl DebankBalanceScraper {
         Ok(chains)
     }
 
+    #[instrument]
     async fn get_chain_info(&self, chain: &Element) -> Result<ChainInfo, DebankScraperError> {
         let chain_name = chain
             .find(Locator::XPath("div[1]"))
@@ -324,6 +331,7 @@ impl DebankBalanceScraper {
         })
     }
 
+    #[instrument]
     async fn get_chain_wallet_info(
         &self,
         wallet: &Element,
@@ -398,6 +406,7 @@ impl DebankBalanceScraper {
         Ok(ChainWalletInfo { usd_value, tokens })
     }
 
+    #[instrument]
     async fn get_chain_project_info(
         &self,
         project: &Element,
@@ -428,6 +437,7 @@ impl DebankBalanceScraper {
         Ok(ChainProjectInfo { name, trackings })
     }
 
+    #[instrument]
     async fn explore_tracking(
         &self,
         tracking: &Element,
@@ -515,6 +525,7 @@ impl DebankBalanceScraper {
         Ok(specialized)
     }
 
+    #[instrument]
     fn specialize_generic_info(
         &self,
         tracking_type: &str,
@@ -676,6 +687,7 @@ impl DebankBalanceScraper {
         }
     }
 
+    #[instrument]
     fn parse_generic_info(
         &self,
         generic_info: Vec<Vec<(String, String)>>,
@@ -715,6 +727,7 @@ impl DebankBalanceScraper {
         Ok(infos)
     }
 
+    #[instrument]
     async fn extract_cell_info(&self, cell: &Element) -> Result<String, DebankScraperError> {
         let simple_span = cell.find(Locator::XPath("span")).await;
 
@@ -767,6 +780,7 @@ impl DebankBalanceScraper {
 }
 
 impl DebankBalanceScraper {
+    #[instrument]
     pub async fn get_total_balance(&self, user_id: &str) -> Result<f64, DebankScraperError> {
         self.open_debank_url(user_id).await?;
         self.wait_data_updated().await?;
@@ -791,6 +805,7 @@ impl DebankBalanceScraper {
             .into_report()
     }
 
+    #[instrument]
     pub async fn get_chain_infos(
         &self,
         user_id: &str,

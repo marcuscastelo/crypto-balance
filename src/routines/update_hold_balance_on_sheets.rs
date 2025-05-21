@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use error_stack::ResultExt;
 use google_sheets4::api::ValueRange;
 use regex::Regex;
+use tracing::instrument;
 
 use crate::{
     config::app_config::{self, CONFIG},
@@ -142,6 +143,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
         "UpdateHoldBalanceOnSheetsRoutine"
     }
 
+    #[instrument(skip(self))]
     async fn run(&self) -> RoutineResult {
         let chains = vec![&POLYGON, &OPTIMISM, &ARBITRUM];
 

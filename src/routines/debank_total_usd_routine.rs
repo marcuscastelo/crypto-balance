@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use chrono::format::parse;
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
+use tracing::instrument;
 
 use crate::{
     cli::progress::{finish_progress, new_progress, ProgressBarExt},
@@ -51,6 +52,7 @@ impl Routine for DebankTotalUSDRoutine {
         "DebankTotalUSDRoutine"
     }
 
+    #[instrument(skip(self))]
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running DebankTotalUSDRoutine");
 

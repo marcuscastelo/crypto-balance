@@ -3,6 +3,7 @@ use std::{collections::HashMap, rc::Rc, sync::LazyLock};
 use error_stack::{Context, Result, ResultExt};
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
+use tracing::instrument;
 
 #[derive(Debug)]
 pub enum DebankTokensRoutineError {
@@ -239,6 +240,7 @@ impl Routine for DebankTokensRoutine {
         "DebankTokensRoutine"
     }
 
+    #[instrument(skip(self))]
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running DebankTokensRoutine");
 

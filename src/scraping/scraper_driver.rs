@@ -4,6 +4,7 @@ use std::process::{Child, Command};
 
 use fantoccini::{error::NewSessionError, Client, ClientBuilder};
 
+#[derive(Debug)]
 pub struct ScraperDriver {
     driver_process: Option<Child>,
     pub client: Client,

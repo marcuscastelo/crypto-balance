@@ -10,6 +10,7 @@ use crate::{
 };
 use google_sheets4::api::ValueRange;
 use indicatif::ProgressBar;
+use tracing::instrument;
 
 use super::routine::{Routine, RoutineResult};
 
@@ -96,6 +97,7 @@ impl Routine for TokenPricesRoutine {
         "TokenPricesRoutine"
     }
 
+    #[instrument(skip(self))]
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running TokenPricesRoutine");
 
