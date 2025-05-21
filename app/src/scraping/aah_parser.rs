@@ -363,7 +363,7 @@ impl AaHParser {
                 });
             }
         } else {
-            tracing::warn!(
+            tracing::debug!(
                 "Ignoring token2 for stake token: {:?}, token2: {:?}",
                 token.pool,
                 token2

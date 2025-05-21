@@ -1,6 +1,7 @@
 use error_stack::{Context, Result, ResultExt};
 use std::fmt;
 use std::process::{Child, Command};
+use tracing::instrument;
 
 use fantoccini::{Client, ClientBuilder};
 
@@ -28,6 +29,7 @@ fn random_port() -> u16 {
     rand::random::<u16>() % (65535 - 1024) + 1024
 }
 
+#[instrument]
 async fn spawn_geckodriver_process(port: u16) -> Result<Child, ScraperDriverError> {
     Command::new("geckodriver")
         .arg("--port")
@@ -40,6 +42,7 @@ async fn spawn_geckodriver_process(port: u16) -> Result<Child, ScraperDriverErro
         .change_context(ScraperDriverError::FailedToSpawnGeckodriver)
 }
 
+#[instrument]
 async fn create_and_configure_client(port: u16) -> Result<Client, ScraperDriverError> {
     // tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     let client = ClientBuilder::native()
@@ -53,6 +56,7 @@ async fn create_and_configure_client(port: u16) -> Result<Client, ScraperDriverE
 }
 
 impl ScraperDriver {
+    #[instrument]
     pub async fn new() -> Result<Self, ScraperDriverError> {
         let port = random_port();
 
@@ -64,8 +68,8 @@ impl ScraperDriver {
         Ok(scraper)
     }
 
+    #[instrument]
     pub fn close(&mut self) {
-        tracing::info!("Closing ScraperDriver");
         let process = self
             .driver_process
             .take()

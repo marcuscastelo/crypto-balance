@@ -4,7 +4,8 @@ use google_sheets4::{
     api::{GridRange, NamedRange, ValueRange},
     Sheets,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
+use tracing::instrument;
 use value_range_factory::ValueRangeFactory;
 
 use crate::{config::sheets_config::SpreadsheetConfig, sheets::prelude::*};
@@ -14,6 +15,12 @@ pub struct SpreadsheetManager {
     hub: Sheets<
         google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
     >,
+}
+
+impl Debug for SpreadsheetManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SpreadsheetManager {{ config: {:?} }}", self.config)
+    }
 }
 
 #[derive(Debug)]
@@ -33,6 +40,7 @@ impl std::fmt::Display for SpreadsheetManagerError {
 impl Context for SpreadsheetManagerError {}
 
 impl SpreadsheetManager {
+    #[instrument]
     pub async fn new(config: SpreadsheetConfig) -> Self {
         let client = http_client::http_client();
         let auth = auth::auth(&config, client.clone()).await;
@@ -45,6 +53,7 @@ impl SpreadsheetManager {
         SpreadsheetManager { config, hub }
     }
 
+    #[instrument]
     async fn named_ranges(&self) -> Result<Vec<NamedRange>, SpreadsheetManagerError> {
         let response = self
             .hub
@@ -61,6 +70,7 @@ impl SpreadsheetManager {
         Ok(named_ranges)
     }
 
+    #[instrument]
     pub async fn named_range_map(
         &self,
     ) -> Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
@@ -82,6 +92,7 @@ impl SpreadsheetManager {
         Ok(map)
     }
 
+    #[instrument]
     pub async fn get_named_range(&self, name: &str) -> Result<GridRange, SpreadsheetManagerError> {
         let named_ranges = self
             .named_range_map()
@@ -93,6 +104,7 @@ impl SpreadsheetManager {
             .ok_or(report!(SpreadsheetManagerError::FailedToFetchNamedRange))
     }
 
+    #[instrument]
     pub async fn read_range(&self, range: &str) -> Result<ValueRange, SpreadsheetManagerError> {
         let response = self
             .hub
@@ -106,6 +118,7 @@ impl SpreadsheetManager {
         Ok(value_range)
     }
 
+    #[instrument]
     pub async fn write_range(
         &self,
         range: &str,
@@ -121,6 +134,7 @@ impl SpreadsheetManager {
             .change_context(SpreadsheetManagerError::FailedToWriteRange)
     }
 
+    #[instrument]
     pub async fn get_sheet_title(&self, sheet_id: i32) -> Result<String, SpreadsheetManagerError> {
         let response = self
             .hub
@@ -154,6 +168,7 @@ impl SpreadsheetManager {
             .change_context(SpreadsheetManagerError::FailedToFetchSheetTitle)
     }
 
+    #[instrument]
     pub async fn read_named_range(
         &self,
         name: &str,
@@ -174,6 +189,7 @@ impl SpreadsheetManager {
         .await
     }
 
+    #[instrument]
     pub async fn write_named_range(
         &self,
         name: &str,
