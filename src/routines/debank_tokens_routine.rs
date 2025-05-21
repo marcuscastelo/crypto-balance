@@ -137,6 +137,12 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
             range_amount_rows: ranges::AaH::RW_SPECTRA_BALANCES_AMOUNTS,
             alternative_names: vec![],
         },
+        RelevantDebankToken {
+            token_name: "HYPE",
+            range_name_rows: ranges::AaH::RW_HYPE_BALANCES_NAMES,
+            range_amount_rows: ranges::AaH::RW_HYPE_BALANCES_AMOUNTS,
+            alternative_names: vec!["hbHYPE", "LHYPE", "stHYPE", "mHYPE", "WHYPE"],
+        },
     ]
 });
 

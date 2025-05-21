@@ -69,6 +69,10 @@ pub mod AaH {
     // Spectra
     pub const RW_SPECTRA_BALANCES_NAMES: &str = "AaH__vSpectraBalances_Names";
     pub const RW_SPECTRA_BALANCES_AMOUNTS: &str = "AaH__vSpectraBalances_Amounts";
+
+    // Hyperliquid
+    pub const RW_HYPE_BALANCES_NAMES: &str = "AaH__vHypeBalances_Names";
+    pub const RW_HYPE_BALANCES_AMOUNTS: &str = "AaH__vHypeBalances_Amounts";
 }
 
 pub mod airdrops {
