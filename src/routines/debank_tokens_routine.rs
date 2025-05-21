@@ -93,6 +93,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "LBTCv",
                 "SolvBTC",
                 "SolvBTC.BBN",
+                "UBTC",
             ],
         },
         RelevantDebankToken {
