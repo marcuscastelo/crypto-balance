@@ -3,7 +3,6 @@
 #![feature(iter_next_chunk)]
 
 mod blockchain;
-mod cli;
 mod config;
 mod exchange;
 mod prelude;
@@ -12,7 +11,6 @@ mod routines;
 mod scraping;
 mod sheets;
 
-use cli::progress::CLI_MULTI_PROGRESS;
 use exchange::data::{
     binance::binance_use_cases::BinanceUseCases, kraken::kraken_use_cases::KrakenUseCases,
 };
@@ -95,12 +93,6 @@ async fn run_routines(parallel: bool) {
 #[tokio::main]
 #[instrument]
 async fn main() {
-    // let logger = env_logger::builder().build(); // TODO: remove env_logger dependency
-    // let level = logger.filter();
-    // LogWrapper::new(CLI_MULTI_PROGRESS.clone(), logger)
-    //     .try_init()
-    //     .expect("Failed to initialize logger");
-    // tracing::set_max_level(level);
     let indicatif_layer = IndicatifLayer::new();
     let subscriber = Registry::default()
         .with(tracing_subscriber::filter::LevelFilter::WARN)
@@ -113,6 +105,4 @@ async fn main() {
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = false;
     run_routines(parallel).await;
-
-    // CLI_MULTI_PROGRESS.clear().unwrap();
 }

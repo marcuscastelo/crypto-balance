@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::{
-    cli::progress::{finish_progress, new_progress, ProgressBarExt},
     price::domain::price::get_token_prices,
     sheets::{
         data::spreadsheet_manager::SpreadsheetManager, into::MyInto, ranges,
@@ -9,7 +8,6 @@ use crate::{
     },
 };
 use google_sheets4::api::ValueRange;
-use indicatif::ProgressBar;
 use tracing::instrument;
 
 use super::routine::{Routine, RoutineResult};
@@ -101,31 +99,28 @@ impl Routine for TokenPricesRoutine {
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running TokenPricesRoutine");
 
-        let progress = new_progress(ProgressBar::new_spinner());
-
-        progress.trace("Prices: Creating SpreadsheetManager instance");
+        tracing::info!("Prices: Creating SpreadsheetManager instance");
         let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
-        progress.trace("Prices: 📋 Listing all tokens in the spreadsheet");
+        tracing::info!("Prices: 📋 Listing all tokens in the spreadsheet");
         let tokens = self
             .get_token_ids_from_spreadsheet(&spreadsheet_manager)
             .await;
 
-        progress.trace("Prices: ☁️  Getting prices of all tokens from Coingecko");
+        tracing::info!("Prices: ☁️  Getting prices of all tokens from Coingecko");
         let prices = get_token_prices(tokens.as_ref()).await;
 
-        progress.trace("Prices: 📝 Reading the current prices from the spreadsheet");
+        tracing::info!("Prices: 📝 Reading the current prices from the spreadsheet");
         let spreadsheet_prices = self
             .get_current_prices_from_spreadsheet(&spreadsheet_manager)
             .await;
 
-        progress.trace("Prices: 📝 Updating the prices on the spreadsheet");
+        tracing::info!("Prices: 📝 Updating the prices on the spreadsheet");
         let new_prices = self.order_prices(&tokens, &prices, spreadsheet_prices);
         self.update_prices_on_spreadsheet(&spreadsheet_manager, new_prices)
             .await;
 
-        progress.info("Prices: ✅ Updated token prices on the spreadsheet");
-        finish_progress(&progress);
+        tracing::info!("Prices: ✅ Updated token prices on the spreadsheet");
 
         Ok(())
     }

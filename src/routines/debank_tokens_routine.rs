@@ -2,7 +2,6 @@ use std::{collections::HashMap, rc::Rc, sync::LazyLock};
 
 use error_stack::{Context, Result, ResultExt};
 use google_sheets4::api::ValueRange;
-use indicatif::ProgressBar;
 use tracing::instrument;
 
 #[derive(Debug)]
@@ -21,7 +20,6 @@ impl std::fmt::Display for DebankTokensRoutineError {
 impl Context for DebankTokensRoutineError {}
 
 use crate::{
-    cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
     scraping::{aah_parser::AaHParser, debank_scraper::DebankBalanceScraper},
     sheets::{
@@ -244,19 +242,16 @@ impl Routine for DebankTokensRoutine {
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running DebankTokensRoutine");
 
-        let progress = new_progress(ProgressBar::new_spinner());
-
-        progress.trace(format!("Debank: ☁️  Fetching AaH balances"));
+        tracing::info!("Debank: ☁️  Fetching AaH balances");
         let balances = self.fetch_relevant_token_amounts().await.map_err(|error| {
             RoutineFailureInfo::new(format!("Failed to fetch relevant token amounts: {}", error))
         })?;
 
-        progress.trace(format!("Debank: 📝 Updating token balances (AaH)"));
+        tracing::info!("Debank: 📝 Updating token balances (AaH)");
         self.update_debank_eth_AaH_balances_on_spreadsheet(balances)
             .await;
 
-        progress.info("Debank: ✅ Updated Debank balance on the spreadsheet");
-        finish_progress(&progress);
+        tracing::info!("Debank: ✅ Updated Debank balance on the spreadsheet");
 
         Ok(())
     }

@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use chrono::format::parse;
 use google_sheets4::api::ValueRange;
-use indicatif::ProgressBar;
 use tracing::instrument;
 
 use crate::{
-    cli::progress::{finish_progress, new_progress, ProgressBarExt},
     config::app_config::{self, CONFIG},
     scraping::debank_scraper::DebankBalanceScraper,
     sheets::{
@@ -56,23 +54,20 @@ impl Routine for DebankTotalUSDRoutine {
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running DebankTotalUSDRoutine");
 
-        let progress = new_progress(ProgressBar::new_spinner());
-
-        progress.trace("Debank: ☁️  Fetching Total Debank balance");
+        tracing::info!("Debank: ☁️  Fetching Total Debank balance");
         let total_usd_balance = self
             .get_debank_balance()
             .await
             .map_err(|error| RoutineFailureInfo::new(error.to_string()))?;
 
-        progress.trace(format!(
+        tracing::info!(
             "Debank: 📝 Updating total balance with ${:.2}",
-            total_usd_balance,
-        ));
+            total_usd_balance
+        );
         self.update_debank_balance_on_spreadsheet(total_usd_balance)
             .await;
 
-        progress.info("Debank: ✅ Updated Debank balance on the spreadsheet");
-        finish_progress(&progress);
+        tracing::info!("Debank: ✅ Updated Debank balance on the spreadsheet");
 
         Ok(())
     }

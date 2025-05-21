@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-use indicatif::ProgressBar;
 use tracing::instrument;
 
 use crate::{
-    cli::progress::{new_progress, ProgressBarExt},
     exchange::domain::exchange::ExchangeUseCases,
     routines::routine::RoutineFailureInfo,
     sheets::data::spreadsheet::{BalanceUpdateTarget, SpreadsheetUseCasesImpl},
@@ -47,28 +45,16 @@ impl Routine for ExchangeBalancesRoutine {
     async fn run(&self) -> RoutineResult {
         tracing::info!("Binance: Running BinanceRoutine");
 
-        let progress = new_progress(ProgressBar::new_spinner());
-
-        progress.trace(format!(
-            "{}: 📋 Listing all tokens from persistence",
-            self.name()
-        ));
+        tracing::trace!("{}: 📋 Listing all tokens from persistence", self.name());
         let token_names = self.persistence.get_token_names_from_spreadsheet().await;
 
-        progress.trace(format!(
-            "{}: ☁️  Getting balances from exchange",
-            self.name()
-        ));
+        tracing::trace!("{}: ☁️  Getting balances from exchange", self.name());
         let balance_by_token = self.exchange.fetch_balances().await;
 
         let balance_by_token = match balance_by_token {
             Ok(balances) => balances,
             Err(err) => {
-                progress.error(format!(
-                    "{}: ❌ Error fetching balances: {}",
-                    self.name(),
-                    err
-                ));
+                tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
                 return Err(RoutineFailureInfo::new(format!(
                     "Error fetching balances: {}",
                     err
@@ -76,13 +62,13 @@ impl Routine for ExchangeBalancesRoutine {
             }
         };
 
-        progress.trace(format!("{}: 📊 Ordering balances", self.name()));
+        tracing::trace!("{}: 📊 Ordering balances", self.name());
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);
 
-        progress.trace(format!(
+        tracing::trace!(
             "{}: 📝 Updating Binance balances on the spreadsheet",
             self.name()
-        ));
+        );
         self.persistence
             .update_balances_on_spreadsheet(
                 self.exchange.spreadsheet_target(),
@@ -90,10 +76,10 @@ impl Routine for ExchangeBalancesRoutine {
             )
             .await;
 
-        progress.info(format!(
+        tracing::info!(
             "{}: ✅ Updated Binance balances on the spreadsheet",
             self.name()
-        ));
+        );
 
         Ok(())
     }
