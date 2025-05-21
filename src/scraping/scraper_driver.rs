@@ -64,7 +64,7 @@ impl ScraperDriver {
     }
 
     pub fn close(&mut self) {
-        log::info!("Closing ScraperDriver");
+        tracing::info!("Closing ScraperDriver");
         let process = self
             .driver_process
             .take()
@@ -74,17 +74,16 @@ impl ScraperDriver {
         let client = std::mem::replace(&mut self.client, client_clone);
 
         let future = async {
-            client
-                .close()
-                .await
-                .unwrap_or_else(|error| log::error!("Failed to close WebDriver client: {}", error));
+            client.close().await.unwrap_or_else(|error| {
+                tracing::error!("Failed to close WebDriver client: {}", error)
+            });
 
             if let Ok(mut process) = process {
                 process.kill().unwrap_or_else(|error| {
-                    log::error!("Failed to kill geckodriver process: {}", error)
+                    tracing::error!("Failed to kill geckodriver process: {}", error)
                 })
             } else {
-                log::error!("Failed to close geckodriver process")
+                tracing::error!("Failed to close geckodriver process")
             }
         };
 

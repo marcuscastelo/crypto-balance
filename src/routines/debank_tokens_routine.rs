@@ -197,7 +197,7 @@ impl DebankTokensRoutine {
         for token in RELEVANT_DEBANK_TOKENS.iter() {
             let empty_hashmap = HashMap::new();
             let token_balances = balances.get(token.token_name).unwrap_or_else(|| {
-                log::error!(
+                tracing::error!(
                     "Failed to get balances for token: {}. Halt!",
                     token.token_name
                 );
@@ -240,7 +240,7 @@ impl Routine for DebankTokensRoutine {
     }
 
     async fn run(&self) -> RoutineResult {
-        log::info!("Running DebankTokensRoutine");
+        tracing::info!("Running DebankTokensRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 

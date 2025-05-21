@@ -27,19 +27,22 @@ use routines::{
 };
 use std::collections::HashMap;
 use tokio::{process::Command, time::sleep, time::Duration};
+use tracing::instrument;
+use tracing_indicatif::IndicatifLayer;
+use tracing_subscriber::{layer::SubscriberExt, Registry};
 
-use tracing::{info, warn};
-use tracing_subscriber;
+use tracing_subscriber::{self};
 
+#[instrument]
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        // Box::new(DebankTokensRoutine),
-        // Box::new(DebankTotalUSDRoutine),
-        // Box::new(TokenPricesRoutine),
-        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        Box::new(DebankTokensRoutine),
+        Box::new(DebankTotalUSDRoutine),
+        Box::new(TokenPricesRoutine),
+        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
@@ -54,12 +57,12 @@ async fn run_routines(parallel: bool) {
         } else {
             let result = routine.run().await;
             if let Err(err) = &result {
-                log::error!("❌ {}: {}", routine.name(), err.message);
+                tracing::error!("❌ {}: {}", routine.name(), err.message);
             } else {
-                log::info!("✅ {}: OK", routine.name());
+                tracing::info!("✅ {}: OK", routine.name());
             }
             routine_results.insert(routine.name().to_string(), result);
-            log::info!("Waiting for 30 seconds before running the next routine...");
+            tracing::info!("Waiting for 30 seconds before running the next routine...");
             sleep(Duration::from_secs(30)).await;
         }
     }
@@ -71,14 +74,14 @@ async fn run_routines(parallel: bool) {
         }
     }
 
-    log::info!("Routine results:");
+    tracing::info!("Routine results:");
     for (name, result) in routine_results {
         match result {
             Ok(()) => {
-                log::info!("✅ {}: OK", name);
+                tracing::info!("✅ {}: OK", name);
             }
             Err(failure_info) => {
-                log::error!("❌ {}: {}", name, failure_info.message);
+                tracing::error!("❌ {}: {}", name, failure_info.message);
             }
         }
     }
@@ -90,15 +93,22 @@ async fn run_routines(parallel: bool) {
 }
 
 #[tokio::main]
+#[instrument]
 async fn main() {
     // let logger = env_logger::builder().build(); // TODO: remove env_logger dependency
     // let level = logger.filter();
     // LogWrapper::new(CLI_MULTI_PROGRESS.clone(), logger)
     //     .try_init()
     //     .expect("Failed to initialize logger");
-    // log::set_max_level(level);
+    // tracing::set_max_level(level);
+    let indicatif_layer = IndicatifLayer::new();
+    let subscriber = Registry::default()
+        .with(tracing_subscriber::filter::LevelFilter::WARN)
+        .with(tracing_subscriber::fmt::layer().with_writer(indicatif_layer.get_stderr_writer()))
+        .with(indicatif_layer);
 
-    tracing_subscriber::fmt().init();
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to set global default subscriber");
 
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = false;

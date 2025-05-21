@@ -43,7 +43,7 @@ impl Routine for ExchangeBalancesRoutine {
     }
 
     async fn run(&self) -> RoutineResult {
-        log::info!("Binance: Running BinanceRoutine");
+        tracing::info!("Binance: Running BinanceRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 

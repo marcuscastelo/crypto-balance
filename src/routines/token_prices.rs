@@ -97,7 +97,7 @@ impl Routine for TokenPricesRoutine {
     }
 
     async fn run(&self) -> RoutineResult {
-        log::info!("Running TokenPricesRoutine");
+        tracing::info!("Running TokenPricesRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 
@@ -129,7 +129,7 @@ impl Routine for TokenPricesRoutine {
     }
 }
 // async fn run_old(&self) {
-//     log::info!("Running UpdateTokenPricesOnSheetsViaCoinGeckoRoutine");
+//     tracing::info!("Running UpdateTokenPricesOnSheetsViaCoinGeckoRoutine");
 
 //     // Below: routine to get native token prices from CoinGecko (failed attempt)
 //     let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
@@ -169,7 +169,7 @@ impl Routine for TokenPricesRoutine {
 //         .map(|price| price.to_string())
 //         .collect::<Vec<_>>();
 
-//     log::info!("[Coingecko] New prices: {:?}", new_prices);
+//     tracing::info!("[Coingecko] New prices: {:?}", new_prices);
 
 //     spreadsheet_manager
 //         .write_named_range(

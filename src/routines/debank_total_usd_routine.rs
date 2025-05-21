@@ -52,7 +52,7 @@ impl Routine for DebankTotalUSDRoutine {
     }
 
     async fn run(&self) -> RoutineResult {
-        log::info!("Running DebankTotalUSDRoutine");
+        tracing::info!("Running DebankTotalUSDRoutine");
 
         let progress = new_progress(ProgressBar::new_spinner());
 

@@ -34,7 +34,7 @@ fn parse_amount(amount: &str) -> anyhow::Result<f64> {
 
     Ok(amount.parse().map_err(|error| {
         let message = format!("Failed to parse amount: '{}'. Error: {:?}", amount, error);
-        log::error!("{}", message);
+        tracing::error!("{}", message);
         anyhow::anyhow!(message)
     })?)
 }
@@ -55,7 +55,7 @@ impl AaHParser {
         relevant_tokens: &[&RelevantDebankToken],
     ) -> anyhow::Result<()> {
         if relevant_tokens.len() > 1 {
-            log::error!(
+            tracing::error!(
                 "Multiple relevant tokens found for token: {}. Halt!.",
                 token
             );
@@ -63,7 +63,7 @@ impl AaHParser {
         }
 
         if relevant_tokens.is_empty() {
-            log::warn!("Ignoring token: '{}'", token);
+            tracing::warn!("Ignoring token: '{}'", token);
             return Ok(());
         }
 
@@ -77,7 +77,7 @@ impl AaHParser {
         let name = format!("{} - {} ({})", chain, location, token);
 
         if token_balances.contains_key(&name) {
-            log::warn!("Duplicate token found: {}. Proceed with caution!", name);
+            tracing::warn!("Duplicate token found: {}. Proceed with caution!", name);
             amount += token_balances.get(&name).unwrap();
         }
         token_balances.insert(name, amount);
@@ -99,7 +99,7 @@ impl AaHParser {
                 matching_relevant_tokens.as_slice(),
             )
             .unwrap_or_else(|error| {
-                log::error!(
+                tracing::error!(
                     "Failed to parse wallet token: {}. Error: {:?}",
                     token.name,
                     error
@@ -131,7 +131,7 @@ impl AaHParser {
             matching_relevant_tokens.as_slice(),
         )
         .unwrap_or_else(|error| {
-            log::error!(
+            tracing::error!(
                 "Failed to parse yield farm token: {}. Error: {:?}",
                 token.pool,
                 error
@@ -162,7 +162,7 @@ impl AaHParser {
             matching_relevant_tokens.as_slice(),
         )
         .unwrap_or_else(|error| {
-            log::error!(
+            tracing::error!(
                 "Failed to parse deposit token: {}. Error: {:?}",
                 token.pool,
                 error
@@ -221,7 +221,7 @@ impl AaHParser {
             .any(|relevant_token| relevant_token.matches(&token2.unwrap_or("")));
 
         if !is_token1_relevant && !is_token2_relevant {
-            log::warn!(
+            tracing::warn!(
                 "No relevant tokens found for liquidity pool: {:?} with tokens: {:?} and {:?}",
                 token.pool,
                 token1,
@@ -239,7 +239,7 @@ impl AaHParser {
                 matching_relevant_tokens.as_slice(),
             )
             .unwrap_or_else(|error| {
-                log::error!(
+                tracing::error!(
                     "Failed to parse liquidity pool token: {}. Error: {:?}",
                     token1,
                     error
@@ -257,7 +257,7 @@ impl AaHParser {
                     matching_relevant_tokens.as_slice(),
                 )
                 .unwrap_or_else(|error| {
-                    log::error!(
+                    tracing::error!(
                         "Failed to parse liquidity pool token: {}. Error: {:?}",
                         token2,
                         error
@@ -313,7 +313,7 @@ impl AaHParser {
             .any(|relevant_token| relevant_token.matches(&token2.unwrap_or("")));
 
         if !is_token1_relevant && !is_token2_relevant {
-            log::warn!(
+            tracing::warn!(
                 "No relevant tokens found for stake token: {:?} with tokens: {:?} and {:?}",
                 token.pool,
                 token1,
@@ -331,14 +331,14 @@ impl AaHParser {
                 matching_relevant_tokens.as_slice(),
             )
             .unwrap_or_else(|error| {
-                log::error!(
+                tracing::error!(
                     "Failed to parse stake token: {}. Error: {:?}",
                     token1,
                     error
                 );
             });
         } else {
-            log::warn!(
+            tracing::warn!(
                 "Ignoring token1 for stake token: {:?}, token1: {:?}",
                 token.pool,
                 token1
@@ -355,7 +355,7 @@ impl AaHParser {
                     matching_relevant_tokens.as_slice(),
                 )
                 .unwrap_or_else(|error| {
-                    log::error!(
+                    tracing::error!(
                         "Failed to parse stake token: {}. Error: {:?}",
                         token2,
                         error
@@ -363,7 +363,7 @@ impl AaHParser {
                 });
             }
         } else {
-            log::warn!(
+            tracing::warn!(
                 "Ignoring token2 for stake token: {:?}, token2: {:?}",
                 token.pool,
                 token2
@@ -388,7 +388,7 @@ impl AaHParser {
             matching_relevant_tokens.as_slice(),
         )
         .unwrap_or_else(|error| {
-            log::error!(
+            tracing::error!(
                 "Failed to parse lending token: {}. Error: {:?}",
                 token.token_name,
                 error
@@ -467,7 +467,7 @@ impl AaHParser {
                     }
                 }
                 _ => {
-                    log::error!("Unsupported tracking: {:?}", tracking);
+                    tracing::error!("Unsupported tracking: {:?}", tracking);
                 }
             }
         }

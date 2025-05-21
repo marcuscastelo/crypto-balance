@@ -67,9 +67,9 @@ impl UpdateHoldBalanceOnSheetsRoutine {
         chain: &Chain,
         evm_address: &str,
     ) -> error_stack::Result<HashMap<Arc<Token>, TokenBalance>, FetchBalanceError> {
-        log::info!("Fetching balance for {}", chain.name);
+        tracing::info!("Fetching balance for {}", chain.name);
 
-        log::info!("Fetching native balance for {}", chain.name);
+        tracing::info!("Fetching native balance for {}", chain.name);
         let native_balance = chain
             .explorer
             .fetch_native_balance(evm_address)
@@ -81,7 +81,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
                 )
             })?;
 
-        log::info!("Fetching ERC20 balances for {}", chain.name);
+        tracing::info!("Fetching ERC20 balances for {}", chain.name);
         let erc20_balances = chain
             .explorer
             .fetch_erc20_balances(evm_address)
@@ -93,11 +93,11 @@ impl UpdateHoldBalanceOnSheetsRoutine {
                 )
             })?;
 
-        log::info!("Merging balances for {}", chain.name);
+        tracing::info!("Merging balances for {}", chain.name);
         let mut balances = erc20_balances;
         balances.insert(chain.native_token.to_owned(), native_balance);
 
-        log::info!("Balances fetched for {}", chain.name);
+        tracing::info!("Balances fetched for {}", chain.name);
 
         // Remove zero balances
         balances.retain(|_, balance| balance.balance > 0.0);
@@ -164,7 +164,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                     );
 
                     acc_entry.balance += processed_token_balance.balance;
-                    log::info!("{}: {}", acc_entry.symbol, acc_entry.balance);
+                    tracing::info!("{}: {}", acc_entry.symbol, acc_entry.balance);
                     acc
                 },
             );
@@ -183,7 +183,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                     );
 
                     acc_entry.balance += processed_token_balance.balance;
-                    log::info!("{}: {}", acc_entry.symbol, acc_entry.balance);
+                    tracing::info!("{}: {}", acc_entry.symbol, acc_entry.balance);
                     acc
                 },
             );
@@ -198,7 +198,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
 
         let hashmaps = tasks_results.into_iter().collect::<HashMap<_, _>>();
 
-        log::info!("Chains scanned: {:?}", hashmaps.keys().collect::<Vec<_>>());
+        tracing::info!("Chains scanned: {:?}", hashmaps.keys().collect::<Vec<_>>());
 
         let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
@@ -218,7 +218,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
         let mut chain_title_cell = cell_range.start;
 
         for chain in chains {
-            log::info!("Balances for '{}'", chain.name);
+            tracing::info!("Balances for '{}'", chain.name);
             spreadsheet_manager
                 .write_range(
                     chain_title_cell
@@ -289,7 +289,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                 },
             };
 
-            log::info!("  Hold balances:");
+            tracing::info!("  Hold balances:");
             let hold_tokens_in_order = token_names.iter().fold(Vec::new(), |mut acc, token| {
                 let token_balance = match hold_balances.get(token) {
                     Some(token_balance) => token_balance.balance.to_string(),
@@ -310,7 +310,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                 acc
             });
 
-            log::info!("  Hold balances: {:?}", hold_tokens_in_order);
+            tracing::info!("  Hold balances: {:?}", hold_tokens_in_order);
             spreadsheet_manager
                 .write_range(
                     hold_balances_range
@@ -322,7 +322,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                 .await
                 .expect("Should write hold balances");
 
-            log::info!("  SC balances: {:?}", hold_tokens_in_order);
+            tracing::info!("  SC balances: {:?}", hold_tokens_in_order);
             spreadsheet_manager
                 .write_range(
                     hold_sc_balances_range

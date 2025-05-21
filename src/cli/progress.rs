@@ -27,7 +27,7 @@ impl ProgressBarExt for ProgressBar {
         let msg_cow: Cow<'_, str> = msg.into();
         let msg_str: &str = msg_cow.as_ref();
 
-        log::trace!("{}", msg_str);
+        tracing::trace!("{}", msg_str);
         self.set_message(msg_cow);
     }
 
@@ -35,7 +35,7 @@ impl ProgressBarExt for ProgressBar {
         let msg_cow: Cow<'_, str> = msg.into();
         let msg_str: &str = msg_cow.as_ref();
 
-        log::info!("{}", msg_str);
+        tracing::info!("{}", msg_str);
         self.set_message(msg_cow);
     }
 
@@ -43,7 +43,7 @@ impl ProgressBarExt for ProgressBar {
         let msg_cow: Cow<'_, str> = msg.into();
         let msg_str: &str = msg_cow.as_ref();
 
-        log::error!("{}", msg_str);
+        tracing::error!("{}", msg_str);
         self.set_message(msg_cow);
     }
 }

@@ -237,7 +237,7 @@ impl DebankBalanceScraper {
 
         while !update_text.as_str().contains("Data updated") {
             tokio::time::sleep(Duration::from_secs(1)).await;
-            log::trace!("Waiting for data to update...");
+            tracing::trace!("Waiting for data to update...");
             update_text = update_element
                 .text()
                 .await
@@ -266,7 +266,7 @@ impl DebankBalanceScraper {
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
-        log::info!("Getting chain balance for chain {}", chain_name);
+        tracing::info!("Getting chain balance for chain {}", chain_name);
         let chain_balance = chain
             .find(Locator::XPath("div[2]/span"))
             .await
@@ -289,7 +289,7 @@ impl DebankBalanceScraper {
             .client
             .find(Locator::Css(token_wallet_selector))
             .await
-            .inspect_err(|e| log::error!("Failed to find wallet: {}", e))
+            .inspect_err(|e| tracing::error!("Failed to find wallet: {}", e))
             .ok();
 
         let projects: Vec<Element> = self
@@ -701,7 +701,7 @@ impl DebankBalanceScraper {
                         }
                     }
                     _ => {
-                        log::error!("Unknown header: {}", header);
+                        tracing::error!("Unknown header: {}", header);
                         return Err(DebankScraperError::UnknownHeader {
                             header: header.clone(),
                         }
@@ -785,7 +785,7 @@ impl DebankBalanceScraper {
         format_balance(&balance_text)
             .into_report()
             .map_err(|e| {
-                log::error!("Failed to parse balance: {}", e);
+                tracing::error!("Failed to parse balance: {}", e);
                 DebankScraperError::GenericError
             })
             .into_report()
