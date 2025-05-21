@@ -12,12 +12,6 @@ use num_traits::ToPrimitive;
 
 pub struct KrakenUseCases;
 
-impl KrakenUseCases {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 #[async_trait::async_trait]
 impl ExchangeUseCases for KrakenUseCases {
     fn exchange_name(&self) -> &'static str {

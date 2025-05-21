@@ -4,7 +4,7 @@ use crate::routines::debank_tokens_routine::{RelevantDebankToken, RELEVANT_DEBAN
 
 use super::debank_scraper::{
     ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, LiquidityPoolTokenInfo,
-    ProjectTracking, SpotTokenInfo, StakeTokenInfo, YieldFarmTokenInfo,
+    ProjectTracking, StakeTokenInfo, YieldFarmTokenInfo,
 };
 
 pub struct AaHParser {

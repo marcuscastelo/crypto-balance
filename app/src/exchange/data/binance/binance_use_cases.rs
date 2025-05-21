@@ -10,12 +10,6 @@ use super::factory::BinanceAccountFactory;
 
 pub struct BinanceUseCases;
 
-impl BinanceUseCases {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 #[async_trait::async_trait]
 impl ExchangeUseCases for BinanceUseCases {
     fn exchange_name(&self) -> &'static str {

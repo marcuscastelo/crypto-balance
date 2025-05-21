@@ -11,10 +11,6 @@ pub mod balances {
         pub const RW_AMOUNTS: &str = "Balance_Binance__vAmounts";
     }
 
-    pub mod bybit {
-        pub const RW_AMOUNTS: &str = "Balance_Bybit__vAmounts";
-    }
-
     pub mod kraken {
         pub const RW_AMOUNTS: &str = "Balance_Kraken__vAmounts";
     }
@@ -77,5 +73,4 @@ pub mod AaH {
 
 pub mod airdrops {
     pub const RW_DEBANK_TOTAL_USD: &str = "Airdrops__cDebankTotalUSD";
-    pub const RW_SONAR_WATCH_TOTAL_USD: &str = "Airdrops__cSonarWatchTotalUSD";
 }

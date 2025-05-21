@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use tracing::instrument;
 
 use crate::{
-    exchange::domain::exchange::ExchangeUseCases,
-    routines::routine::RoutineFailureInfo,
-    sheets::data::spreadsheet::{BalanceUpdateTarget, SpreadsheetUseCasesImpl},
+    exchange::domain::exchange::ExchangeUseCases, routines::routine::RoutineFailureInfo,
+    sheets::data::spreadsheet::SpreadsheetUseCasesImpl,
 };
 
 use super::routine::{Routine, RoutineResult};

@@ -2,7 +2,7 @@ use domain::{a1_notation::ToA1Notation, cell_range::CellRange};
 use error_stack::{report, Context, Result, ResultExt};
 use google_sheets4::{
     api::{GridRange, NamedRange, ValueRange},
-    Error as Sheets4Error, Sheets,
+    Sheets,
 };
 use std::collections::HashMap;
 use value_range_factory::ValueRangeFactory;
@@ -18,7 +18,6 @@ pub struct SpreadsheetManager {
 
 #[derive(Debug)]
 pub enum SpreadsheetManagerError {
-    HubError,
     FailedToFetchNamedRange,
     FailedToFetchSheetTitle,
     FailedToFetchRange,

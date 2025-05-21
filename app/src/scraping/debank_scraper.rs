@@ -1,8 +1,8 @@
 use core::fmt;
 use std::{collections::HashMap, time::Duration};
 
-use error_stack::{bail, Context, IntoReport, IntoReportCompat, Result, ResultExt};
-use fantoccini::{elements::Element, error::CmdError, Locator};
+use error_stack::{bail, Context, Result, ResultExt};
+use fantoccini::{elements::Element, Locator};
 use reqwest::Url;
 use tracing::instrument;
 
@@ -18,10 +18,9 @@ pub enum DebankScraperError {
     ElementNotFound,
     ElementTextNotFound,
     ElementHtmlNotFound,
-    UnknownRowStructure,
     HeadersValuesLengthMismatch,
-    UnknownHeader { header: String },
-    UnknownTrackingType { tracking_type: String },
+    UnknownHeader,
+    UnknownTrackingType,
     UrlParseError,
     FailedToCreateDriver,
     FailedToNavigateToUrl,
@@ -41,6 +40,7 @@ impl fmt::Display for DebankScraperError {
 impl Context for DebankScraperError {}
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ChainInfo {
     pub name: String,
     pub wallet_info: Option<ChainWalletInfo>,
@@ -48,12 +48,14 @@ pub struct ChainInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ChainWalletInfo {
     pub usd_value: String,
     pub tokens: Vec<SpotTokenInfo>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SpotTokenInfo {
     pub name: String,
     pub price: String,
@@ -62,12 +64,14 @@ pub struct SpotTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ChainProjectInfo {
     pub name: String,
     pub trackings: Vec<ProjectTracking>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum ProjectTracking {
     Lending {
         supplied: Vec<LendingTokenInfo>,
@@ -104,6 +108,7 @@ pub enum ProjectTracking {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct LendingTokenInfo {
     pub token_name: String,
     pub balance: String,
@@ -111,6 +116,7 @@ pub struct LendingTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct StakeTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -120,6 +126,7 @@ pub struct StakeTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct LockedTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -130,6 +137,7 @@ pub struct LockedTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct RewardTokenInfo {
     pub pool: String,
     pub balance: String,
@@ -137,6 +145,7 @@ pub struct RewardTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct VestingTokenInfo {
     pub pool: String,
     pub balance: String,
@@ -146,6 +155,7 @@ pub struct VestingTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct YieldFarmTokenInfo {
     pub token_name: Option<String>,
     pub pool: String,
@@ -154,6 +164,7 @@ pub struct YieldFarmTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DepositTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -162,6 +173,7 @@ pub struct DepositTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct LiquidityPoolTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -171,6 +183,7 @@ pub struct LiquidityPoolTokenInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct FarmingTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -273,14 +286,6 @@ impl DebankBalanceScraper {
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
-        tracing::info!("Getting chain balance for chain {}", chain_name);
-        let chain_balance = chain
-            .find(Locator::XPath("div[2]/span"))
-            .await
-            .change_context(DebankScraperError::ElementNotFound)?
-            .text()
-            .await
-            .change_context(DebankScraperError::ElementTextNotFound)?;
 
         chain
             .click()
@@ -364,13 +369,6 @@ impl DebankBalanceScraper {
         let usd_value_xpath = "div[1]/div[4]";
 
         for row in token_rows {
-            let name = row
-                .find(Locator::XPath(name_xpath))
-                .await
-                .change_context(DebankScraperError::ElementNotFound)?
-                .text()
-                .await
-                .change_context(DebankScraperError::ElementTextNotFound)?;
             tokens.push(SpotTokenInfo {
                 name: row
                     .find(Locator::XPath(name_xpath))
@@ -680,10 +678,11 @@ impl DebankBalanceScraper {
                     .collect::<Vec<_>>()
                     .into(),
             }),
-            _ => Err(DebankScraperError::UnknownTrackingType {
-                tracking_type: tracking_type.into(),
-            })
-            .change_context(DebankScraperError::GenericError)?,
+            _ => {
+                tracing::error!("Unknown tracking type: {}", tracking_type);
+                return Err(DebankScraperError::UnknownTrackingType)
+                    .change_context(DebankScraperError::GenericError)?;
+            }
         }
     }
 
@@ -714,10 +713,7 @@ impl DebankBalanceScraper {
                     }
                     _ => {
                         tracing::error!("Unknown header: {}", header);
-                        return Err(DebankScraperError::UnknownHeader {
-                            header: header.clone(),
-                        }
-                        .into());
+                        return Err(DebankScraperError::UnknownHeader.into());
                     }
                 }
             }
@@ -797,12 +793,11 @@ impl DebankBalanceScraper {
             .change_context(DebankScraperError::ElementTextNotFound)?;
 
         format_balance(&balance_text)
-            .into_report()
             .map_err(|e| {
                 tracing::error!("Failed to parse balance: {}", e);
                 DebankScraperError::GenericError
             })
-            .into_report()
+            .change_context(DebankScraperError::GenericError)
     }
 
     #[instrument]

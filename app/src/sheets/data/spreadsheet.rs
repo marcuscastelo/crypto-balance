@@ -8,14 +8,12 @@ pub struct SpreadsheetUseCasesImpl;
 
 pub enum BalanceUpdateTarget {
     Binance,
-    Bybit,
     Kraken,
 }
 
 fn get_target_range(target: BalanceUpdateTarget) -> &'static str {
     match target {
         BalanceUpdateTarget::Binance => ranges::balances::binance::RW_AMOUNTS,
-        BalanceUpdateTarget::Bybit => ranges::balances::bybit::RW_AMOUNTS,
         BalanceUpdateTarget::Kraken => ranges::balances::kraken::RW_AMOUNTS,
     }
 }

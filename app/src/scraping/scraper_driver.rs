@@ -2,7 +2,7 @@ use error_stack::{Context, Result, ResultExt};
 use std::fmt;
 use std::process::{Child, Command};
 
-use fantoccini::{error::NewSessionError, Client, ClientBuilder};
+use fantoccini::{Client, ClientBuilder};
 
 #[derive(Debug)]
 pub struct ScraperDriver {
