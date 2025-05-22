@@ -23,7 +23,7 @@ impl SpreadsheetUseCasesImpl {
         SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
     }
     pub async fn get_token_names_from_spreadsheet(&self) -> Vec<String> {
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
+        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
@@ -39,7 +39,7 @@ impl SpreadsheetUseCasesImpl {
         target: BalanceUpdateTarget,
         balances: &[f64],
     ) {
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
+        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         let range = get_target_range(target);
 

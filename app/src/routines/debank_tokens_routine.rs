@@ -195,7 +195,7 @@ impl DebankTokensRoutine {
         &self,
         balances: HashMap<String, HashMap<String, f64>>,
     ) {
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
+        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         for token in RELEVANT_DEBANK_TOKENS.iter() {
             let empty_hashmap = HashMap::new();

@@ -15,6 +15,7 @@ pub struct SpreadsheetManager {
     hub: Sheets<
         google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
     >,
+    pub named_ranges_cache: Option<HashMap<String, GridRange>>,
 }
 
 impl Debug for SpreadsheetManager {
@@ -50,11 +51,15 @@ impl SpreadsheetManager {
             >,
         > = Sheets::new(client.clone(), auth);
 
-        SpreadsheetManager { config, hub }
+        SpreadsheetManager {
+            config,
+            hub,
+            named_ranges_cache: None,
+        }
     }
 
     #[instrument]
-    async fn named_ranges(&self) -> Result<Vec<NamedRange>, SpreadsheetManagerError> {
+    async fn fetch_named_ranges_vec(&self) -> Result<Vec<NamedRange>, SpreadsheetManagerError> {
         let response = self
             .hub
             .spreadsheets()
@@ -71,11 +76,11 @@ impl SpreadsheetManager {
     }
 
     #[instrument]
-    pub async fn named_range_map(
+    async fn fetch_named_range_map(
         &self,
     ) -> Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
         let named_ranges = self
-            .named_ranges()
+            .fetch_named_ranges_vec()
             .await
             .change_context(SpreadsheetManagerError::FailedToFetchNamedRange)?;
         let mut map = HashMap::new();
@@ -89,11 +94,34 @@ impl SpreadsheetManager {
                     .ok_or(report!(SpreadsheetManagerError::FailedToFetchNamedRange))?,
             );
         }
+
         Ok(map)
     }
 
     #[instrument]
-    pub async fn get_named_range(&self, name: &str) -> Result<GridRange, SpreadsheetManagerError> {
+    pub async fn named_range_map(
+        &mut self,
+    ) -> Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
+        let map = match self.named_ranges_cache {
+            Some(ref map) => map,
+            None => {
+                let fetched_map = self
+                    .fetch_named_range_map()
+                    .await
+                    .change_context(SpreadsheetManagerError::FailedToFetchNamedRange)?;
+                self.named_ranges_cache.replace(fetched_map);
+                self.named_ranges_cache.as_ref().unwrap()
+            }
+        };
+
+        Ok(map.clone())
+    }
+
+    #[instrument]
+    pub async fn get_named_range(
+        &mut self,
+        name: &str,
+    ) -> Result<GridRange, SpreadsheetManagerError> {
         let named_ranges = self
             .named_range_map()
             .await
@@ -170,7 +198,7 @@ impl SpreadsheetManager {
 
     #[instrument]
     pub async fn read_named_range(
-        &self,
+        &mut self,
         name: &str,
     ) -> Result<ValueRange, SpreadsheetManagerError> {
         let named_range = self.get_named_range(name).await?;
@@ -191,7 +219,7 @@ impl SpreadsheetManager {
 
     #[instrument]
     pub async fn write_named_range(
-        &self,
+        &mut self,
         name: &str,
         value_range: ValueRange,
     ) -> Result<(), SpreadsheetManagerError> {

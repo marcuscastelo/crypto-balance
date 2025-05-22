@@ -35,7 +35,7 @@ impl DebankTotalUSDRoutine {
 
     #[instrument]
     async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
+        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         spreadsheet_manager
             .write_named_range(

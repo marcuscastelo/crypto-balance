@@ -24,7 +24,7 @@ impl TokenPricesRoutine {
     #[instrument]
     async fn get_token_ids_from_spreadsheet(
         &self,
-        spreadsheet_manager: &SpreadsheetManager,
+        spreadsheet_manager: &mut SpreadsheetManager,
     ) -> Vec<String> {
         spreadsheet_manager
             .read_named_range(ranges::tokens::RO_IDS)
@@ -38,7 +38,7 @@ impl TokenPricesRoutine {
     #[instrument]
     async fn get_current_prices_from_spreadsheet(
         &self,
-        spreadsheet_manager: &SpreadsheetManager,
+        spreadsheet_manager: &mut SpreadsheetManager,
     ) -> Vec<f64> {
         spreadsheet_manager
             .read_named_range(ranges::tokens::RW_PRICES)
@@ -78,7 +78,7 @@ impl TokenPricesRoutine {
     #[instrument]
     async fn update_prices_on_spreadsheet(
         &self,
-        spreadsheet_manager: &SpreadsheetManager,
+        spreadsheet_manager: &mut SpreadsheetManager,
         new_prices: Vec<f64>,
     ) {
         let values = new_prices
@@ -106,11 +106,11 @@ impl Routine for TokenPricesRoutine {
         tracing::info!("Running TokenPricesRoutine");
 
         tracing::info!("Prices: Creating SpreadsheetManager instance");
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
+        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         tracing::info!("Prices: 📋 Listing all tokens in the spreadsheet");
         let tokens = self
-            .get_token_ids_from_spreadsheet(&spreadsheet_manager)
+            .get_token_ids_from_spreadsheet(&mut spreadsheet_manager)
             .await;
 
         tracing::info!("Prices: ☁️  Getting prices of all tokens from Coingecko");
@@ -118,12 +118,12 @@ impl Routine for TokenPricesRoutine {
 
         tracing::info!("Prices: 📝 Reading the current prices from the spreadsheet");
         let spreadsheet_prices = self
-            .get_current_prices_from_spreadsheet(&spreadsheet_manager)
+            .get_current_prices_from_spreadsheet(&mut spreadsheet_manager)
             .await;
 
         tracing::info!("Prices: 📝 Updating the prices on the spreadsheet");
         let new_prices = self.order_prices(&tokens, &prices, spreadsheet_prices);
-        self.update_prices_on_spreadsheet(&spreadsheet_manager, new_prices)
+        self.update_prices_on_spreadsheet(&mut spreadsheet_manager, new_prices)
             .await;
 
         tracing::info!("Prices: ✅ Updated token prices on the spreadsheet");
