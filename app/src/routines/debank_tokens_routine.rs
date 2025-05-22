@@ -171,7 +171,7 @@ impl DebankTokensRoutine {
             .await
             .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
         let chain_infos = scraper
-            .get_chain_infos(&CONFIG.blockchain.airdrops.evm.address)
+            .explore_debank_profile(&CONFIG.blockchain.airdrops.evm.address)
             .await
             .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
 

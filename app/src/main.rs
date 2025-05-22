@@ -120,19 +120,19 @@ async fn main() {
         .with_line_number(true)
         .with_file(true);
 
-    let file = File::create("log.ndjson").unwrap();
-    let json_layer = tracing_subscriber::fmt::layer()
-        .json()
-        .with_writer(file)
-        .with_span_events(fmt::format::FmtSpan::FULL);
+    // let file = File::create("log.ndjson").unwrap();
+    // let json_layer = tracing_subscriber::fmt::layer()
+    //     .json()
+    //     .with_writer(file)
+    //     .with_span_events(fmt::format::FmtSpan::FULL);
 
-    let (chrome_layer, _guard) = ChromeLayerBuilder::new()
-        .file("chrome_trace.json") // nome do arquivo final
-        .include_args(true)
-        .build();
+    // let (chrome_layer, _guard) = ChromeLayerBuilder::new()
+    //     .file("chrome_trace.json") // nome do arquivo final
+    //     .include_args(true)
+    //     .build();
 
-    let file = File::create("flame.folded").unwrap();
-    let flame_layer = FlameLayer::new(file);
+    // let file = File::create("flame.folded").unwrap();
+    // let flame_layer = FlameLayer::new(file);
 
     // Cria um tracer que envia para o agente Jaeger local
     let exporter = opentelemetry_otlp::new_exporter()
@@ -154,9 +154,9 @@ async fn main() {
     Registry::default()
         .with(tracing_subscriber::filter::LevelFilter::INFO)
         .with(stdout_layer)
-        .with(json_layer)
-        .with(chrome_layer)
-        .with(flame_layer)
+        // .with(json_layer)
+        // .with(chrome_layer)
+        // .with(flame_layer)
         .with(otel_layer)
         .with(indicatif_layer)
         .init();

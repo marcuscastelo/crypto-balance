@@ -4,7 +4,9 @@ use std::{collections::HashMap, fmt::Debug, time::Duration};
 use error_stack::{bail, Context, Result, ResultExt};
 use fantoccini::{elements::Element, Locator};
 use reqwest::Url;
-use tracing::instrument;
+use tracing::{event, info, instrument, Instrument, Level};
+
+use crate::prelude::chain;
 
 use super::{formatting::balance::format_balance, scraper_driver::ScraperDriver};
 
@@ -224,12 +226,16 @@ impl DebankBalanceScraper {
     async fn open_debank_url(&self, user_id: &str) -> Result<(), DebankScraperError> {
         let url = Url::parse(format!("https://debank.com/profile/{}", user_id).as_str())
             .change_context(DebankScraperError::UrlParseError)?;
+
+        event!(Level::DEBUG, url = %url, "Opening Debank URL");
         self.driver
             .client
             .goto(url.as_str())
             .await
             .change_context(DebankScraperError::FailedToNavigateToUrl)
             .attach_printable("Failed to navigate to Debank URL")?;
+
+        event!(Level::DEBUG, "Waiting for Debank URL to load");
         self.driver
             .client
             .wait()
@@ -237,6 +243,8 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::FailedToNavigateToUrl)
             .attach_printable("Timeout waiting for Debank URL")?;
+
+        event!(Level::DEBUG, "Debank URL loaded");
         Ok(())
     }
 
@@ -291,6 +299,7 @@ impl DebankBalanceScraper {
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
+        info!(chain_name = %chain_name, "Obtained chain name");
 
         chain
             .click()
@@ -785,7 +794,11 @@ impl DebankBalanceScraper {
     pub async fn get_total_balance(&self, user_id: &str) -> Result<f64, DebankScraperError> {
         self.open_debank_url(user_id).await?;
         self.wait_data_updated().await?;
+        return self.process_profile_for_total_balance().await;
+    }
 
+    #[instrument]
+    async fn process_profile_for_total_balance(&self) -> Result<f64, DebankScraperError> {
         let xpath = "//*[@id=\"root\"]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]";
         let balance_text = self
             .driver
@@ -796,6 +809,7 @@ impl DebankBalanceScraper {
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
+        event!(Level::DEBUG, balance_text = %balance_text, "Obtained balance text");
 
         format_balance(&balance_text)
             .map_err(|e| {
@@ -803,24 +817,34 @@ impl DebankBalanceScraper {
                 DebankScraperError::GenericError
             })
             .change_context(DebankScraperError::GenericError)
+            .map(|balance| {
+                event!(Level::DEBUG, balance = %balance, "Parsed balance");
+                balance
+            })
     }
 
     #[instrument]
-    pub async fn get_chain_infos(
+    pub async fn explore_debank_profile(
         &self,
         user_id: &str,
     ) -> Result<HashMap<String, ChainInfo>, DebankScraperError> {
         self.open_debank_url(user_id).await?;
         self.wait_data_updated().await?;
         let chain_summaries: Vec<Element> = self.locate_chain_summary_elements().await?;
+        return self.get_chains_info(&chain_summaries).await;
+    }
 
+    #[instrument]
+    async fn get_chains_info(
+        &self,
+        chain_summaries: &[Element],
+    ) -> Result<HashMap<String, ChainInfo>, DebankScraperError> {
         let mut chain_infos = HashMap::new();
-
-        for chain in chain_summaries.as_slice() {
-            let chain_info = self.get_chain_info(chain).await?;
+        for (index, chain) in chain_summaries.iter().enumerate() {
+            let span = tracing::span!(Level::DEBUG, "Chain", index = index);
+            let chain_info = self.get_chain_info(chain).instrument(span).await?;
             chain_infos.insert(chain_info.name.clone(), chain_info);
         }
-
         Ok(chain_infos)
     }
 }
