@@ -40,11 +40,11 @@ async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        // Box::new(DebankTokensRoutine),
-        // Box::new(DebankTotalUSDRoutine),
+        Box::new(DebankTokensRoutine),
+        Box::new(DebankTotalUSDRoutine),
         Box::new(TokenPricesRoutine),
-        // Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        // Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
         // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
@@ -53,7 +53,7 @@ async fn run_routines(parallel: bool) {
 
     let mut routine_results: HashMap<String, RoutineResult> = HashMap::new();
 
-    for routine in routines_to_run.iter() {
+    for (index, routine) in routines_to_run.iter().enumerate() {
         if parallel {
             futures.push(routine.run());
         } else {
@@ -64,9 +64,14 @@ async fn run_routines(parallel: bool) {
                 tracing::info!("✅ {}: OK", routine.name());
             }
             routine_results.insert(routine.name().to_string(), result);
-            {
-                let span =
-                    tracing::span!(tracing::Level::INFO, "wait", last_routine = routine.name());
+            if index < routines_to_run.len() - 1 {
+                let span = tracing::span!(
+                    tracing::Level::INFO,
+                    "wait",
+                    last_routine = routine.name(),
+                    index = index,
+                    len = routines_to_run.len()
+                );
                 let _enter = span.enter();
                 let secs = 15;
                 tracing::info!(
