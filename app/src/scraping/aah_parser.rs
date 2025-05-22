@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::routines::debank_tokens_routine::{RelevantDebankToken, RELEVANT_DEBANK_TOKENS};
+use crate::routines::debank_routine::{RelevantDebankToken, RELEVANT_DEBANK_TOKENS};
 
 use super::debank_scraper::{
     ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, LiquidityPoolTokenInfo,

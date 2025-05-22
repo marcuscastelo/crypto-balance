@@ -131,7 +131,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
 
     #[instrument]
     async fn get_token_names_from_spreadsheet(&self) -> Vec<String> {
-        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
+        let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
         spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
@@ -208,8 +208,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
 
         tracing::info!("Chains scanned: {:?}", hashmaps.keys().collect::<Vec<_>>());
 
-        let mut spreadsheet_manager =
-            SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
+        let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
 
         let named_range = spreadsheet_manager
             .get_named_range(ranges::balances::hold::RW_DATA)

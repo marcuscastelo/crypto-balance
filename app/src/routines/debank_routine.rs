@@ -1,8 +1,22 @@
-use std::{collections::HashMap, sync::LazyLock};
-
 use error_stack::{Context, Result, ResultExt};
 use google_sheets4::api::ValueRange;
-use tracing::{event, instrument, Level};
+use std::{collections::HashMap, sync::LazyLock};
+use struct_name::StructName;
+use struct_name_derive::StructName;
+use tracing::{event, instrument, span, Level};
+
+use crate::{
+    config::app_config::CONFIG,
+    scraping::{
+        aah_parser::AaHParser,
+        debank_scraper::{ChainInfo, DebankBalanceScraper},
+    },
+    sheets::{
+        data::spreadsheet_manager::SpreadsheetManager, ranges,
+        value_range_factory::ValueRangeFactory,
+    },
+    Routine, RoutineFailureInfo, RoutineResult,
+};
 
 #[derive(Debug)]
 pub enum DebankTokensRoutineError {
@@ -16,19 +30,6 @@ impl std::fmt::Display for DebankTokensRoutineError {
 }
 
 impl Context for DebankTokensRoutineError {}
-
-use crate::{
-    config::app_config::{self, CONFIG},
-    scraping::{
-        aah_parser::AaHParser,
-        debank_scraper::{ChainInfo, DebankBalanceScraper},
-    },
-    sheets::{
-        data::spreadsheet_manager::SpreadsheetManager, ranges,
-        value_range_factory::ValueRangeFactory,
-    },
-    Routine, RoutineFailureInfo, RoutineResult,
-};
 
 #[derive(Debug)]
 pub struct RelevantDebankToken {
@@ -158,13 +159,39 @@ impl RelevantDebankToken {
     }
 }
 
-#[derive(Debug)]
-pub struct DebankTokensRoutine;
+#[derive(StructName, Debug)]
+pub struct DebankRoutine {
+    spreadsheet_manager: SpreadsheetManager,
+}
 
-impl DebankTokensRoutine {
+impl DebankRoutine {
     #[instrument]
-    async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
-        SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await
+    pub fn new(spreadsheet_manager: SpreadsheetManager) -> Self {
+        Self {
+            spreadsheet_manager,
+        }
+    }
+
+    #[instrument]
+    async fn get_debank_balance(&self) -> anyhow::Result<f64> {
+        let scraper = DebankBalanceScraper::new()
+            .await
+            .map_err(|error| anyhow::anyhow!(error))?;
+        scraper
+            .get_total_balance(&CONFIG.blockchain.airdrops.evm.address)
+            .await
+            .map_err(|error| anyhow::anyhow!(error))
+    }
+
+    #[instrument]
+    async fn update_debank_balance_on_spreadsheet(&self, balance: f64) {
+        self.spreadsheet_manager
+            .write_named_range(
+                ranges::airdrops::RW_DEBANK_TOTAL_USD,
+                ValueRange::from_str(&balance.to_string()),
+            )
+            .await
+            .expect("Should write Debank total to the spreadsheet");
     }
 
     #[instrument]
@@ -213,55 +240,77 @@ impl DebankTokensRoutine {
         &self,
         balances: HashMap<String, HashMap<String, f64>>,
     ) {
-        let mut spreadsheet_manager = self.create_spreadsheet_manager().await;
-
         for token in RELEVANT_DEBANK_TOKENS.iter() {
-            let empty_hashmap = HashMap::new();
-            let token_balances = balances.get(token.token_name).unwrap_or_else(|| {
-                tracing::error!(
-                    "Failed to get balances for token: {}. Halt!",
-                    token.token_name
-                );
-                &empty_hashmap
-            });
-            // let (names, amounts): (Vec<_>, Vec<_>) =
-
-            let mut names_amounts_tuples = token_balances
-                .iter()
-                .map(|(name, amount)| (name.clone(), amount.to_string()))
-                .collect::<Vec<(String, String)>>();
-
-            names_amounts_tuples.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
-
-            let (names, amounts): (Vec<_>, Vec<_>) = names_amounts_tuples.iter().cloned().unzip();
-
-            spreadsheet_manager
-                .write_named_range(
-                    token.range_name_rows,
-                    ValueRange::from_rows(names.as_slice()),
-                )
-                .await
-                .expect(format!("Should write NAMES for {}", token.token_name).as_str());
-
-            spreadsheet_manager
-                .write_named_range(
-                    token.range_amount_rows,
-                    ValueRange::from_rows(amounts.as_slice()),
-                )
-                .await
-                .expect(format!("Should write AMOUNTS for {}", token.token_name).as_str());
+            self.update_balances_for_token(token, &balances).await;
         }
+    }
+
+    #[instrument]
+    async fn update_balances_for_token(
+        &self,
+        token: &RelevantDebankToken,
+        balances: &HashMap<String, HashMap<String, f64>>,
+    ) {
+        let empty_hashmap = HashMap::new();
+        let token_balances = balances.get(token.token_name).unwrap_or_else(|| {
+            tracing::warn!(name = token.token_name, token = ?token, "Token not found in balances");
+            &empty_hashmap
+        });
+
+        let mut names_amounts_tuples = token_balances
+            .iter()
+            .map(|(name, amount)| (name.clone(), amount.to_string()))
+            .collect::<Vec<(String, String)>>();
+
+        names_amounts_tuples.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
+
+        let (names, amounts): (Vec<_>, Vec<_>) = names_amounts_tuples.iter().cloned().unzip();
+
+        self.spreadsheet_manager
+            .write_named_range(
+                token.range_name_rows,
+                ValueRange::from_rows(names.as_slice()),
+            )
+            .await
+            .expect(format!("Should write NAMES for {}", token.token_name).as_str());
+
+        self.spreadsheet_manager
+            .write_named_range(
+                token.range_amount_rows,
+                ValueRange::from_rows(amounts.as_slice()),
+            )
+            .await
+            .expect(format!("Should write AMOUNTS for {}", token.token_name).as_str());
     }
 }
 
 #[async_trait::async_trait]
-impl Routine for DebankTokensRoutine {
+impl Routine for DebankRoutine {
     fn name(&self) -> &'static str {
-        "DebankTokensRoutine"
+        self.struct_name()
     }
 
-    #[instrument(skip(self), name = "DebankTokensRoutine::run")]
+    #[instrument(skip(self), name = "DebankRoutine::run")]
     async fn run(&self) -> RoutineResult {
+        // TOTAL
+        tracing::info!("Running DebankTotalUSDRoutine");
+
+        tracing::info!("Debank: ☁️  Fetching Total Debank balance");
+        let total_usd_balance = self
+            .get_debank_balance()
+            .await
+            .map_err(|error| RoutineFailureInfo::new(error.to_string()))?;
+
+        tracing::info!(
+            "Debank: 📝 Updating total balance with ${:.2}",
+            total_usd_balance
+        );
+        self.update_debank_balance_on_spreadsheet(total_usd_balance)
+            .await;
+
+        tracing::info!("Debank: ✅ Updated Debank balance on the spreadsheet");
+
+        // AaH
         tracing::info!("Running DebankTokensRoutine");
 
         tracing::info!("Debank: ☁️  Fetching AaH balances");

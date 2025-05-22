@@ -6,8 +6,6 @@ use fantoccini::{elements::Element, Locator};
 use reqwest::Url;
 use tracing::{event, info, instrument, Instrument, Level};
 
-use crate::prelude::chain;
-
 use super::{formatting::balance::format_balance, scraper_driver::ScraperDriver};
 
 pub struct DebankBalanceScraper {

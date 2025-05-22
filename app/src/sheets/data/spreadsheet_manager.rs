@@ -5,6 +5,7 @@ use google_sheets4::{
     Sheets,
 };
 use std::{collections::HashMap, fmt::Debug};
+use tokio::sync::RwLock;
 use tracing::instrument;
 use value_range_factory::ValueRangeFactory;
 
@@ -15,7 +16,7 @@ pub struct SpreadsheetManager {
     hub: Sheets<
         google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
     >,
-    pub named_ranges_cache: Option<HashMap<String, GridRange>>,
+    pub named_ranges_cache: RwLock<Option<HashMap<String, GridRange>>>,
 }
 
 impl Debug for SpreadsheetManager {
@@ -41,7 +42,7 @@ impl std::fmt::Display for SpreadsheetManagerError {
 impl Context for SpreadsheetManagerError {}
 
 impl SpreadsheetManager {
-    #[instrument]
+    #[instrument(name = "SpreadsheetManager::new")]
     pub async fn new(config: SpreadsheetConfig) -> Self {
         let client = http_client::http_client();
         let auth = auth::auth(&config, client.clone()).await;
@@ -54,7 +55,7 @@ impl SpreadsheetManager {
         SpreadsheetManager {
             config,
             hub,
-            named_ranges_cache: None,
+            named_ranges_cache: RwLock::new(None),
         }
     }
 
@@ -100,17 +101,30 @@ impl SpreadsheetManager {
 
     #[instrument]
     pub async fn named_range_map(
-        &mut self,
+        &self,
     ) -> Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
-        let map = match self.named_ranges_cache {
-            Some(ref map) => map,
+        let cache = {
+            // -- MUTEX READ --
+            let guard = self.named_ranges_cache.read().await;
+            guard.clone()
+            // -- END MUTEX READ --
+        };
+
+        let map = match cache {
+            Some(map) => map,
             None => {
                 let fetched_map = self
                     .fetch_named_range_map()
                     .await
                     .change_context(SpreadsheetManagerError::FailedToFetchNamedRange)?;
-                self.named_ranges_cache.replace(fetched_map);
-                self.named_ranges_cache.as_ref().unwrap()
+
+                {
+                    // -- MUTEX WRITE --
+                    let mut guard = self.named_ranges_cache.write().await;
+                    guard.replace(fetched_map.clone());
+                    // -- END MUTEX WRITE --
+                }
+                fetched_map
             }
         };
 
@@ -118,10 +132,7 @@ impl SpreadsheetManager {
     }
 
     #[instrument]
-    pub async fn get_named_range(
-        &mut self,
-        name: &str,
-    ) -> Result<GridRange, SpreadsheetManagerError> {
+    pub async fn get_named_range(&self, name: &str) -> Result<GridRange, SpreadsheetManagerError> {
         let named_ranges = self
             .named_range_map()
             .await
@@ -198,7 +209,7 @@ impl SpreadsheetManager {
 
     #[instrument]
     pub async fn read_named_range(
-        &mut self,
+        &self,
         name: &str,
     ) -> Result<ValueRange, SpreadsheetManagerError> {
         let named_range = self.get_named_range(name).await?;
@@ -219,7 +230,7 @@ impl SpreadsheetManager {
 
     #[instrument]
     pub async fn write_named_range(
-        &mut self,
+        &self,
         name: &str,
         value_range: ValueRange,
     ) -> Result<(), SpreadsheetManagerError> {
