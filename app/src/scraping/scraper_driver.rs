@@ -53,7 +53,8 @@ async fn create_and_configure_client(port: u16) -> Result<Client, ScraperDriverE
     let client = ClientBuilder::native()
         .connect(format!("http://localhost:{}", port).as_str())
         .await
-        .change_context(ScraperDriverError::FailedToCreateClient)?;
+        .change_context(ScraperDriverError::FailedToCreateClient)
+        .attach_printable_lazy(|| format!("Failed to connect to geckodriver on port {}", port))?;
 
     client.set_ua("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OPR/112.0.0.0").await.change_context(ScraperDriverError::FailedToCreateClient)?;
 

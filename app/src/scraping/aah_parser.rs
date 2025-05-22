@@ -88,7 +88,7 @@ impl AaHParser {
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWalletInfo) {
         for token in wallet.tokens.as_slice() {
             let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
@@ -406,7 +406,7 @@ impl AaHParser {
         });
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn parse_project(&mut self, chain: &str, project: &ChainProjectInfo) {
         let project_name = project.name.clone();
 
