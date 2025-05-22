@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use error_stack::{Context, Result, ResultExt};
 use google_sheets4::api::ValueRange;
-use tracing::instrument;
+use tracing::{event, instrument, Level};
 
 #[derive(Debug)]
 pub enum DebankTokensRoutineError {
@@ -19,7 +19,10 @@ impl Context for DebankTokensRoutineError {}
 
 use crate::{
     config::app_config::{self, CONFIG},
-    scraping::{aah_parser::AaHParser, debank_scraper::DebankBalanceScraper},
+    scraping::{
+        aah_parser::AaHParser,
+        debank_scraper::{ChainInfo, DebankBalanceScraper},
+    },
     sheets::{
         data::spreadsheet_manager::SpreadsheetManager, ranges,
         value_range_factory::ValueRangeFactory,
@@ -27,6 +30,7 @@ use crate::{
     Routine, RoutineFailureInfo, RoutineResult,
 };
 
+#[derive(Debug)]
 pub struct RelevantDebankToken {
     pub token_name: &'static str,
     pub range_name_rows: &'static str,
@@ -175,13 +179,27 @@ impl DebankTokensRoutine {
             .await
             .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
 
+        return self.parse_debank_profile(chain_infos).await;
+    }
+
+    async fn parse_debank_profile(
+        &self,
+        chain_infos: HashMap<String, ChainInfo>,
+    ) -> Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
         let mut aah_parser = AaHParser::new();
 
         for (chain, chain_info) in chain_infos.iter() {
+            event!(Level::TRACE, chain = chain, "Parsing chain");
             if let Some(wallet) = chain_info.wallet_info.as_ref() {
+                event!(Level::TRACE, wallet = ?wallet, "Wallet detected, parsing");
                 aah_parser.parse_wallet(chain, wallet);
             }
             for project in chain_info.project_info.as_slice() {
+                event!(
+                    Level::TRACE,
+                    project = project.name,
+                    "Project detected, parsing"
+                );
                 aah_parser.parse_project(chain, project);
             }
         }
@@ -242,7 +260,7 @@ impl Routine for DebankTokensRoutine {
         "DebankTokensRoutine"
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), name = "DebankTokensRoutine::run")]
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running DebankTokensRoutine");
 

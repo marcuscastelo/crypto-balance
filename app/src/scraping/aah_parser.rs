@@ -6,7 +6,9 @@ use super::debank_scraper::{
     ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, LiquidityPoolTokenInfo,
     ProjectTracking, StakeTokenInfo, YieldFarmTokenInfo,
 };
+use tracing::{instrument, Level};
 
+#[derive(Debug)]
 pub struct AaHParser {
     pub balances: HashMap<String, HashMap<String, f64>>,
 }
@@ -40,12 +42,14 @@ fn parse_amount(amount: &str) -> anyhow::Result<f64> {
 }
 
 impl AaHParser {
+    #[instrument]
     pub fn new() -> AaHParser {
         AaHParser {
             balances: HashMap::new(),
         }
     }
 
+    #[instrument]
     fn parse_generic(
         &mut self,
         chain: &str,
@@ -84,6 +88,7 @@ impl AaHParser {
         Ok(())
     }
 
+    #[instrument]
     pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWalletInfo) {
         for token in wallet.tokens.as_slice() {
             let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
@@ -108,6 +113,7 @@ impl AaHParser {
         }
     }
 
+    #[instrument]
     fn parse_yield_token(&mut self, chain: &str, project_name: &str, token: &YieldFarmTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -139,6 +145,7 @@ impl AaHParser {
         });
     }
 
+    #[instrument]
     fn parse_deposit_token(&mut self, chain: &str, project_name: &str, token: &DepositTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -170,6 +177,7 @@ impl AaHParser {
         });
     }
 
+    #[instrument]
     fn parse_liquidity_pool_token(
         &mut self,
         chain: &str,
@@ -267,6 +275,7 @@ impl AaHParser {
         }
     }
 
+    #[instrument]
     fn parse_stake_token(&mut self, chain: &str, project_name: &str, token: &StakeTokenInfo) {
         let (balance1, balance2) = token
             .balance
@@ -371,6 +380,7 @@ impl AaHParser {
         }
     }
 
+    #[instrument]
     fn parse_lending_token(&mut self, chain: &str, project_name: &str, token: &LendingTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -396,6 +406,7 @@ impl AaHParser {
         });
     }
 
+    #[instrument]
     pub fn parse_project(&mut self, chain: &str, project: &ChainProjectInfo) {
         let project_name = project.name.clone();
 
@@ -466,8 +477,64 @@ impl AaHParser {
                         );
                     }
                 }
-                _ => {
-                    tracing::error!("Unsupported tracking: {:?}", tracking);
+                ProjectTracking::Vesting { vesting } => {
+                    for token in vesting {
+                        // TODO: Create a proper function for parsing vesting tokens
+                        self.parse_stake_token(
+                            chain,
+                            project_name.as_str(),
+                            &StakeTokenInfo {
+                                balance: token.balance.clone(), // TODO: Show claimable amount in the future somehow
+                                pool: token.pool.clone(),
+                                token_name: None,
+                                rewards: None,
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
+                    }
+                }
+                ProjectTracking::Rewards { rewards } => {
+                    for token in rewards {
+                        // TODO: Create a proper function for parsing rewards tokens
+                        self.parse_stake_token(
+                            chain,
+                            project_name.as_str(),
+                            &StakeTokenInfo {
+                                balance: token.balance.clone(),
+                                pool: token.pool.clone(),
+                                token_name: None,
+                                rewards: None,
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
+                    }
+                }
+                ProjectTracking::Farming { farming } => {
+                    // TODO: Create a proper function for parsing farming tokens
+                    for token in farming {
+                        self.parse_stake_token(
+                            chain,
+                            project_name.as_str(),
+                            &StakeTokenInfo {
+                                balance: token.balance.clone(),
+                                pool: token.pool.clone(),
+                                token_name: token.token_name.clone(),
+                                rewards: None,
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
+                    }
+                }
+                ProjectTracking::Generic { info } => {
+                    for token in info {
+                        tracing::event!(
+                            Level::ERROR,
+                            token = ?token,
+                            project = ?project_name,
+                            chain = ?chain,
+                            "Generic token parsing is not supported! Something is wrong!"
+                        );
+                    }
                 }
             }
         }

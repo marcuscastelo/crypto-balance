@@ -61,6 +61,19 @@ pub struct ChainWalletInfo {
     pub tokens: Vec<SpotTokenInfo>,
 }
 
+impl fmt::Display for ChainWalletInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tokens = self
+            .tokens
+            .iter()
+            .map(|x| format!("{} {}: {}", x.amount, x.name, x.usd_value))
+            .reduce(|a, b| format!("{}; {}", a, b))
+            .unwrap_or("<no tokens>".to_string());
+
+        write!(f, "Wallet: {} USD\nTokens: {}", self.usd_value, tokens)
+    }
+}
+
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct SpotTokenInfo {

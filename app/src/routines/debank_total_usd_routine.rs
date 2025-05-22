@@ -53,7 +53,7 @@ impl Routine for DebankTotalUSDRoutine {
         self.struct_name()
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), name = "DebankTotalUSDRoutine::run")]
     async fn run(&self) -> RoutineResult {
         tracing::info!("Running DebankTotalUSDRoutine");
 
