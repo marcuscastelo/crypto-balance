@@ -488,6 +488,7 @@ impl DebankBalanceScraper {
         tracing::trace!("Fetching tracking type...");
         let tracking_type = tracking
             .find(Locator::XPath("div[1]/div[1]/div[1]"))
+            .instrument(tracing::span!(Level::DEBUG, "tracking_type"))
             .await
             .change_context(DebankScraperError::ElementHtmlNotFound)?
             .text()
@@ -499,100 +500,140 @@ impl DebankBalanceScraper {
         tracing::trace!("Locating tracking tables...");
         let tables = tracking
             .find_all(Locator::XPath("div[2]/div"))
+            .instrument(tracing::span!(Level::DEBUG, "tracking_tables"))
             .await
             .change_context(DebankScraperError::ElementHtmlNotFound)?;
 
         tracing::trace!("Found {} tables", tables.len());
 
+        let generic_infos = self.extract_generic_infos_from_tables(tables).await?;
+
+        let specialized = self.specialize_generic_info(&tracking_type, generic_infos)?;
+
+        Ok(specialized)
+    }
+
+    #[instrument(skip(self, tables), fields(tables_len = tables.len()))]
+    async fn extract_generic_infos_from_tables(
+        &self,
+        tables: Vec<Element>,
+    ) -> Result<Vec<GenericTokenInfo>, DebankScraperError> {
         let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
 
         let table_len = tables.len();
         for (index, table) in tables.into_iter().enumerate() {
             tracing::trace!("Processing table {}/{}", index + 1, table_len);
-
-            tracing::trace!("Locating tracking headers...");
-            let tracking_headers = table
-                .find_all(Locator::XPath("div[1]//span"))
-                .await
-                .change_context(DebankScraperError::ElementHtmlNotFound)?;
-            tracing::trace!("Found {} headers", tracking_headers.len());
-
-            tracing::trace!("Fetching header texts...");
-            let headers = futures::future::join_all(
-                tracking_headers
-                    .iter()
-                    .map(|header| async {
-                        header
-                            .text()
-                            .await
-                            .change_context(DebankScraperError::ElementTextNotFound)
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .await;
-            tracing::trace!("Fetched header texts");
-
-            // Convert all results to strings returning an error if any of them fails
-            tracing::trace!("Converting header texts to strings...");
-            let headers = headers
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()
-                .change_context(DebankScraperError::GenericError)?;
-            tracing::trace!("Headers: {:?}", headers);
-
-            tracing::trace!("Locating tracking body...");
-            let tracking_body = table
-                .find(Locator::XPath("div[2]"))
-                .await
-                .change_context(DebankScraperError::ElementNotFound)?;
-
-            tracing::trace!("Locating tracking rows...");
-            let row_selector = "div.table_contentRow__Mi3k5.flex_flexRow__y0UR2";
-            let rows = tracking_body
-                .find_all(Locator::Css(row_selector))
-                .await
-                .change_context(DebankScraperError::ElementNotFound)?;
-            tracing::trace!("Found {} rows", rows.len());
-
-            let row_len = rows.len();
-            for (index, row) in rows.iter().enumerate() {
-                tracing::trace!("Processing row {}/{}", index + 1, row_len);
-
-                tracing::trace!("Locating row cells...");
-                let cells = row
-                    .find_all(Locator::XPath("div"))
-                    .await
-                    .change_context(DebankScraperError::ElementNotFound)?;
-                tracing::trace!("Found {} cells", cells.len());
-
-                tracing::trace!("Fetching cell texts...");
-                let values = futures::future::join_all(
-                    cells.iter().map(|cell| self.extract_cell_info(cell)),
-                )
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?;
-
-                if headers.len() != values.len() {
-                    bail!(DebankScraperError::HeadersValuesLengthMismatch);
-                }
-
-                let zipped = headers
-                    .clone()
-                    .into_iter()
-                    .zip(values.into_iter())
-                    .collect::<Vec<_>>();
-
-                generic_infos.push(zipped);
-            }
+            let generic_info = self.extract_generic_infos_from_table(&table).await?;
+            tracing::trace!(
+                "Extracted {} generic infos from table {}/{}",
+                generic_info.len(),
+                index + 1,
+                table_len
+            );
+            generic_infos.push(generic_info);
         }
         tracing::trace!("Finished processing tables");
 
         let generic_infos = self.parse_generic_info(generic_infos)?;
+        Ok(generic_infos)
+    }
 
-        let specialized = self.specialize_generic_info(&tracking_type, generic_infos)?;
+    #[instrument(skip(self, table))]
+    async fn extract_generic_infos_from_table(
+        &self,
+        table: &Element,
+    ) -> Result<Vec<(String, String)>, DebankScraperError> {
+        let mut generic_infos: Vec<(String, String)> = Vec::new();
+        tracing::trace!("Locating tracking headers...");
+        let tracking_headers = table
+            .find_all(Locator::XPath("div[1]//span"))
+            .await
+            .change_context(DebankScraperError::ElementHtmlNotFound)?;
+        tracing::trace!("Found {} headers", tracking_headers.len());
 
-        Ok(specialized)
+        tracing::trace!("Fetching header texts...");
+        let headers = futures::future::join_all(
+            tracking_headers
+                .iter()
+                .map(|header| async {
+                    header
+                        .text()
+                        .await
+                        .change_context(DebankScraperError::ElementTextNotFound)
+                })
+                .collect::<Vec<_>>(),
+        )
+        .await;
+        tracing::trace!("Fetched header texts");
+
+        // Convert all results to strings returning an error if any of them fails
+        tracing::trace!("Converting header texts to strings...");
+        let headers = headers
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .change_context(DebankScraperError::GenericError)?;
+        tracing::trace!("Headers: {:?}", headers);
+
+        tracing::trace!("Locating tracking body...");
+        let tracking_body = table
+            .find(Locator::XPath("div[2]"))
+            .await
+            .change_context(DebankScraperError::ElementNotFound)?;
+
+        tracing::trace!("Locating tracking rows...");
+        let row_selector = "div.table_contentRow__Mi3k5.flex_flexRow__y0UR2";
+        let rows = tracking_body
+            .find_all(Locator::Css(row_selector))
+            .await
+            .change_context(DebankScraperError::ElementNotFound)?;
+        tracing::trace!("Found {} rows", rows.len());
+
+        let row_len = rows.len();
+        for (index, row) in rows.iter().enumerate() {
+            tracing::trace!("Processing row {}/{}", index + 1, row_len);
+            let zipped = self
+                .extract_generic_infos_from_row(row, headers.clone())
+                .await
+                .change_context(DebankScraperError::ElementNotFound)?;
+
+            generic_infos.extend(zipped);
+        }
+
+        tracing::trace!("Finished processing rows");
+        Ok(generic_infos)
+    }
+
+    #[instrument(skip(self, row))]
+    async fn extract_generic_infos_from_row(
+        &self,
+        row: &Element,
+        headers: Vec<String>,
+    ) -> Result<Vec<(String, String)>, DebankScraperError> {
+        tracing::trace!("Locating row cells...");
+        let cells = row
+            .find_all(Locator::XPath("div"))
+            .await
+            .change_context(DebankScraperError::ElementNotFound)?;
+        tracing::trace!("Found {} cells", cells.len());
+
+        tracing::trace!("Fetching cell texts...");
+        let values =
+            futures::future::join_all(cells.iter().map(|cell| self.extract_cell_info(cell)))
+                .await
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
+
+        if headers.len() != values.len() {
+            bail!(DebankScraperError::HeadersValuesLengthMismatch);
+        }
+
+        let zipped = headers
+            .clone()
+            .into_iter()
+            .zip(values.into_iter())
+            .collect::<Vec<_>>();
+
+        Ok(zipped)
     }
 
     #[instrument]
@@ -809,17 +850,25 @@ impl DebankBalanceScraper {
         let span_div_and_a = cell.find(Locator::XPath("span/div")).await;
 
         if let Ok(div_span_div_and_a) = span_div_and_a {
-            let div_span_div_and_a_text = div_span_div_and_a
-                .text()
-                .await
-                .change_context(DebankScraperError::ElementTextNotFound)?;
-            let div_span_div_and_a_a = div_span_div_and_a
-                .find(Locator::XPath("a"))
-                .await
-                .change_context(DebankScraperError::ElementNotFound)?
-                .text()
-                .await
-                .change_context(DebankScraperError::ElementTextNotFound)?;
+            let (div_span_div_and_a_text, div_span_div_and_a_a) = join!(
+                async {
+                    div_span_div_and_a
+                        .text()
+                        .await
+                        .change_context(DebankScraperError::ElementTextNotFound)
+                },
+                async {
+                    div_span_div_and_a
+                        .find(Locator::XPath("a"))
+                        .await
+                        .change_context(DebankScraperError::ElementNotFound)?
+                        .text()
+                        .await
+                        .change_context(DebankScraperError::ElementTextNotFound)
+                }
+            );
+            let div_span_div_and_a_text = div_span_div_and_a_text?;
+            let div_span_div_and_a_a = div_span_div_and_a_a?;
 
             return Ok(format!(
                 "{} {}", // 0.001 ETH
