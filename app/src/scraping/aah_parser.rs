@@ -49,7 +49,7 @@ impl AaHParser {
         }
     }
 
-    #[instrument]
+    #[instrument(skip(self, relevant_tokens))]
     fn parse_generic(
         &mut self,
         chain: &str,
@@ -88,7 +88,7 @@ impl AaHParser {
         Ok(())
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self, wallet), fields(usd_value = ?wallet.usd_value, token_count = ?wallet.tokens.len()))]
     pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWalletInfo) {
         for token in wallet.tokens.as_slice() {
             let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
@@ -113,7 +113,7 @@ impl AaHParser {
         }
     }
 
-    #[instrument]
+    #[instrument(skip(self, token), fields(token = ?token.token_name))]
     fn parse_yield_token(&mut self, chain: &str, project_name: &str, token: &YieldFarmTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -145,7 +145,7 @@ impl AaHParser {
         });
     }
 
-    #[instrument]
+    #[instrument(skip(self, token), fields(token = ?token.token_name))]
     fn parse_deposit_token(&mut self, chain: &str, project_name: &str, token: &DepositTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -177,7 +177,7 @@ impl AaHParser {
         });
     }
 
-    #[instrument]
+    #[instrument(skip(self, token), fields(token = ?token.token_name))]
     fn parse_liquidity_pool_token(
         &mut self,
         chain: &str,
@@ -275,7 +275,7 @@ impl AaHParser {
         }
     }
 
-    #[instrument]
+    #[instrument(skip(self, token), fields(token = ?token.token_name))]
     fn parse_stake_token(&mut self, chain: &str, project_name: &str, token: &StakeTokenInfo) {
         let (balance1, balance2) = token
             .balance
@@ -380,7 +380,7 @@ impl AaHParser {
         }
     }
 
-    #[instrument]
+    #[instrument(skip(self, token), fields(token = ?token.token_name))]
     fn parse_lending_token(&mut self, chain: &str, project_name: &str, token: &LendingTokenInfo) {
         let matching_relevant_tokens = RELEVANT_DEBANK_TOKENS
             .iter()
@@ -406,7 +406,7 @@ impl AaHParser {
         });
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self, project), fields(project = ?project.name))]
     pub fn parse_project(&mut self, chain: &str, project: &ChainProjectInfo) {
         let project_name = project.name.clone();
 
