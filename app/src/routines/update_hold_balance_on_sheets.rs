@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
 use error_stack::ResultExt;
-use google_sheets4::api::ValueRange;
 use regex::Regex;
 use tracing::instrument;
 
@@ -18,8 +17,7 @@ use crate::{
             column::Column, row::Row,
         },
         into::MyInto,
-        ranges::{self, balances::hold},
-        value_range_factory::ValueRangeFactory,
+        ranges::{self},
     },
 };
 
