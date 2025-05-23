@@ -149,7 +149,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
         "UpdateHoldBalanceOnSheetsRoutine"
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), name = "UpdateHoldBalanceOnSheetsRoutine::run")]
     async fn run(&self) -> error_stack::Result<(), RoutineError> {
         let chains = vec![&POLYGON, &OPTIMISM, &ARBITRUM];
 

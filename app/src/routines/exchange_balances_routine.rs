@@ -51,7 +51,7 @@ impl Routine for ExchangeBalancesRoutine {
         self.routine_name.as_str()
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), name = "ExchangeBalancesRoutine::run")]
     async fn run(&self) -> error_stack::Result<(), RoutineError> {
         tracing::info!("Binance: Running BinanceRoutine");
 

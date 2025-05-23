@@ -94,7 +94,7 @@ impl Routine for TokenPricesRoutine {
         "TokenPricesRoutine"
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), name = "TokenPricesRoutine::run")]
     async fn run(&self) -> error_stack::Result<(), RoutineError> {
         tracing::info!("Running TokenPricesRoutine");
 
