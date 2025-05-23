@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Debug, time::Duration};
 
 use error_stack::{bail, Context, Result, ResultExt};
 use fantoccini::{elements::Element, Locator};
+use futures::join;
 use reqwest::Url;
 use tracing::{event, info, instrument, Instrument, Level};
 
@@ -389,47 +390,54 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementNotFound)?;
 
-        let mut tokens = Vec::new();
-
-        let name_xpath = "div[1]/div[1]/div[1]/a";
-        let price_xpath = "div[1]/div[2]";
-        let amount_xpath = "div[1]/div[3]";
-        let usd_value_xpath = "div[1]/div[4]";
-
-        for row in token_rows {
-            tokens.push(SpotTokenInfo {
-                name: row
-                    .find(Locator::XPath(name_xpath))
-                    .await
-                    .change_context(DebankScraperError::ElementNotFound)?
-                    .text()
-                    .await
-                    .change_context(DebankScraperError::ElementTextNotFound)?,
-                price: row
-                    .find(Locator::XPath(price_xpath))
-                    .await
-                    .change_context(DebankScraperError::ElementNotFound)?
-                    .text()
-                    .await
-                    .change_context(DebankScraperError::ElementTextNotFound)?,
-                amount: row
-                    .find(Locator::XPath(amount_xpath))
-                    .await
-                    .change_context(DebankScraperError::ElementNotFound)?
-                    .text()
-                    .await
-                    .change_context(DebankScraperError::ElementTextNotFound)?,
-                usd_value: row
-                    .find(Locator::XPath(usd_value_xpath))
-                    .await
-                    .change_context(DebankScraperError::ElementHtmlNotFound)?
-                    .text()
-                    .await
-                    .change_context(DebankScraperError::ElementTextNotFound)?,
-            });
-        }
+        let tokens = futures::future::join_all(
+            token_rows
+                .iter()
+                .map(|row| self.get_chain_wallet_row_info(row)),
+        )
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
 
         Ok(ChainWalletInfo { usd_value, tokens })
+    }
+
+    async fn get_chain_wallet_row_info(
+        &self,
+        row: &Element,
+    ) -> Result<SpotTokenInfo, DebankScraperError> {
+        const NAME_XPATH: &'static str = "div[1]/div[1]/div[1]/a";
+        const PRICE_XPATH: &'static str = "div[1]/div[2]";
+        const AMOUNT_XPATH: &'static str = "div[1]/div[3]";
+        const USD_VALUE_XPATH: &'static str = "div[1]/div[4]";
+
+        let (name, price, amount, usd_value) = join!(
+            self.get_chain_wallet_row_field(row, NAME_XPATH),
+            self.get_chain_wallet_row_field(row, PRICE_XPATH),
+            self.get_chain_wallet_row_field(row, AMOUNT_XPATH),
+            self.get_chain_wallet_row_field(row, USD_VALUE_XPATH)
+        );
+
+        Ok(SpotTokenInfo {
+            name: name?,
+            price: price?,
+            amount: amount?,
+            usd_value: usd_value?,
+        })
+    }
+    async fn get_chain_wallet_row_field(
+        &self,
+        row: &Element,
+        xpath: &str,
+    ) -> Result<String, DebankScraperError> {
+        let field = row
+            .find(Locator::XPath(xpath))
+            .await
+            .change_context(DebankScraperError::ElementNotFound)?
+            .text()
+            .await
+            .change_context(DebankScraperError::ElementTextNotFound)?;
+        Ok(field)
     }
 
     #[instrument]
