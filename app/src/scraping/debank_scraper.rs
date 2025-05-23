@@ -320,7 +320,6 @@ impl DebankBalanceScraper {
             .click()
             .await
             .change_context(DebankScraperError::FailedToClickElement)?;
-        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let token_wallet_selector = "div.TokenWallet_container__FUGTE";
         let project_selector = "div.Project_project__GCrhx";
