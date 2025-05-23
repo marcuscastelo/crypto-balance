@@ -1,19 +1,14 @@
-#[derive(Debug, Clone)]
-pub struct RoutineFailureInfo {
-    pub message: String,
-}
+use thiserror::Error;
 
-impl RoutineFailureInfo {
-    pub fn new(message: String) -> Self {
-        Self { message }
-    }
+#[derive(Error, Debug)]
+pub enum RoutineError {
+    #[error("Routine failed: {0}")]
+    RoutineFailure(String),
 }
-
-pub type RoutineResult = Result<(), RoutineFailureInfo>;
 
 #[async_trait::async_trait]
 pub trait Routine {
     fn name(&self) -> &str;
 
-    async fn run(&self) -> RoutineResult;
+    async fn run(&self) -> error_stack::Result<(), RoutineError>;
 }

@@ -6,24 +6,24 @@ mod blockchain;
 mod config;
 mod exchange;
 mod prelude;
+mod prettyprint;
 mod price;
 mod routines;
 mod scraping;
 mod sheets;
 
-use exchange::data::{
-    binance::binance_use_cases::BinanceUseCases, kraken::kraken_use_cases::KrakenUseCases,
-};
+use exchange::data::binance::binance_use_cases::BinanceUseCases;
+use exchange::data::kraken::kraken_use_cases::KrakenUseCases;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace as sdktrace;
 use opentelemetry_sdk::Resource;
-use routines::{
-    debank_routine::DebankRoutine,
-    exchange_balances_routine::ExchangeBalancesRoutine,
-    routine::{Routine, RoutineFailureInfo, RoutineResult},
-    token_prices::TokenPricesRoutine,
-};
+use prettyprint::PrettyFormatter;
+use routines::debank_routine::DebankRoutine;
+use routines::exchange_balances_routine::ExchangeBalancesRoutine;
+use routines::routine::Routine;
+use routines::routine::RoutineError;
+use routines::token_prices::TokenPricesRoutine;
 use sheets::data::spreadsheet_manager;
 use std::collections::HashMap;
 use tokio::{process::Command, time::sleep, time::Duration};
@@ -40,6 +40,20 @@ async fn run_routines(parallel: bool) {
     let spreadsheet_manager =
         spreadsheet_manager::SpreadsheetManager::new(config::app_config::CONFIG.sheets.clone())
             .await;
+    let col1 = vec![
+        String::from("Key1"),
+        String::from("Key2"),
+        String::from("Key3"),
+    ];
+    let col2 = vec![
+        String::from("Val1"),
+        String::from("Val2"),
+        String::from("Val3"),
+    ];
+    // spreadsheet_manager
+    //     .write_named_two_columns("AaH__vBtcBalances", col1.as_slice(), col2.as_slice())
+    //     .await
+    //     .expect("Failed to write named range");
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
         Box::new(DebankRoutine::new(spreadsheet_manager)),
@@ -52,7 +66,8 @@ async fn run_routines(parallel: bool) {
 
     let mut futures = Vec::new();
 
-    let mut routine_results: HashMap<String, RoutineResult> = HashMap::new();
+    let mut routine_results: HashMap<String, error_stack::Result<(), RoutineError>> =
+        HashMap::new();
 
     for (index, routine) in routines_to_run.iter().enumerate() {
         if parallel {
@@ -68,28 +83,28 @@ async fn run_routines(parallel: bool) {
                     len = routines_to_run.len()
                 ))
                 .await;
-            if let Err(err) = &result {
-                tracing::error!("❌ {}: {}", routine.name(), err.message);
+            if let Err(report) = &result {
+                tracing::error!("❌ {}: {:?}", routine.name(), report);
             } else {
                 tracing::info!("✅ {}: OK", routine.name());
             }
             routine_results.insert(routine.name().to_string(), result);
-            if index < routines_to_run.len() - 1 {
-                let span = tracing::span!(
-                    tracing::Level::INFO,
-                    "wait",
-                    last_routine = routine.name(),
-                    index = index,
-                    len = routines_to_run.len()
-                );
-                let _enter = span.enter();
-                let secs = 15;
-                tracing::info!(
-                    "Waiting for {} seconds before running the next routine...",
-                    secs
-                );
-                sleep(Duration::from_secs(secs)).await;
-            }
+            // if index < routines_to_run.len() - 1 {
+            //     let span = tracing::span!(
+            //         tracing::Level::INFO,
+            //         "wait",
+            //         last_routine = routine.name(),
+            //         index = index,
+            //         len = routines_to_run.len()
+            //     );
+            //     let _enter = span.enter();
+            //     let secs = 15;
+            //     tracing::info!(
+            //         "Waiting for {} seconds before running the next routine...",
+            //         secs
+            //     );
+            //     sleep(Duration::from_secs(secs)).await;
+            // }
         }
     }
 
@@ -106,8 +121,8 @@ async fn run_routines(parallel: bool) {
             Ok(()) => {
                 tracing::info!("✅ {}: OK", name);
             }
-            Err(failure_info) => {
-                tracing::error!("❌ {}: {}", name, failure_info.message);
+            Err(report) => {
+                tracing::error!("❌ {}: {:?}", name, report);
             }
         }
     }
@@ -124,11 +139,9 @@ async fn main() {
     let indicatif_layer = IndicatifLayer::new();
 
     let stdout_layer = tracing_subscriber::fmt::layer()
+        .event_format(PrettyFormatter::new())
         .with_writer(indicatif_layer.get_stderr_writer())
-        .with_ansi(true)
-        .with_target(false)
-        .with_line_number(true)
-        .with_file(true);
+        .with_ansi(true);
 
     // let file = File::create("log.ndjson").unwrap();
     // let json_layer = tracing_subscriber::fmt::layer()
@@ -163,13 +176,21 @@ async fn main() {
 
     Registry::default()
         .with(tracing_subscriber::filter::LevelFilter::INFO)
-        .with(stdout_layer)
         // .with(json_layer)
         // .with(chrome_layer)
         // .with(flame_layer)
         .with(otel_layer)
         .with(indicatif_layer)
+        .with(stdout_layer)
         .init();
+
+    tracing::trace!("Setting panic hook");
+    std::panic::set_hook(Box::new(|info| {
+        tracing::error!("panic: {info}");
+
+        // tenta forçar exportação
+        opentelemetry::global::shutdown_tracer_provider();
+    }));
 
     // TODO: Add a CLI flag to toggle parallelism
     let parallel = false;

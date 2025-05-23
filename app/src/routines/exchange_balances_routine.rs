@@ -1,13 +1,15 @@
+use core::error;
 use std::{collections::HashMap, fmt};
 
+use error_stack::report;
 use tracing::instrument;
 
 use crate::{
-    exchange::domain::exchange::ExchangeUseCases, routines::routine::RoutineFailureInfo,
+    exchange::domain::exchange::ExchangeUseCases,
     sheets::data::spreadsheet::SpreadsheetUseCasesImpl,
 };
 
-use super::routine::{Routine, RoutineResult};
+use super::routine::{Routine, RoutineError};
 
 pub struct ExchangeBalancesRoutine {
     routine_name: String,
@@ -50,25 +52,17 @@ impl Routine for ExchangeBalancesRoutine {
     }
 
     #[instrument(skip(self))]
-    async fn run(&self) -> RoutineResult {
+    async fn run(&self) -> error_stack::Result<(), RoutineError> {
         tracing::info!("Binance: Running BinanceRoutine");
 
         tracing::trace!("{}: 📋 Listing all tokens from persistence", self.name());
         let token_names = self.persistence.get_token_names_from_spreadsheet().await;
 
         tracing::trace!("{}: ☁️  Getting balances from exchange", self.name());
-        let balance_by_token = self.exchange.fetch_balances().await;
-
-        let balance_by_token = match balance_by_token {
-            Ok(balances) => balances,
-            Err(err) => {
-                tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
-                return Err(RoutineFailureInfo::new(format!(
-                    "Error fetching balances: {}",
-                    err
-                )));
-            }
-        };
+        let balance_by_token = self.exchange.fetch_balances().await.map_err(|err| {
+            tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
+            RoutineError::RoutineFailure(format!("Error fetching balances: {}", err))
+        })?;
 
         tracing::trace!("{}: 📊 Ordering balances", self.name());
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);

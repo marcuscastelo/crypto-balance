@@ -1,5 +1,7 @@
 use std::num::TryFromIntError;
 
+use crate::sheets::data::spreadsheet_manager::SpreadsheetManager;
+
 use super::cell_position::CellPosition;
 
 use google_sheets4::api::GridRange;
@@ -9,6 +11,7 @@ use thiserror::Error;
 pub struct CellRange {
     pub start: CellPosition,
     pub end: CellPosition,
+    pub sheet_title: Option<String>,
 }
 
 impl CellRange {
@@ -19,43 +22,19 @@ impl CellRange {
     pub fn column_count(&self) -> u32 {
         self.end.col.0 - self.start.col.0 + 1
     }
-}
 
-/// Conversions: Others -> CellRange
+    pub fn with_sheet_title(&self, sheet_title: String) -> Self {
+        Self {
+            start: self.start.clone(),
+            end: self.end.clone(),
+            sheet_title: Some(sheet_title),
+        }
+    }
 
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum CellRangeParseError {
-    #[error("Invalid grid range: {0}")]
-    InvalidGridRange(InvalidGridRangeKind),
-}
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum InvalidGridRangeKind {
-    #[error("Missing {0}")]
-    Missing(InvalidGridRangeTarget),
-    #[error("Error while parsing {target} as an integer: {error} ")]
-    TryFromIntError {
-        target: InvalidGridRangeTarget,
-        error: TryFromIntError,
-    },
-}
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum InvalidGridRangeTarget {
-    #[error("Start column")]
-    StartColumn,
-    #[error("End column")]
-    EndColumn,
-    #[error("Start row")]
-    StartRow,
-    #[error("End row")]
-    EndRow,
-}
-
-impl TryFrom<GridRange> for CellRange {
-    type Error = CellRangeParseError;
-
-    fn try_from(grid_range: GridRange) -> Result<Self, CellRangeParseError> {
+    pub async fn try_from_grid_range_with_sheet_manager(
+        grid_range: GridRange,
+        spreadsheet_manager: &SpreadsheetManager,
+    ) -> Result<Self, CellRangeParseError> {
         let start_column_index =
             grid_range
                 .start_column_index
@@ -124,6 +103,52 @@ impl TryFrom<GridRange> for CellRange {
                 .into(),
         };
 
-        Ok(CellRange { start, end })
+        let sheet_title = match grid_range.sheet_id {
+            None => None,
+            Some(sheet_id) => spreadsheet_manager
+                .get_sheet_title(sheet_id)
+                .await
+                .map_err(|error| CellRangeParseError::GetSheetTitleError(error.to_string()))?
+                .into(),
+        };
+
+        Ok(CellRange {
+            start,
+            end,
+            sheet_title,
+        })
     }
+}
+
+/// Conversions: Others -> CellRange
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum CellRangeParseError {
+    #[error("Invalid grid range: {0}")]
+    InvalidGridRange(InvalidGridRangeKind),
+    #[error("Error getting sheet title: {0}")]
+    GetSheetTitleError(String),
+}
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum InvalidGridRangeKind {
+    #[error("Missing {0}")]
+    Missing(InvalidGridRangeTarget),
+    #[error("Error while parsing {target} as an integer: {error} ")]
+    TryFromIntError {
+        target: InvalidGridRangeTarget,
+        error: TryFromIntError,
+    },
+}
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum InvalidGridRangeTarget {
+    #[error("Start column")]
+    StartColumn,
+    #[error("End column")]
+    EndColumn,
+    #[error("Start row")]
+    StartRow,
+    #[error("End row")]
+    EndRow,
 }

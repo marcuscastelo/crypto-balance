@@ -2,15 +2,11 @@ use std::collections::HashMap;
 
 use crate::{
     price::domain::price::get_token_prices,
-    sheets::{
-        data::spreadsheet_manager::SpreadsheetManager, into::MyInto, ranges,
-        value_range_factory::ValueRangeFactory,
-    },
+    sheets::{data::spreadsheet_manager::SpreadsheetManager, into::MyInto, ranges},
 };
-use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
-use super::routine::{Routine, RoutineResult};
+use super::routine::{Routine, RoutineError};
 
 #[derive(Debug)]
 pub struct TokenPricesRoutine;
@@ -86,10 +82,7 @@ impl TokenPricesRoutine {
             .map(|x| format!("${}", x))
             .collect::<Vec<_>>();
         spreadsheet_manager
-            .write_named_range(
-                ranges::tokens::RW_PRICES,
-                ValueRange::from_rows(values.as_ref()),
-            )
+            .write_named_column(ranges::tokens::RW_PRICES, values.as_ref())
             .await
             .expect("Should have written successfully");
     }
@@ -102,7 +95,7 @@ impl Routine for TokenPricesRoutine {
     }
 
     #[instrument(skip(self))]
-    async fn run(&self) -> RoutineResult {
+    async fn run(&self) -> error_stack::Result<(), RoutineError> {
         tracing::info!("Running TokenPricesRoutine");
 
         tracing::info!("Prices: Creating SpreadsheetManager instance");
@@ -131,54 +124,3 @@ impl Routine for TokenPricesRoutine {
         Ok(())
     }
 }
-// async fn run_old(&self) {
-//     tracing::info!("Running UpdateTokenPricesOnSheetsViaCoinGeckoRoutine");
-
-//     // Below: routine to get native token prices from CoinGecko (failed attempt)
-//     let spreadsheet_manager = SpreadsheetManager::new(app_config::CONFIG.sheets.clone()).await;
-
-//     // let coins = CoinGeckoApi.list_coins().await;
-//     // let coin_tuples = coins
-//     //     .into_iter()
-//     //     .filter(|coin| token_ids.contains(&coin.id))
-//     //     .map(|coin| (coin.id, coin.symbol.to_uppercase()))
-//     //     .collect::<Vec<_>>();
-//     let prices = CoinGeckoApi.prices(token_ids.as_ref()).await;
-
-//     let current_prices_on_sheet = spreadsheet_manager
-//         .read_named_range(ranges::tokens::RW_PRICES)
-//         .await
-//         .expect("Should have content")
-//         .values
-//         .unwrap_or(vec![])
-//         .my_into()
-//         .into_iter()
-//         .map(|x| {
-//             x.replace(['$', ','], "")
-//                 .parse::<f64>()
-//                 .unwrap_or_else(|_| panic!("Should be a number: {}", x))
-//         })
-//         .collect::<Vec<_>>();
-
-//     let new_prices = token_ids
-//         .iter()
-//         .enumerate()
-//         .map(|(idx, token)| match prices.0.get(token) {
-//             Some(price) => price
-//                 .usd
-//                 .expect("Should have price when PriceResponse exists"),
-//             None => current_prices_on_sheet.get(idx).copied().unwrap_or(0.0),
-//         })
-//         .map(|price| price.to_string())
-//         .collect::<Vec<_>>();
-
-//     tracing::info!("[Coingecko] New prices: {:?}", new_prices);
-
-//     spreadsheet_manager
-//         .write_named_range(
-//             ranges::tokens::RW_PRICES,
-//             ValueRange::from_rows(new_prices.as_ref()),
-//         )
-//         .await
-//         .expect("Should write prices to the spreadsheet");
-// }

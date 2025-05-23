@@ -18,12 +18,12 @@ use crate::{
             column::Column, row::Row,
         },
         into::MyInto,
-        ranges,
+        ranges::{self, balances::hold},
         value_range_factory::ValueRangeFactory,
     },
 };
 
-use super::routine::{Routine, RoutineResult};
+use super::routine::{Routine, RoutineError};
 
 #[derive(Debug)]
 pub struct UpdateHoldBalanceOnSheetsRoutine;
@@ -150,7 +150,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
     }
 
     #[instrument(skip(self))]
-    async fn run(&self) -> RoutineResult {
+    async fn run(&self) -> error_stack::Result<(), RoutineError> {
         let chains = vec![&POLYGON, &OPTIMISM, &ARBITRUM];
 
         //Parallelize fetching balances from multiple chains
@@ -221,44 +221,40 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                 .as_str(),
             );
 
-        let cell_range: CellRange = named_range.try_into().expect("Named range parsing error");
+        let cell_range =
+            CellRange::try_from_grid_range_with_sheet_manager(named_range, &spreadsheet_manager)
+                .await
+                .expect("Named range parsing error");
 
         let mut chain_title_cell = cell_range.start;
 
         for chain in chains {
             tracing::info!("Balances for '{}'", chain.name);
             spreadsheet_manager
-                .write_range(
-                    chain_title_cell
-                        .to_a1_notation("Balance - Trezor HOLD".into())
-                        .to_string()
-                        .as_str(),
-                    ValueRange::from_str(chain.name),
+                .write_value(
+                    &chain_title_cell.to_a1_notation("Balance - Trezor HOLD".into()),
+                    chain.name,
                 )
                 .await
                 .expect("Should write chain title");
 
-            let wallet_hold_title_cell = chain_title_cell + Row(1u32);
+            let chain_title_col: Column = chain_title_cell.col;
+            let chain_title_row = chain_title_cell.row;
+
+            let wallet_hold_title_cell = chain_title_cell.clone() + Row(1u32);
+            let wallet_hold_title_cell_a1 =
+                wallet_hold_title_cell.to_a1_notation("Balance - Trezor HOLD".into());
             let wallet_hold_sc_title_cell = wallet_hold_title_cell + Column(1u32);
 
             spreadsheet_manager
-                .write_range(
-                    wallet_hold_title_cell
-                        .to_a1_notation("Balance - Trezor HOLD".into())
-                        .to_string()
-                        .as_str(),
-                    ValueRange::from_str("Hold"),
-                )
+                .write_value(&wallet_hold_title_cell_a1, "Hold")
                 .await
                 .expect("Should write wallet hold title");
 
             spreadsheet_manager
-                .write_range(
-                    wallet_hold_sc_title_cell
-                        .to_a1_notation("Balance - Trezor HOLD".into())
-                        .to_string()
-                        .as_str(),
-                    ValueRange::from_str("SC"),
+                .write_value(
+                    &wallet_hold_sc_title_cell.to_a1_notation("Balance - Trezor HOLD".into()),
+                    "SC",
                 )
                 .await
                 .expect("Should write wallet hold sc title");
@@ -269,10 +265,10 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
 
             let token_names = self.get_token_names_from_spreadsheet().await;
 
-            let hold_col = chain_title_cell.col;
-            let hold_sc_col = chain_title_cell.col + Column(1u32);
+            let hold_col = chain_title_col;
+            let hold_sc_col: Column = chain_title_col + Column(1u32);
 
-            let tokens_start_row = wallet_hold_title_cell.row + Row(1u32);
+            let tokens_start_row = chain_title_row + Row(1u32);
             let tokens_end_row = cell_range.end.row;
 
             let hold_balances_range = CellRange {
@@ -284,6 +280,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                     col: hold_col,
                     row: tokens_end_row,
                 },
+                sheet_title: Some("Balance - Trezor HOLD".into()),
             };
 
             let hold_sc_balances_range = CellRange {
@@ -295,6 +292,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                     col: hold_sc_col,
                     row: tokens_end_row,
                 },
+                sheet_title: Some("Balance - Trezor HOLD".into()),
             };
 
             tracing::info!("  Hold balances:");
@@ -320,25 +318,13 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
 
             tracing::info!("  Hold balances: {:?}", hold_tokens_in_order);
             spreadsheet_manager
-                .write_range(
-                    hold_balances_range
-                        .to_a1_notation("Balance - Trezor HOLD".into())
-                        .to_string()
-                        .as_str(),
-                    ValueRange::from_rows(&hold_tokens_in_order),
-                )
+                .write_column(&hold_balances_range, hold_tokens_in_order.as_slice())
                 .await
                 .expect("Should write hold balances");
 
             tracing::info!("  SC balances: {:?}", hold_tokens_in_order);
             spreadsheet_manager
-                .write_range(
-                    hold_sc_balances_range
-                        .to_a1_notation("Balance - Trezor HOLD".into())
-                        .to_string()
-                        .as_str(),
-                    ValueRange::from_rows(&hold_sc_tokens_in_order),
-                )
+                .write_column(&hold_sc_balances_range, hold_sc_tokens_in_order.as_slice())
                 .await
                 .expect("Should write hold sc balances");
 

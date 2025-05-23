@@ -802,14 +802,14 @@ impl DebankBalanceScraper {
 
 impl DebankBalanceScraper {
     #[instrument]
-    pub async fn get_total_balance(&self, user_id: &str) -> Result<f64, DebankScraperError> {
+    pub async fn access_profile(&self, user_id: &str) -> Result<(), DebankScraperError> {
         self.open_debank_url(user_id).await?;
         self.wait_data_updated().await?;
-        return self.process_profile_for_total_balance().await;
+        Ok(())
     }
 
     #[instrument]
-    async fn process_profile_for_total_balance(&self) -> Result<f64, DebankScraperError> {
+    pub async fn get_total_balance(&self) -> Result<f64, DebankScraperError> {
         let xpath = "//*[@id=\"root\"]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]";
         let balance_text = self
             .driver
@@ -839,13 +839,11 @@ impl DebankBalanceScraper {
         &self,
         user_id: &str,
     ) -> Result<HashMap<String, ChainInfo>, DebankScraperError> {
-        self.open_debank_url(user_id).await?;
-        self.wait_data_updated().await?;
         let chain_summaries: Vec<Element> = self.locate_chain_summary_elements().await?;
         return self.get_chains_info(&chain_summaries).await;
     }
 
-    #[instrument]
+    #[instrument(skip(self, chain_summaries))]
     async fn get_chains_info(
         &self,
         chain_summaries: &[Element],
