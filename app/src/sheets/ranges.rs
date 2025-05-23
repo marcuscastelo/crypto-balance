@@ -35,7 +35,7 @@ pub mod AaH {
     pub const RW_PENDLE_BALANCES_AMOUNTS: &str = "AaH__vPendleBalances_Amounts";
 
     // Bitcoin
-    pub const RW_BTC_BALANCES_NAMES: &str = "AaH__vBtcBalances_Names";
+    pub const RW_BTC_BALANCES_NAMES: &str = "AaH__vBtcBalances";
     pub const RW_BTC_BALANCES_AMOUNTS: &str = "AaH__vBtcBalances_Amounts";
 
     // Ethena
