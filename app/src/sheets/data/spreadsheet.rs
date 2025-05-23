@@ -1,6 +1,3 @@
-use google_sheets4::api::ValueRange;
-use serde_json::Value;
-
 use super::spreadsheet_manager::SpreadsheetManager;
 use crate::sheets::{into::MyInto, ranges};
 
@@ -43,25 +40,13 @@ impl SpreadsheetUseCasesImpl {
 
         let range = get_target_range(target);
 
+        let balances_str = balances
+            .iter()
+            .map(|x| format!("${}", x))
+            .collect::<Vec<_>>();
+
         spreadsheet_manager
-            .write_named_range(
-                range,
-                // TODO: create Vec<T> to ValueRange conversion
-                ValueRange {
-                    range: None,
-                    major_dimension: None,
-                    values: Some(
-                        balances
-                            .into_iter()
-                            .map(|balance| {
-                                vec![Value::Number(
-                                    serde_json::Number::from_f64(*balance).unwrap(),
-                                )]
-                            })
-                            .collect::<Vec<_>>(),
-                    ),
-                },
-            )
+            .write_named_column(range, &balances_str)
             .await
             .expect("Should write balances to the spreadsheet");
     }
