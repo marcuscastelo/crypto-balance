@@ -1,7 +1,5 @@
 use error_stack::{Context, Result, ResultExt};
-use std::{collections::HashMap, future::Future, sync::LazyLock, vec};
-use struct_name::StructName;
-use struct_name_derive::StructName;
+use std::{collections::HashMap, sync::LazyLock, vec};
 use tracing::{event, instrument, Level};
 
 use crate::{
@@ -35,8 +33,7 @@ impl Context for DebankTokensRoutineError {}
 #[derive(Debug)]
 pub struct RelevantDebankToken {
     pub token_name: &'static str,
-    pub range_name_rows: &'static str,
-    pub range_amount_rows: &'static str,
+    pub range_balance_two_cols: &'static str,
     pub alternative_names: Vec<&'static str>,
 }
 
@@ -44,8 +41,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
     vec![
         RelevantDebankToken {
             token_name: "USDT",
-            range_name_rows: ranges::AaH::RW_USDT_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_USDT_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_USDT_BALANCES_NAMES,
             alternative_names: vec![
                 "USDC",
                 "DAI",
@@ -63,8 +59,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
         },
         RelevantDebankToken {
             token_name: "ETH",
-            range_name_rows: ranges::AaH::RW_ETH_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_ETH_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_ETH_BALANCES_NAMES,
             alternative_names: vec![
                 "WETH",
                 "rswETH",
@@ -80,14 +75,12 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
         },
         RelevantDebankToken {
             token_name: "PENDLE",
-            range_name_rows: ranges::AaH::RW_PENDLE_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_PENDLE_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_PENDLE_BALANCES_NAMES,
             alternative_names: vec!["vPENDLE"],
         },
         RelevantDebankToken {
             token_name: "BTC",
-            range_name_rows: ranges::AaH::RW_BTC_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_BTC_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_BTC_BALANCES_NAMES,
             alternative_names: vec![
                 "WBTC",
                 "uniBTC",
@@ -101,50 +94,42 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
         },
         RelevantDebankToken {
             token_name: "ENA",
-            range_name_rows: ranges::AaH::RW_ENA_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_ENA_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_ENA_BALANCES_NAMES,
             alternative_names: vec!["ETHENA", "PT-sENA-24APR2025", "sENA"],
         },
         RelevantDebankToken {
             token_name: "ETHFI",
-            range_name_rows: ranges::AaH::RW_ETHFI_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_ETHFI_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_ETHFI_BALANCES_NAMES,
             alternative_names: vec!["sETHFI"],
         },
         RelevantDebankToken {
             token_name: "GS",
-            range_name_rows: ranges::AaH::RW_GS_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_GS_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_GS_BALANCES_NAMES,
             alternative_names: vec!["GS (GammaSwap)", "esGS"],
         },
         RelevantDebankToken {
             token_name: "TANGO",
-            range_name_rows: ranges::AaH::RW_TANGO_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_TANGO_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_TANGO_BALANCES_NAMES,
             alternative_names: vec![],
         },
         RelevantDebankToken {
             token_name: "PEAR",
-            range_name_rows: ranges::AaH::RW_PEAR_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_PEAR_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_PEAR_BALANCES_NAMES,
             alternative_names: vec!["PEAR (pear.garden)"],
         },
         RelevantDebankToken {
             token_name: "INST",
-            range_name_rows: ranges::AaH::RW_INST_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_INST_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_INST_BALANCES_NAMES,
             alternative_names: vec!["FLUID"],
         },
         RelevantDebankToken {
             token_name: "SPECTRA",
-            range_name_rows: ranges::AaH::RW_SPECTRA_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_SPECTRA_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_SPECTRA_BALANCES_NAMES,
             alternative_names: vec![],
         },
         RelevantDebankToken {
             token_name: "HYPE",
-            range_name_rows: ranges::AaH::RW_HYPE_BALANCES_NAMES,
-            range_amount_rows: ranges::AaH::RW_HYPE_BALANCES_AMOUNTS,
+            range_balance_two_cols: ranges::AaH::RW_HYPE_BALANCES_NAMES,
             alternative_names: vec!["hbHYPE", "LHYPE", "stHYPE", "mHYPE", "WHYPE"],
         },
     ]
@@ -239,16 +224,15 @@ impl<'s> DebankRoutine<'s> {
         &self,
         balances: HashMap<String, HashMap<String, f64>>,
     ) -> Result<(), SpreadsheetManagerError> {
-        for token in RELEVANT_DEBANK_TOKENS.iter() {
-            self.update_balances_for_token(token, &balances)
-                .await
-                .attach_printable_lazy(|| {
-                    format!(
-                        "Failed to update balances for token: {}, balances: {:?}, token_details: {:?}",
-                        token.token_name, balances, token
-                    )
-                })?;
-        }
+        futures::future::join_all(
+            RELEVANT_DEBANK_TOKENS
+                .iter()
+                .map(|token| self.update_balances_for_token(token, &balances))
+                .collect::<Vec<_>>(),
+        )
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
     }
@@ -275,7 +259,11 @@ impl<'s> DebankRoutine<'s> {
         let (names, amounts): (Vec<_>, Vec<_>) = names_amounts_tuples.iter().cloned().unzip();
 
         self.spreadsheet_manager
-            .write_named_two_columns(token.range_name_rows, names.as_slice(), amounts.as_slice())
+            .write_named_two_columns(
+                token.range_balance_two_cols,
+                names.as_slice(),
+                amounts.as_slice(),
+            )
             .await?;
 
         Ok(())
