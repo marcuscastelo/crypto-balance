@@ -37,7 +37,7 @@ where
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> std::fmt::Result {
-        let depth = ctx.event_scope().map(|scope| scope.count()).unwrap_or(0) - 1;
+        let depth = ctx.event_scope().map(|scope| scope.count()).unwrap_or(0);
 
         writeln!(writer, "-----")?;
         for _ in 0..depth / 4 {
