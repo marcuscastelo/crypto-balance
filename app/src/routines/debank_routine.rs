@@ -158,6 +158,7 @@ impl<'s> DebankRoutine<'s> {
         }
     }
 
+    #[instrument(skip(self), name = "DebankRoutine::create_scraper")]
     async fn create_scraper(&self) -> DebankBalanceScraper {
         let scraper = DebankBalanceScraper::new()
             .await
@@ -166,7 +167,7 @@ impl<'s> DebankRoutine<'s> {
         scraper
     }
 
-    #[instrument]
+    #[instrument(skip(self), name = "DebankRoutine::fetch_relevant_token_amounts", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
     async fn fetch_relevant_token_amounts(
         &self,
     ) -> Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
@@ -181,6 +182,7 @@ impl<'s> DebankRoutine<'s> {
         return self.parse_debank_profile(chain_infos).await;
     }
 
+    #[instrument(skip(self), name = "DebankRoutine::parse_debank_profile", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
     async fn parse_debank_profile(
         &self,
         chain_infos: HashMap<String, ChainInfo>,
