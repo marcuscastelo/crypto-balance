@@ -186,7 +186,7 @@ async fn main() {
     }));
 
     // TODO: Add a CLI flag to toggle parallelism
-    let parallel = false;
+    let parallel = true;
     run_routines(parallel).await;
 
     opentelemetry::global::shutdown_tracer_provider();
