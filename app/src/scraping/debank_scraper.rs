@@ -550,11 +550,12 @@ impl DebankBalanceScraper {
                 tracing::trace!("Found {} cells", cells.len());
 
                 tracing::trace!("Fetching cell texts...");
-                let mut values = Vec::new();
-                for cell in cells.as_slice() {
-                    let cell_info = self.extract_cell_info(cell).await?;
-                    values.push(cell_info);
-                }
+                let values = futures::future::join_all(
+                    cells.iter().map(|cell| self.extract_cell_info(cell)),
+                )
+                .await
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
 
                 if headers.len() != values.len() {
                     bail!(DebankScraperError::HeadersValuesLengthMismatch);
