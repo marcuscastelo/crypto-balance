@@ -24,8 +24,10 @@ use routines::exchange_balances_routine::ExchangeBalancesRoutine;
 use routines::routine::Routine;
 use routines::routine::RoutineError;
 use routines::token_prices::TokenPricesRoutine;
+use sheets::data::spreadsheet::SpreadsheetUseCasesImpl;
 use sheets::data::spreadsheet_manager;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::{process::Command, time::sleep, time::Duration};
 use tracing::instrument;
 use tracing::Instrument;
@@ -55,11 +57,16 @@ async fn run_routines(parallel: bool) {
     //     .await
     //     .expect("Failed to write named range");
 
+    let persistence = Arc::new(SpreadsheetUseCasesImpl::new(&spreadsheet_manager));
+
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankRoutine::new(spreadsheet_manager)),
+        Box::new(DebankRoutine::new(&spreadsheet_manager)),
         Box::new(TokenPricesRoutine),
-        Box::new(ExchangeBalancesRoutine::new(&BinanceUseCases)),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases)),
+        Box::new(ExchangeBalancesRoutine::new(
+            &BinanceUseCases,
+            persistence.clone(),
+        )),
+        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases, persistence)),
         // Box::new(SonarWatchRoutine),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];

@@ -1,7 +1,9 @@
 use super::spreadsheet_manager::SpreadsheetManager;
 use crate::sheets::{into::MyInto, ranges};
 
-pub struct SpreadsheetUseCasesImpl;
+pub struct SpreadsheetUseCasesImpl<'s> {
+    pub spreadsheet_manager: &'s SpreadsheetManager,
+}
 
 pub enum BalanceUpdateTarget {
     Binance,
@@ -15,14 +17,15 @@ fn get_target_range(target: BalanceUpdateTarget) -> &'static str {
     }
 }
 
-impl SpreadsheetUseCasesImpl {
-    async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
-        SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
+impl<'s> SpreadsheetUseCasesImpl<'s> {
+    pub fn new(spreadsheet_manager: &'s SpreadsheetManager) -> Self {
+        Self {
+            spreadsheet_manager,
+        }
     }
-    pub async fn get_token_names_from_spreadsheet(&self) -> Vec<String> {
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
 
-        spreadsheet_manager
+    pub async fn get_token_names_from_spreadsheet(&self) -> Vec<String> {
+        self.spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
             .await
             .expect("Should have content, when getting token names, can't continue without it")
@@ -36,8 +39,6 @@ impl SpreadsheetUseCasesImpl {
         target: BalanceUpdateTarget,
         balances: &[f64],
     ) {
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
-
         let range = get_target_range(target);
 
         let balances_str = balances
@@ -45,7 +46,7 @@ impl SpreadsheetUseCasesImpl {
             .map(|x| format!("${}", x))
             .collect::<Vec<_>>();
 
-        spreadsheet_manager
+        self.spreadsheet_manager
             .write_named_column(range, &balances_str)
             .await
             .expect("Should write balances to the spreadsheet");

@@ -160,14 +160,14 @@ impl RelevantDebankToken {
     }
 }
 
-#[derive(StructName, Debug)]
-pub struct DebankRoutine {
-    spreadsheet_manager: SpreadsheetManager,
+#[derive(Debug)]
+pub struct DebankRoutine<'s> {
+    spreadsheet_manager: &'s SpreadsheetManager,
 }
 
-impl DebankRoutine {
+impl<'s> DebankRoutine<'s> {
     #[instrument]
-    pub fn new(spreadsheet_manager: SpreadsheetManager) -> Self {
+    pub fn new(spreadsheet_manager: &'s SpreadsheetManager) -> Self {
         Self {
             spreadsheet_manager,
         }
@@ -358,9 +358,9 @@ impl DebankRoutine {
 }
 
 #[async_trait::async_trait]
-impl Routine for DebankRoutine {
+impl<'s> Routine for DebankRoutine<'s> {
     fn name(&self) -> &'static str {
-        self.struct_name()
+        "DebankRoutine"
     }
 
     #[instrument(skip(self), name = "DebankRoutine::run")]

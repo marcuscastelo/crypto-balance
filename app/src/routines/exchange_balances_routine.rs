@@ -1,7 +1,5 @@
-use core::error;
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, sync::Arc};
 
-use error_stack::report;
 use tracing::instrument;
 
 use crate::{
@@ -11,13 +9,13 @@ use crate::{
 
 use super::routine::{Routine, RoutineError};
 
-pub struct ExchangeBalancesRoutine {
+pub struct ExchangeBalancesRoutine<'s> {
     routine_name: String,
     exchange: &'static dyn ExchangeUseCases,
-    persistence: Box<SpreadsheetUseCasesImpl>,
+    persistence: Arc<SpreadsheetUseCasesImpl<'s>>,
 }
 
-impl fmt::Debug for ExchangeBalancesRoutine {
+impl<'s> fmt::Debug for ExchangeBalancesRoutine<'s> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExchangeBalancesRoutine")
             .field("routine_name", &self.routine_name)
@@ -25,12 +23,15 @@ impl fmt::Debug for ExchangeBalancesRoutine {
     }
 }
 
-impl ExchangeBalancesRoutine {
-    pub fn new(exchange: &'static dyn ExchangeUseCases) -> Self {
+impl<'s> ExchangeBalancesRoutine<'s> {
+    pub fn new(
+        exchange: &'static dyn ExchangeUseCases,
+        persistence: Arc<SpreadsheetUseCasesImpl<'s>>,
+    ) -> Self {
         Self {
             routine_name: format!("{} Balances", exchange.exchange_name()),
             exchange,
-            persistence: Box::new(SpreadsheetUseCasesImpl),
+            persistence,
         }
     }
 
@@ -46,7 +47,7 @@ impl ExchangeBalancesRoutine {
 }
 
 #[async_trait::async_trait]
-impl Routine for ExchangeBalancesRoutine {
+impl<'s> Routine for ExchangeBalancesRoutine<'s> {
     fn name(&self) -> &str {
         self.routine_name.as_str()
     }
