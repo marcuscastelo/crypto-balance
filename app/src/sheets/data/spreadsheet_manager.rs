@@ -20,6 +20,7 @@ pub struct SpreadsheetManager {
         google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
     >,
     pub named_ranges_cache: RwLock<Option<HashMap<String, GridRange>>>,
+    pub sheet_title_cache: RwLock<HashMap<i32, String>>,
 }
 
 impl Debug for SpreadsheetManager {
@@ -59,6 +60,7 @@ impl SpreadsheetManager {
             config,
             hub,
             named_ranges_cache: RwLock::new(None),
+            sheet_title_cache: RwLock::new(HashMap::new()),
         }
     }
 
@@ -204,6 +206,17 @@ impl SpreadsheetManager {
 
     #[instrument]
     pub async fn get_sheet_title(&self, sheet_id: i32) -> Result<String, SpreadsheetManagerError> {
+        let cache = {
+            // -- MUTEX READ --
+            let guard = self.sheet_title_cache.read().await;
+            guard.get(&sheet_id).cloned()
+            // -- END MUTEX READ --
+        };
+
+        if let Some(title) = cache {
+            return Ok(title);
+        }
+
         let response = self
             .hub
             .spreadsheets()
@@ -228,12 +241,21 @@ impl SpreadsheetManager {
             })
             .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
 
-        sheet
+        let title = sheet
             .properties
             .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?
             .title
             .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)
-            .change_context(SpreadsheetManagerError::FailedToFetchSheetTitle)
+            .change_context(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
+
+        {
+            // -- MUTEX WRITE --
+            let mut guard = self.sheet_title_cache.write().await;
+            guard.insert(sheet_id, title.clone());
+            // -- END MUTEX WRITE --
+        }
+
+        Ok(title)
     }
 
     #[instrument]
