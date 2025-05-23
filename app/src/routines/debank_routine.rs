@@ -1,6 +1,5 @@
-use core::error;
 use error_stack::{Context, Result, ResultExt};
-use std::{collections::HashMap, sync::LazyLock};
+use std::{collections::HashMap, future::Future, sync::LazyLock, vec};
 use struct_name::StructName;
 use struct_name_derive::StructName;
 use tracing::{event, instrument, Level};
@@ -281,18 +280,9 @@ impl DebankRoutine {
 
         Ok(())
     }
-}
 
-#[async_trait::async_trait]
-impl Routine for DebankRoutine {
-    fn name(&self) -> &'static str {
-        self.struct_name()
-    }
-
-    #[instrument(skip(self), name = "DebankRoutine::run")]
-    async fn run(&self) -> error_stack::Result<(), RoutineError> {
-        tracing::info!("Running DebankRoutine");
-
+    #[instrument(skip(self), name = "DebankRoutine::main_routine")]
+    async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
         let scraper = self.create_scraper().await;
         let user_id = CONFIG.blockchain.airdrops.evm.address.as_ref();
 
@@ -355,7 +345,28 @@ impl Routine for DebankRoutine {
             )))?;
 
         tracing::info!("Debank: ✅ Updated Debank balance on the spreadsheet");
+        Ok(())
+    }
 
+    #[instrument(skip(self), name = "DebankRoutine::prefetch_named_ranges")]
+    async fn prefetch_named_ranges(&self) -> error_stack::Result<(), RoutineError> {
+        let _ = self.spreadsheet_manager.named_range_map().await.map_err(|err|
+            tracing::warn!(error = ?err, "Prefetching named ranges failed, falling back to default")
+        );
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Routine for DebankRoutine {
+    fn name(&self) -> &'static str {
+        self.struct_name()
+    }
+
+    #[instrument(skip(self), name = "DebankRoutine::run")]
+    async fn run(&self) -> error_stack::Result<(), RoutineError> {
+        tracing::info!("Running DebankRoutine");
+        futures::future::try_join(self.prefetch_named_ranges(), self.main_routine()).await?;
         Ok(())
     }
 }
