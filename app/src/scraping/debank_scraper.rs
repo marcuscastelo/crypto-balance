@@ -451,15 +451,15 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementHtmlNotFound)?;
 
-        let mut trackings = Vec::new();
+        let tracking_futures = tracking_elements
+            .iter()
+            .map(|tracking_element| self.explore_tracking(tracking_element));
 
-        for tracking_element in tracking_elements.iter() {
-            let tracking = self
-                .explore_tracking(tracking_element)
-                .await
-                .change_context(DebankScraperError::FailedToExploreTracking)?;
-            trackings.push(tracking);
-        }
+        let trackings = futures::future::join_all(tracking_futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .change_context(DebankScraperError::FailedToExploreTracking)?;
 
         Ok(ChainProjectInfo { name, trackings })
     }
