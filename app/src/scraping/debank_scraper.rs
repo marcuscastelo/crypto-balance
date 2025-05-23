@@ -264,6 +264,7 @@ impl DebankBalanceScraper {
         let update_xpath =
             "/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[2]/div[2]/span";
 
+        tracing::trace!("Locating update element...");
         let update_element = self
             .driver
             .client
@@ -272,19 +273,22 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementNotFound)?;
 
+        tracing::trace!("Fetching update text...");
         let mut update_text = update_element
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
 
         while !update_text.as_str().contains("Data updated") {
-            tokio::time::sleep(Duration::from_secs(1)).await;
             tracing::trace!("Waiting for data to update...");
+            tokio::time::sleep(Duration::from_millis(100)).await;
             update_text = update_element
                 .text()
                 .await
                 .change_context(DebankScraperError::ElementTextNotFound)?;
+            tracing::trace!("Update text: {}", update_text);
         }
+        tracing::trace!("Data updated");
         Ok(())
     }
 
@@ -465,6 +469,7 @@ impl DebankBalanceScraper {
         &self,
         tracking: &Element,
     ) -> Result<ProjectTracking, DebankScraperError> {
+        tracing::trace!("Fetching tracking type...");
         let tracking_type = tracking
             .find(Locator::XPath("div[1]/div[1]/div[1]"))
             .await
@@ -473,19 +478,30 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
 
+        tracing::trace!("Tracking type: {}", tracking_type);
+
+        tracing::trace!("Locating tracking tables...");
         let tables = tracking
             .find_all(Locator::XPath("div[2]/div"))
             .await
             .change_context(DebankScraperError::ElementHtmlNotFound)?;
 
+        tracing::trace!("Found {} tables", tables.len());
+
         let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
 
-        for table in tables {
+        let table_len = tables.len();
+        for (index, table) in tables.into_iter().enumerate() {
+            tracing::trace!("Processing table {}/{}", index + 1, table_len);
+
+            tracing::trace!("Locating tracking headers...");
             let tracking_headers = table
                 .find_all(Locator::XPath("div[1]//span"))
                 .await
                 .change_context(DebankScraperError::ElementHtmlNotFound)?;
+            tracing::trace!("Found {} headers", tracking_headers.len());
 
+            tracing::trace!("Fetching header texts...");
             let headers = futures::future::join_all(
                 tracking_headers
                     .iter()
@@ -498,29 +514,42 @@ impl DebankBalanceScraper {
                     .collect::<Vec<_>>(),
             )
             .await;
+            tracing::trace!("Fetched header texts");
 
             // Convert all results to strings returning an error if any of them fails
+            tracing::trace!("Converting header texts to strings...");
             let headers = headers
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()
                 .change_context(DebankScraperError::GenericError)?;
+            tracing::trace!("Headers: {:?}", headers);
 
+            tracing::trace!("Locating tracking body...");
             let tracking_body = table
                 .find(Locator::XPath("div[2]"))
                 .await
                 .change_context(DebankScraperError::ElementNotFound)?;
 
+            tracing::trace!("Locating tracking rows...");
             let row_selector = "div.table_contentRow__Mi3k5.flex_flexRow__y0UR2";
             let rows = tracking_body
                 .find_all(Locator::Css(row_selector))
                 .await
                 .change_context(DebankScraperError::ElementNotFound)?;
+            tracing::trace!("Found {} rows", rows.len());
 
-            for row in rows.as_slice() {
+            let row_len = rows.len();
+            for (index, row) in rows.iter().enumerate() {
+                tracing::trace!("Processing row {}/{}", index + 1, row_len);
+
+                tracing::trace!("Locating row cells...");
                 let cells = row
                     .find_all(Locator::XPath("div"))
                     .await
                     .change_context(DebankScraperError::ElementNotFound)?;
+                tracing::trace!("Found {} cells", cells.len());
+
+                tracing::trace!("Fetching cell texts...");
                 let mut values = Vec::new();
                 for cell in cells.as_slice() {
                     let cell_info = self.extract_cell_info(cell).await?;
@@ -540,6 +569,7 @@ impl DebankBalanceScraper {
                 generic_infos.push(zipped);
             }
         }
+        tracing::trace!("Finished processing tables");
 
         let generic_infos = self.parse_generic_info(generic_infos)?;
 
