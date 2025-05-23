@@ -325,21 +325,29 @@ impl DebankBalanceScraper {
         let token_wallet_selector = "div.TokenWallet_container__FUGTE";
         let project_selector = "div.Project_project__GCrhx";
 
-        let wallet: Option<Element> = self
-            .driver
-            .client
-            .find(Locator::Css(token_wallet_selector))
-            .await
+        let (wallet_result, projects_result) = join!(
+            self.driver.client.find(Locator::Css(token_wallet_selector)),
+            self.driver.client.find_all(Locator::Css(project_selector))
+        );
+
+        let wallet: Option<Element> = wallet_result
             .inspect_err(|e| tracing::error!("Failed to find wallet: {}", e))
             .ok();
 
-        let projects: Vec<Element> = self
-            .driver
-            .client
-            .find_all(Locator::Css(project_selector))
-            .await
-            .change_context(DebankScraperError::ElementNotFound)?;
+        let projects: Vec<Element> =
+            projects_result.change_context(DebankScraperError::ElementNotFound)?;
 
+        return self
+            .get_chain_info_parallel(chain_name, wallet.as_ref(), projects)
+            .await;
+    }
+
+    async fn get_chain_info_parallel(
+        &self,
+        chain_name: String,
+        wallet: Option<&Element>,
+        projects: Vec<Element>,
+    ) -> Result<ChainInfo, DebankScraperError> {
         let wallet_info = if let Some(wallet) = wallet.as_ref() {
             self.get_chain_wallet_info(wallet)
                 .await
@@ -349,14 +357,15 @@ impl DebankBalanceScraper {
             None
         };
 
-        let mut projects_info = Vec::new();
-        for project in projects.iter() {
-            let project_info = self
-                .get_chain_project_info(project)
-                .await
-                .change_context(DebankScraperError::FailedToGetChainInfo)?;
-            projects_info.push(project_info);
-        }
+        let projects_info = futures::future::join_all(
+            projects
+                .iter()
+                .map(|project| self.get_chain_project_info(project)),
+        )
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .change_context(DebankScraperError::FailedToGetChainInfo)?;
 
         Ok(ChainInfo {
             name: chain_name,
