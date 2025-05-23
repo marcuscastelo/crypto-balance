@@ -9,20 +9,20 @@ use tracing::instrument;
 use super::routine::{Routine, RoutineError};
 
 #[derive(Debug)]
-pub struct TokenPricesRoutine;
+pub struct TokenPricesRoutine<'s> {
+    pub spreadsheet_manager: &'s SpreadsheetManager,
+}
 
-impl TokenPricesRoutine {
-    #[instrument]
-    async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
-        SpreadsheetManager::new(crate::config::app_config::CONFIG.sheets.clone()).await
+impl<'s> TokenPricesRoutine<'s> {
+    pub fn new(spreadsheet_manager: &'s SpreadsheetManager) -> Self {
+        Self {
+            spreadsheet_manager,
+        }
     }
 
     #[instrument]
-    async fn get_token_ids_from_spreadsheet(
-        &self,
-        spreadsheet_manager: &SpreadsheetManager,
-    ) -> Vec<String> {
-        spreadsheet_manager
+    async fn get_token_ids_from_spreadsheet(&self) -> Vec<String> {
+        self.spreadsheet_manager
             .read_named_range(ranges::tokens::RO_IDS)
             .await
             .expect("Should have content")
@@ -32,11 +32,8 @@ impl TokenPricesRoutine {
     }
 
     #[instrument]
-    async fn get_current_prices_from_spreadsheet(
-        &self,
-        spreadsheet_manager: &SpreadsheetManager,
-    ) -> Vec<f64> {
-        spreadsheet_manager
+    async fn get_current_prices_from_spreadsheet(&self) -> Vec<f64> {
+        self.spreadsheet_manager
             .read_named_range(ranges::tokens::RW_PRICES)
             .await
             .expect("Should have content")
@@ -72,16 +69,12 @@ impl TokenPricesRoutine {
     }
 
     #[instrument]
-    async fn update_prices_on_spreadsheet(
-        &self,
-        spreadsheet_manager: &SpreadsheetManager,
-        new_prices: Vec<f64>,
-    ) {
+    async fn update_prices_on_spreadsheet(&self, new_prices: Vec<f64>) {
         let values = new_prices
             .iter()
             .map(|x| format!("${}", x))
             .collect::<Vec<_>>();
-        spreadsheet_manager
+        self.spreadsheet_manager
             .write_named_column(ranges::tokens::RW_PRICES, values.as_ref())
             .await
             .expect("Should have written successfully");
@@ -89,7 +82,7 @@ impl TokenPricesRoutine {
 }
 
 #[async_trait::async_trait]
-impl Routine for TokenPricesRoutine {
+impl<'s> Routine for TokenPricesRoutine<'s> {
     fn name(&self) -> &'static str {
         "TokenPricesRoutine"
     }
@@ -98,26 +91,18 @@ impl Routine for TokenPricesRoutine {
     async fn run(&self) -> error_stack::Result<(), RoutineError> {
         tracing::info!("Running TokenPricesRoutine");
 
-        tracing::info!("Prices: Creating SpreadsheetManager instance");
-        let spreadsheet_manager = self.create_spreadsheet_manager().await;
-
         tracing::info!("Prices: 📋 Listing all tokens in the spreadsheet");
-        let tokens = self
-            .get_token_ids_from_spreadsheet(&spreadsheet_manager)
-            .await;
+        let tokens = self.get_token_ids_from_spreadsheet().await;
 
         tracing::info!("Prices: ☁️  Getting prices of all tokens from Coingecko");
         let prices = get_token_prices(tokens.as_ref()).await;
 
         tracing::info!("Prices: 📝 Reading the current prices from the spreadsheet");
-        let spreadsheet_prices = self
-            .get_current_prices_from_spreadsheet(&spreadsheet_manager)
-            .await;
+        let spreadsheet_prices = self.get_current_prices_from_spreadsheet().await;
 
         tracing::info!("Prices: 📝 Updating the prices on the spreadsheet");
         let new_prices = self.order_prices(&tokens, &prices, spreadsheet_prices);
-        self.update_prices_on_spreadsheet(&spreadsheet_manager, new_prices)
-            .await;
+        self.update_prices_on_spreadsheet(new_prices).await;
 
         tracing::info!("Prices: ✅ Updated token prices on the spreadsheet");
 

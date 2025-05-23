@@ -28,7 +28,7 @@ use sheets::data::spreadsheet::SpreadsheetUseCasesImpl;
 use sheets::data::spreadsheet_manager;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::{process::Command, time::sleep, time::Duration};
+use tokio::process::Command;
 use tracing::instrument;
 use tracing::Instrument;
 use tracing_indicatif::IndicatifLayer;
@@ -42,26 +42,12 @@ async fn run_routines(parallel: bool) {
     let spreadsheet_manager =
         spreadsheet_manager::SpreadsheetManager::new(config::app_config::CONFIG.sheets.clone())
             .await;
-    let col1 = vec![
-        String::from("Key1"),
-        String::from("Key2"),
-        String::from("Key3"),
-    ];
-    let col2 = vec![
-        String::from("Val1"),
-        String::from("Val2"),
-        String::from("Val3"),
-    ];
-    // spreadsheet_manager
-    //     .write_named_two_columns("AaH__vBtcBalances", col1.as_slice(), col2.as_slice())
-    //     .await
-    //     .expect("Failed to write named range");
 
     let persistence = Arc::new(SpreadsheetUseCasesImpl::new(&spreadsheet_manager));
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
         Box::new(DebankRoutine::new(&spreadsheet_manager)),
-        Box::new(TokenPricesRoutine),
+        Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
         Box::new(ExchangeBalancesRoutine::new(
             &BinanceUseCases,
             persistence.clone(),
