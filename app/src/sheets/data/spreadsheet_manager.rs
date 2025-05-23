@@ -217,45 +217,43 @@ impl SpreadsheetManager {
             return Ok(title);
         }
 
-        let response = self
-            .hub
-            .spreadsheets()
-            .get(&self.config.spreadsheet_id)
-            .doit()
-            .await
-            .change_context(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
-
-        let sheets = response
-            .1
-            .sheets
-            .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
-
-        let sheet = sheets
-            .clone()
-            .into_iter()
-            .find(|sheet| {
-                sheet
-                    .properties
-                    .as_ref()
-                    .map_or(false, |props| props.sheet_id.unwrap_or(0) == sheet_id)
-            })
-            .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
-
-        let title = sheet
-            .properties
-            .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?
-            .title
-            .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)
-            .change_context(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
-
-        {
+        let title = {
             // -- MUTEX WRITE --
             let mut guard = self.sheet_title_cache.write().await;
-            guard.insert(sheet_id, title.clone());
-            // -- END MUTEX WRITE --
-        }
+            let response = self
+                .hub
+                .spreadsheets()
+                .get(&self.config.spreadsheet_id)
+                .doit()
+                .await
+                .change_context(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
 
-        Ok(title)
+            let sheets = response
+                .1
+                .sheets
+                .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
+
+            let mut sheet_title = None;
+
+            for sheet in sheets.iter() {
+                if let Some(properties) = &sheet.properties {
+                    if let Some(sheet_id) = properties.sheet_id {
+                        if let Some(title) = &properties.title {
+                            guard.insert(sheet_id, title.clone());
+                            if sheet_id == sheet_id {
+                                sheet_title.replace(title.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            // -- END MUTEX WRITE --
+            sheet_title
+        };
+
+        title
+            .ok_or(report!(SpreadsheetManagerError::FailedToFetchSheetTitle))
+            .attach_printable_lazy(|| format!("Sheet with id {} not found", sheet_id))
     }
 
     #[instrument]
