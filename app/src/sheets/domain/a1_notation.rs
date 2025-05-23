@@ -84,14 +84,15 @@ impl ToA1Notation for CellRange {
 pub struct A1NotationParts {
     pub start: String,
     pub end: String,
+    pub sheet_title: Option<String>,
 }
 
 pub fn generic_a1_notation_split(a1_notation: &A1Notation) -> A1NotationParts {
-    let (_, local_a1_notation) = match a1_notation.0.find('!') {
+    let (sheet_title, local_a1_notation) = match a1_notation.0.find('!') {
         Some(index) => {
-            let (sheet_name, local_a1_notation) = a1_notation.0.split_at(index);
+            let (sheet_title, local_a1_notation) = a1_notation.0.split_at(index);
             (
-                Some(sheet_name.to_owned()),
+                Some(sheet_title.to_owned()),
                 local_a1_notation.trim_start_matches('!').to_owned(),
             )
         }
@@ -101,14 +102,15 @@ pub fn generic_a1_notation_split(a1_notation: &A1Notation) -> A1NotationParts {
     let (start, end) = match local_a1_notation.find(':') {
         Some(index) => {
             let (start, end) = local_a1_notation.split_at(index);
-            (start, end.trim_start_matches(':'))
+            (start.to_owned(), end.trim_start_matches(':').to_owned())
         }
-        None => (local_a1_notation.as_str(), local_a1_notation.as_str()),
+        None => (local_a1_notation.clone(), local_a1_notation),
     };
 
     A1NotationParts {
-        start: start.to_owned(),
-        end: end.to_owned(),
+        sheet_title,
+        start,
+        end,
     }
 }
 
@@ -121,6 +123,7 @@ impl FromA1Notation for CellRange {
         Ok(CellRange {
             start: CellPosition::from_a1_notation(&A1Notation(parts.start))?,
             end: CellPosition::from_a1_notation(&A1Notation(parts.end))?,
+            sheet_title: parts.sheet_title,
         })
     }
 }
