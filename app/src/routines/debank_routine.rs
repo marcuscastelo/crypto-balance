@@ -1,3 +1,4 @@
+use core::fmt;
 use error_stack::{Context, Result, ResultExt};
 use std::{collections::HashMap, sync::LazyLock, vec};
 use tracing::{event, instrument, Level};
@@ -145,9 +146,14 @@ impl RelevantDebankToken {
     }
 }
 
-#[derive(Debug)]
 pub struct DebankRoutine<'s> {
     spreadsheet_manager: &'s SpreadsheetManager,
+}
+
+impl<'s> fmt::Debug for DebankRoutine<'s> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DebankRoutine").finish()
+    }
 }
 
 impl<'s> DebankRoutine<'s> {
@@ -182,7 +188,7 @@ impl<'s> DebankRoutine<'s> {
         return self.parse_debank_profile(chain_infos).await;
     }
 
-    #[instrument(skip(self), name = "DebankRoutine::parse_debank_profile", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
+    #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
     async fn parse_debank_profile(
         &self,
         chain_infos: HashMap<String, ChainInfo>,
