@@ -1,6 +1,7 @@
 use core::fmt;
-use error_stack::{Context, Result, ResultExt};
+use error_stack::ResultExt;
 use std::{collections::HashMap, sync::LazyLock, vec};
+use thiserror::Error;
 use tracing::{event, instrument, Level};
 
 use crate::{
@@ -11,6 +12,7 @@ use crate::{
     },
     sheets::{
         data::spreadsheet_manager::{SpreadsheetManager, SpreadsheetManagerError},
+        data::spreadsheet_write::SpreadsheetWrite,
         ranges,
     },
     Routine,
@@ -18,18 +20,11 @@ use crate::{
 
 use super::routine::RoutineError;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DebankTokensRoutineError {
+    #[error("Failed to fetch relevant token amounts from Debank")]
     FailedToFetchRelevantTokenAmounts,
 }
-
-impl std::fmt::Display for DebankTokensRoutineError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DebankTokensRoutineError: {:?}", self)
-    }
-}
-
-impl Context for DebankTokensRoutineError {}
 
 #[derive(Debug)]
 pub struct RelevantDebankToken {
@@ -176,7 +171,7 @@ impl<'s> DebankRoutine<'s> {
     #[instrument(skip(self), name = "DebankRoutine::fetch_relevant_token_amounts", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
     async fn fetch_relevant_token_amounts(
         &self,
-    ) -> Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
+    ) -> error_stack::Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
         let scraper = DebankBalanceScraper::new()
             .await
             .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
@@ -192,7 +187,7 @@ impl<'s> DebankRoutine<'s> {
     async fn parse_debank_profile(
         &self,
         chain_infos: HashMap<String, ChainInfo>,
-    ) -> Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
+    ) -> error_stack::Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
         let mut aah_parser = AaHParser::new();
 
         for (chain, chain_info) in chain_infos.iter() {
@@ -218,7 +213,7 @@ impl<'s> DebankRoutine<'s> {
     async fn update_debank_balance_on_spreadsheet(
         &self,
         balance: f64,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         self.spreadsheet_manager
             .write_named_cell(ranges::airdrops::RW_DEBANK_TOTAL_USD, &balance.to_string())
             .await?;
@@ -231,7 +226,7 @@ impl<'s> DebankRoutine<'s> {
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
         balances: HashMap<String, HashMap<String, f64>>,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         futures::future::join_all(
             RELEVANT_DEBANK_TOKENS
                 .iter()
@@ -250,7 +245,7 @@ impl<'s> DebankRoutine<'s> {
         &self,
         token: &RelevantDebankToken,
         balances: &HashMap<String, HashMap<String, f64>>,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let empty_hashmap = HashMap::new();
         let token_balances = balances.get(token.token_name).unwrap_or_else(|| {
             tracing::warn!(name = token.token_name, token = ?token, "Token not found in balances");

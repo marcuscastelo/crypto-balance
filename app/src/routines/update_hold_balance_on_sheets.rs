@@ -11,7 +11,10 @@ use crate::{
         OPTIMISM, POLYGON,
     },
     sheets::{
-        data::spreadsheet_manager::SpreadsheetManager,
+        data::{
+            spreadsheet_manager::SpreadsheetManager, spreadsheet_read::SpreadsheetRead,
+            spreadsheet_write::SpreadsheetWrite,
+        },
         domain::{
             a1_notation::ToA1Notation, cell_position::CellPosition, cell_range::CellRange,
             column::Column, row::Row,

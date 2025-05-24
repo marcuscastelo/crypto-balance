@@ -1,4 +1,5 @@
-use super::spreadsheet_manager::SpreadsheetManager;
+use super::spreadsheet_write::SpreadsheetWrite;
+use super::{spreadsheet_manager::SpreadsheetManager, spreadsheet_read::SpreadsheetRead};
 use crate::sheets::{flatten_double_vec::FlattenDoubleVec, ranges};
 
 pub struct SpreadsheetUseCasesImpl<'s> {
