@@ -454,13 +454,42 @@ impl DebankBalanceScraper {
         &self,
         project: &Element,
     ) -> Result<ChainProjectInfo, DebankScraperError> {
-        let name = project
-            .find(Locator::XPath("div[1]/div[1]/div[2]/span"))
-            .await
-            .change_context(DebankScraperError::ElementHtmlNotFound)?
-            .text()
-            .await
-            .change_context(DebankScraperError::ElementTextNotFound)?;
+        let name = {
+            // TODO: Move this retry logic to a common function if it really solves the problem (under testing for now)
+            let mut name = None;
+            let mut retries = 3;
+            while retries > 0 {
+                retries -= 1;
+                let element = project
+                    .find(Locator::XPath("div[1]/div[1]/div[2]/span"))
+                    .await
+                    .change_context(DebankScraperError::ElementHtmlNotFound);
+
+                let new_name = match element {
+                    Ok(element) => element
+                        .text()
+                        .await
+                        .change_context(DebankScraperError::ElementTextNotFound),
+                    Err(e) => Err(e),
+                };
+
+                match new_name {
+                    Ok(new_name) => {
+                        name = Some(new_name);
+                        break;
+                    }
+                    Err(report) => {
+                        let span = tracing::span!(Level::DEBUG, "waiting_retry_name", retries);
+                        let _enter = span.enter();
+                        tracing::error!("Failed to get project name: {:?}", report);
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        continue;
+                    }
+                }
+            }
+
+            name.ok_or(DebankScraperError::ElementTextNotFound)?
+        };
 
         let tracking_elements = project
             .find_all(Locator::Css("div.Panel_container__Vltd1"))
