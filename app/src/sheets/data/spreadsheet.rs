@@ -1,5 +1,5 @@
 use super::spreadsheet_manager::SpreadsheetManager;
-use crate::sheets::{into::MyInto, ranges};
+use crate::sheets::{flatten_double_vec::FlattenDoubleVec, ranges};
 
 pub struct SpreadsheetUseCasesImpl<'s> {
     pub spreadsheet_manager: &'s SpreadsheetManager,
@@ -31,7 +31,7 @@ impl<'s> SpreadsheetUseCasesImpl<'s> {
             .expect("Should have content, when getting token names, can't continue without it")
             .values
             .expect("Should have values when getting token names, can't continue without them")
-            .my_into()
+            .flatten_double_vec()
     }
 
     pub async fn update_balances_on_spreadsheet(

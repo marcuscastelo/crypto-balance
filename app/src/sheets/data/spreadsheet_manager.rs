@@ -1,10 +1,11 @@
 use domain::{a1_notation::ToA1Notation, cell_range::CellRange};
-use error_stack::{report, Context, Result, ResultExt};
+use error_stack::{report, ResultExt};
 use google_sheets4::{
     api::{GridRange, NamedRange, ValueRange},
     Sheets,
 };
 use std::{collections::HashMap, fmt::Debug};
+use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::instrument;
 use value_range_factory::ValueRangeFactory;
@@ -29,21 +30,17 @@ impl Debug for SpreadsheetManager {
     }
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum SpreadsheetManagerError {
-    FailedToFetchNamedRange(String),
+    #[error("Failed to fetch named range: {0}")]
+    FailedToFetchNamedRange(&'static str),
+    #[error("Failed to fetch sheet title")]
     FailedToFetchSheetTitle,
+    #[error("Failed to fetch range")]
     FailedToFetchRange,
+    #[error("Failed to write range")]
     FailedToWriteRange,
 }
-
-impl std::fmt::Display for SpreadsheetManagerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Context for SpreadsheetManagerError {}
 
 impl SpreadsheetManager {
     #[instrument(name = "SpreadsheetManager::new")]
@@ -65,7 +62,9 @@ impl SpreadsheetManager {
     }
 
     #[instrument]
-    async fn fetch_named_ranges_vec(&self) -> Result<Vec<NamedRange>, SpreadsheetManagerError> {
+    async fn fetch_named_ranges_vec(
+        &self,
+    ) -> error_stack::Result<Vec<NamedRange>, SpreadsheetManagerError> {
         let response = self
             .hub
             .spreadsheets()
@@ -73,12 +72,12 @@ impl SpreadsheetManager {
             .doit()
             .await
             .change_context(SpreadsheetManagerError::FailedToFetchNamedRange(
-                "Failed to fetch spreadsheet".to_string(),
+                "Failed to fetch spreadsheet",
             ))?;
 
         let named_ranges = response.1.named_ranges.ok_or(report!(
             SpreadsheetManagerError::FailedToFetchNamedRange(
-                "Named ranges not present in spreadsheet response".to_string(),
+                "Named ranges not present in spreadsheet response"
             )
         ))?;
         Ok(named_ranges)
@@ -87,19 +86,19 @@ impl SpreadsheetManager {
     #[instrument]
     async fn fetch_named_range_map(
         &self,
-    ) -> Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
+    ) -> error_stack::Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
         let named_ranges = self.fetch_named_ranges_vec().await?;
         let mut map = HashMap::new();
         for named_range in named_ranges {
             map.insert(
                 named_range.name.ok_or(report!(
                     SpreadsheetManagerError::FailedToFetchNamedRange(
-                        "Named range name not present".to_string(),
+                        "Named range name not present"
                     )
                 ))?,
                 named_range.range.ok_or(report!(
                     SpreadsheetManagerError::FailedToFetchNamedRange(
-                        "Named range range not present".to_string(),
+                        "Named range range not present"
                     )
                 ))?,
             );
@@ -111,7 +110,7 @@ impl SpreadsheetManager {
     #[instrument]
     pub async fn named_range_map(
         &self,
-    ) -> Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
+    ) -> error_stack::Result<HashMap<String, GridRange>, SpreadsheetManagerError> {
         let cache = {
             // -- MUTEX READ --
             let guard = self.named_ranges_cache.read().await;
@@ -138,19 +137,26 @@ impl SpreadsheetManager {
     }
 
     #[instrument]
-    pub async fn get_named_range(&self, name: &str) -> Result<GridRange, SpreadsheetManagerError> {
+    pub async fn get_named_range(
+        &self,
+        name: &str,
+    ) -> error_stack::Result<GridRange, SpreadsheetManagerError> {
         let named_ranges = self.named_range_map().await?;
 
-        named_ranges.get(name).cloned().ok_or(report!(
-            SpreadsheetManagerError::FailedToFetchNamedRange(format!(
-                "Named range {} not found",
-                name
-            ),)
-        ))
+        named_ranges
+            .get(name)
+            .cloned()
+            .ok_or(report!(SpreadsheetManagerError::FailedToFetchNamedRange(
+                "Named range not found"
+            )))
+            .attach_printable_lazy(|| format!("Named range {} not found in spreadsheet", name))
     }
 
     #[instrument]
-    pub async fn read_range(&self, range: &str) -> Result<ValueRange, SpreadsheetManagerError> {
+    pub async fn read_range(
+        &self,
+        range: &str,
+    ) -> error_stack::Result<ValueRange, SpreadsheetManagerError> {
         let response = self
             .hub
             .spreadsheets()
@@ -168,7 +174,7 @@ impl SpreadsheetManager {
         &self,
         position_str: &A1Notation,
         value: &str,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let value_range = ValueRange::from_single_cell(value);
         self.write_range(position_str, value_range).await
     }
@@ -178,7 +184,7 @@ impl SpreadsheetManager {
         &self,
         range: &CellRange,
         values: &[String],
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let value_range = ValueRange::from_single_column(values, range.row_count());
         self.write_range(
             &range.to_a1_notation(range.sheet_title.as_deref()),
@@ -192,7 +198,7 @@ impl SpreadsheetManager {
         &self,
         range_str: &A1Notation,
         value_range: ValueRange,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         self.hub
             .spreadsheets()
             .values_update(value_range, &self.config.spreadsheet_id, range_str.as_ref())
@@ -205,11 +211,14 @@ impl SpreadsheetManager {
     }
 
     #[instrument]
-    pub async fn get_sheet_title(&self, sheet_id: i32) -> Result<String, SpreadsheetManagerError> {
+    pub async fn get_sheet_title(
+        &self,
+        target_sheet_id: i32,
+    ) -> error_stack::Result<String, SpreadsheetManagerError> {
         let cache = {
             // -- MUTEX READ --
             let guard = self.sheet_title_cache.read().await;
-            guard.get(&sheet_id).cloned()
+            guard.get(&target_sheet_id).cloned()
             // -- END MUTEX READ --
         };
 
@@ -233,43 +242,54 @@ impl SpreadsheetManager {
                 .sheets
                 .ok_or(SpreadsheetManagerError::FailedToFetchSheetTitle)?;
 
-            let mut sheet_title = None;
+            let mut target_sheet_title = None;
 
             for sheet in sheets.iter() {
                 if let Some(properties) = &sheet.properties {
                     if let Some(sheet_id) = properties.sheet_id {
                         if let Some(title) = &properties.title {
                             guard.insert(sheet_id, title.clone());
-                            if sheet_id == sheet_id {
-                                sheet_title.replace(title.clone());
-                            }
                         }
                     }
                 }
             }
+            match guard.get(&target_sheet_id) {
+                Some(title) => target_sheet_title = Some(title.clone()),
+                None => {
+                    return Err(report!(SpreadsheetManagerError::FailedToFetchSheetTitle))
+                        .attach_printable_lazy(|| {
+                            format!("Sheet with id {} not found", target_sheet_id)
+                        });
+                }
+            }
             // -- END MUTEX WRITE --
-            sheet_title
+            target_sheet_title
         };
 
         title
             .ok_or(report!(SpreadsheetManagerError::FailedToFetchSheetTitle))
-            .attach_printable_lazy(|| format!("Sheet with id {} not found", sheet_id))
+            .attach_printable_lazy(|| format!("Sheet with id {} not found", target_sheet_id))
     }
 
     #[instrument]
     pub async fn read_named_range(
         &self,
         name: &str,
-    ) -> Result<ValueRange, SpreadsheetManagerError> {
+    ) -> error_stack::Result<ValueRange, SpreadsheetManagerError> {
         let named_range = self.get_named_range(name).await?;
         let sheet_title = self
-            .get_sheet_title(named_range.sheet_id.unwrap_or(0))
-            .await
-            .expect("Sheet title should exist");
+            .get_sheet_title(
+                named_range
+                    .sheet_id
+                    .ok_or(report!(SpreadsheetManagerError::FailedToFetchSheetTitle))?,
+            )
+            .await?;
 
         let cell_range = CellRange::try_from_grid_range_with_sheet_manager(named_range, self)
             .await
-            .expect("Named range parsing error");
+            .change_context(SpreadsheetManagerError::FailedToFetchNamedRange(
+                "cell range conversion failed",
+            ))?;
 
         self.read_range(
             cell_range
@@ -284,7 +304,7 @@ impl SpreadsheetManager {
         &self,
         name: &str,
         value: &str,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let grid_range = self.get_named_range(name).await?;
 
         let cell_range = CellRange::try_from_grid_range_with_sheet_manager(grid_range, self)
@@ -310,7 +330,7 @@ impl SpreadsheetManager {
         &self,
         name: &str,
         values: &[String],
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let grid_range = self.get_named_range(name).await?;
 
         let cell_range = CellRange::try_from_grid_range_with_sheet_manager(grid_range, self)
@@ -337,7 +357,7 @@ impl SpreadsheetManager {
         name: &str,
         col1_values: &[String],
         col2_values: &[String],
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let grid_range = self.get_named_range(name).await?;
 
         let cell_range = CellRange::try_from_grid_range_with_sheet_manager(grid_range, self)
@@ -364,7 +384,7 @@ impl SpreadsheetManager {
         &self,
         name: &str,
         value_range: ValueRange,
-    ) -> Result<(), SpreadsheetManagerError> {
+    ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let grid_range = self.get_named_range(name).await?;
 
         let sheet_title = self

@@ -16,7 +16,7 @@ use crate::{
             a1_notation::ToA1Notation, cell_position::CellPosition, cell_range::CellRange,
             column::Column, row::Row,
         },
-        into::MyInto,
+        flatten_double_vec::FlattenDoubleVec,
         ranges::{self},
     },
 };
@@ -137,7 +137,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
             .expect("Should have content")
             .values
             .expect("Should have values")
-            .my_into()
+            .flatten_double_vec()
     }
 }
 

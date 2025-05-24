@@ -62,7 +62,7 @@ impl<'s> Routine for ExchangeBalancesRoutine<'s> {
         tracing::trace!("{}: ☁️  Getting balances from exchange", self.name());
         let balance_by_token = self.exchange.fetch_balances().await.map_err(|err| {
             tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
-            RoutineError::RoutineFailure(format!("Error fetching balances: {}", err))
+            RoutineError::routine_failure("Failed to fetch balances from exchange")
         })?;
 
         tracing::trace!("{}: 📊 Ordering balances", self.name());

@@ -286,7 +286,7 @@ impl<'s> DebankRoutine<'s> {
         scraper
             .access_profile(user_id)
             .await
-            .change_context(RoutineError::RoutineFailure(format!(
+            .change_context(RoutineError::routine_failure(format!(
                 "Failed to access Debank profile: {}",
                 user_id
             )))?;
@@ -296,7 +296,7 @@ impl<'s> DebankRoutine<'s> {
             scraper
                 .get_total_balance()
                 .await
-                .change_context(RoutineError::RoutineFailure(format!(
+                .change_context(RoutineError::routine_failure(format!(
                     "Failed to get total balance for user: {}",
                     user_id
                 )))?;
@@ -305,7 +305,7 @@ impl<'s> DebankRoutine<'s> {
         let scraped_chains = scraper
             .explore_debank_profile(user_id)
             .await
-            .change_context(RoutineError::RoutineFailure(format!(
+            .change_context(RoutineError::routine_failure(format!(
                 "Failed to explore Debank profile: {}",
                 user_id
             )))?;
@@ -314,7 +314,7 @@ impl<'s> DebankRoutine<'s> {
         let balances = self
             .parse_debank_profile(scraped_chains)
             .await
-            .change_context(RoutineError::RoutineFailure(format!(
+            .change_context(RoutineError::routine_failure(format!(
                 "Failed to parse Debank profile: {}",
                 user_id
             )))?;
@@ -327,7 +327,7 @@ impl<'s> DebankRoutine<'s> {
         tracing::trace!("Updating TOTAL balance on the spreadsheet");
         self.update_debank_balance_on_spreadsheet(total_balance)
             .await
-            .change_context(RoutineError::RoutineFailure(format!(
+            .change_context(RoutineError::routine_failure(format!(
                 "Failed to update Debank balance on the spreadsheet for wallet: {}",
                 user_id
             )))?;
@@ -335,7 +335,7 @@ impl<'s> DebankRoutine<'s> {
         tracing::trace!("Updating AaH balances on the spreadsheet");
         self.update_debank_eth_AaH_balances_on_spreadsheet(balances)
             .await
-            .change_context(RoutineError::RoutineFailure(format!(
+            .change_context(RoutineError::routine_failure(format!(
                 "Failed to update Debank AaH balances on the spreadsheet for wallet: {}",
                 user_id
             )))?;

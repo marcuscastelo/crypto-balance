@@ -1,12 +1,26 @@
+use error_stack::ResultExt;
 use std::collections::HashMap;
-
+use thiserror::Error;
+// using `thiserror` is not neccessary, but convenient
 use crate::{
     price::domain::price::get_token_prices,
-    sheets::{data::spreadsheet_manager::SpreadsheetManager, into::MyInto, ranges},
+    sheets::{
+        data::spreadsheet_manager::SpreadsheetManager, flatten_double_vec::FlattenDoubleVec, ranges,
+    },
 };
 use tracing::instrument;
 
 use super::routine::{Routine, RoutineError};
+
+#[derive(Error, Debug)]
+enum TokenPricesRoutineError {
+    #[error("failed execute spreadsheet operation")]
+    SpreadsheetError,
+    #[error("spreadsheet data is invalid: {details}")]
+    InvalidDataError { details: &'static str },
+}
+
+type AppResult<T> = error_stack::Result<T, TokenPricesRoutineError>;
 
 #[derive(Debug)]
 pub struct TokenPricesRoutine<'s> {
@@ -21,14 +35,21 @@ impl<'s> TokenPricesRoutine<'s> {
     }
 
     #[instrument]
-    async fn get_token_ids_from_spreadsheet(&self) -> Vec<String> {
-        self.spreadsheet_manager
+    async fn get_token_ids_from_spreadsheet(
+        &self,
+    ) -> error_stack::Result<Vec<String>, TokenPricesRoutineError> {
+        let token_ids = self
+            .spreadsheet_manager
             .read_named_range(ranges::tokens::RO_IDS)
             .await
-            .expect("Should have content")
+            .change_context(TokenPricesRoutineError::SpreadsheetError)?
             .values
-            .expect("Should have values")
-            .my_into()
+            .ok_or(TokenPricesRoutineError::InvalidDataError {
+                details: "No values found in the spreadsheet",
+            })?
+            .flatten_double_vec();
+
+        Ok(token_ids)
     }
 
     #[instrument]
@@ -39,7 +60,7 @@ impl<'s> TokenPricesRoutine<'s> {
             .expect("Should have content")
             .values
             .unwrap_or(vec![])
-            .my_into()
+            .flatten_double_vec()
             .into_iter()
             .map(|x| {
                 x.replace(['$', ','], "")
@@ -92,7 +113,9 @@ impl<'s> Routine for TokenPricesRoutine<'s> {
         tracing::info!("Running TokenPricesRoutine");
 
         tracing::info!("Prices: 📋 Listing all tokens in the spreadsheet");
-        let tokens = self.get_token_ids_from_spreadsheet().await;
+        let tokens = self.get_token_ids_from_spreadsheet().await.change_context(
+            RoutineError::routine_failure("Failed to get token ids from spreadsheet"),
+        )?;
 
         tracing::info!("Prices: ☁️  Getting prices of all tokens from Coingecko");
         let prices = get_token_prices(tokens.as_ref()).await;
