@@ -3,9 +3,9 @@ use std::collections::HashMap;
 #[allow(unused_imports)]
 use num_traits::ToPrimitive;
 
-use crate::{
-    domain::exchange::BalanceUpdateTarget, infrastructure::exchange::kraken_factory::KrakenFactory,
-};
+use crate::domain::exchange::BalanceUpdateTarget;
+use crate::infrastructure::exchange::kraken_factory::KrakenFactory;
+
 use error_stack::{report, ResultExt};
 
 use super::use_cases::{ExchangeUseCases, ExchangeUseCasesError};
@@ -43,17 +43,27 @@ impl ExchangeUseCases for KrakenUseCases {
             ))?
             .into_iter()
             .map(|(symbol, amount)| {
-                (
-                    match symbol.as_str() {
-                        "XXBT" => "BTC".to_string(),
-                        "XETH" => "ETH".to_string(),
-                        "XXRP" => "XRP".to_string(),
-                        "ZUSD" => "USDT".to_string(),
-                        _ => symbol,
-                    },
-                    amount.to_f64().expect("Should be convertible to f64"),
-                )
+                let symbol = match symbol.as_str() {
+                    "XXBT" => "BTC".to_string(),
+                    "XETH" => "ETH".to_string(),
+                    "XXRP" => "XRP".to_string(),
+                    "ZUSD" => "USDT".to_string(),
+                    _ => symbol,
+                };
+
+                let amount = amount
+                    .to_f64()
+                    .ok_or(ExchangeUseCasesError::FetchBalancesError("Kraken"))
+                    .attach_printable_lazy(|| {
+                        format!(
+                            "Failed to convert amount '{amount:?}' for symbol '{symbol}' to f64"
+                        )
+                    })?;
+
+                Ok((symbol, amount))
             })
+            .collect::<error_stack::Result<HashMap<_, _>, ExchangeUseCasesError>>()?
+            .into_iter()
             .filter(|(_, amount)| *amount > 0.0)
             .collect::<HashMap<_, _>>();
 
