@@ -37,9 +37,6 @@ pub mod AaH {
     // Ethena
     pub const RW_ENA_BALANCES_NAMES: &str = "AaH__vEnaBalances_Names";
 
-    // ETHFI
-    pub const RW_ETHFI_BALANCES_NAMES: &str = "AaH__vEthfiBalances_Names";
-
     // GammaSwap (GS)
     pub const RW_GS_BALANCES_NAMES: &str = "AaH__vGsBalances_Names";
 
