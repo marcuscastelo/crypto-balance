@@ -140,17 +140,16 @@ async fn main() {
     //     .with_span_events(fmt::format::FmtSpan::FULL);
 
     // let (chrome_layer, _guard) = ChromeLayerBuilder::new()
-    //     .file("chrome_trace.json") // nome do arquivo final
+    //     .file("chrome_trace.json")
     //     .include_args(true)
     //     .build();
 
     // let file = File::create("flame.folded").unwrap();
     // let flame_layer = FlameLayer::new(file);
 
-    // Cria um tracer que envia para o agente Jaeger local
     let exporter = opentelemetry_otlp::new_exporter()
-        .tonic() // para gRPC
-        .with_endpoint("http://localhost:4317"); // default do OTel Collector ou Tempo
+        .tonic()
+        .with_endpoint("http://localhost:4317");
 
     let tracer =
         opentelemetry_otlp::new_pipeline()
@@ -177,8 +176,6 @@ async fn main() {
     tracing::trace!("Setting panic hook");
     std::panic::set_hook(Box::new(|info| {
         tracing::error!("panic: {info}");
-
-        // tenta forçar exportação
         opentelemetry::global::shutdown_tracer_provider();
     }));
 

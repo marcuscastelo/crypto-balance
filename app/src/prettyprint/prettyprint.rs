@@ -9,19 +9,19 @@ use tracing_subscriber::{
 };
 
 pub struct PrettyFormatter {
-    inner: Format, // o formatador padrão que já lida com cores
+    inner: Format,
 }
 
 impl PrettyFormatter {
     pub fn new() -> Self {
         Self {
             inner: fmt::format()
-                .with_ansi(true) // enables ANSI colors
-                .with_target(false) // disables target (module path)
-                .with_file(false) // disables file name
-                .with_line_number(false) // disables line number
-                .with_level(true) // enables log level
-                .with_source_location(false), // disables source location
+                .with_ansi(true)
+                .with_target(false)
+                .with_file(false)
+                .with_line_number(false)
+                .with_level(true)
+                .with_source_location(false),
         }
     }
 }
@@ -50,6 +50,6 @@ where
             write!(writer, "  ")?;
         }
 
-        self.inner.format_event(ctx, writer, event) // delega com coloração
+        self.inner.format_event(ctx, writer, event)
     }
 }
