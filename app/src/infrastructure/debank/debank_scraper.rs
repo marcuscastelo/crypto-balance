@@ -1,7 +1,8 @@
 use core::fmt;
 use std::{collections::HashMap, fmt::Debug, time::Duration};
+use thiserror::Error;
 
-use error_stack::{bail, Context, Result, ResultExt};
+use error_stack::{bail, Result, ResultExt};
 use fantoccini::{elements::Element, Locator};
 use futures::join;
 use reqwest::Url;
@@ -17,35 +18,39 @@ pub struct DebankBalanceScraper {
 
 impl Debug for DebankBalanceScraper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DebankBalanceScraper {{}}")
+        f.debug_struct("DebankBalanceScraper").finish()
     }
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DebankScraperError {
+    #[error("Element not found")]
     ElementNotFound,
+    #[error("Element text not found")]
     ElementTextNotFound,
-    ElementHtmlNotFound,
+    #[error("Headers and values length mismatch")]
     HeadersValuesLengthMismatch,
+    #[error("Unknown header")]
     UnknownHeader,
+    #[error("Unknown tracking type")]
     UnknownTrackingType,
+    #[error("Failed to parse URL")]
     UrlParseError,
+    #[error("Failed to create driver")]
     FailedToCreateDriver,
+    #[error("Failed to navigate to URL")]
     FailedToNavigateToUrl,
+    #[error("Failed to get chain info")]
     FailedToGetChainInfo,
+    #[error("Failed to explore tracking")]
     FailedToExploreTracking,
+    #[error("Failed to extract cell info")]
     FailedToExtractCellInfo,
+    #[error("Failed to click element")]
     FailedToClickElement,
+    #[error("Generic error")]
     GenericError,
 }
-
-impl fmt::Display for DebankScraperError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Context for DebankScraperError {}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -384,7 +389,7 @@ impl DebankBalanceScraper {
         let usd_value = wallet
             .find(Locator::XPath("div[1]/div[2]"))
             .await
-            .change_context(DebankScraperError::ElementHtmlNotFound)?
+            .change_context(DebankScraperError::ElementNotFound)?
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
@@ -465,7 +470,7 @@ impl DebankBalanceScraper {
                 let element = project
                     .find(Locator::XPath("div[1]/div[1]/div[2]/span"))
                     .await
-                    .change_context(DebankScraperError::ElementHtmlNotFound);
+                    .change_context(DebankScraperError::ElementNotFound);
 
                 let new_name = match element {
                     Ok(element) => element
@@ -499,7 +504,7 @@ impl DebankBalanceScraper {
         let tracking_elements = project
             .find_all(Locator::Css("div.Panel_container__Vltd1"))
             .await
-            .change_context(DebankScraperError::ElementHtmlNotFound)?;
+            .change_context(DebankScraperError::ElementNotFound)?;
 
         let tracking_futures = tracking_elements
             .iter()
@@ -524,7 +529,7 @@ impl DebankBalanceScraper {
             .find(Locator::XPath("div[1]/div[1]/div[1]"))
             .instrument(tracing::span!(Level::DEBUG, "tracking_type"))
             .await
-            .change_context(DebankScraperError::ElementHtmlNotFound)?
+            .change_context(DebankScraperError::ElementNotFound)?
             .text()
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
@@ -536,7 +541,7 @@ impl DebankBalanceScraper {
             .find_all(Locator::XPath("div[2]/div"))
             .instrument(tracing::span!(Level::DEBUG, "tracking_tables"))
             .await
-            .change_context(DebankScraperError::ElementHtmlNotFound)?;
+            .change_context(DebankScraperError::ElementNotFound)?;
 
         tracing::trace!("Found {} tables", tables.len());
 
@@ -582,7 +587,7 @@ impl DebankBalanceScraper {
         let tracking_headers = table
             .find_all(Locator::XPath("div[1]//span"))
             .await
-            .change_context(DebankScraperError::ElementHtmlNotFound)?;
+            .change_context(DebankScraperError::ElementNotFound)?;
         tracing::trace!("Found {} headers", tracking_headers.len());
 
         tracing::trace!("Fetching header texts...");
