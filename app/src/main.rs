@@ -13,11 +13,11 @@ use application::exchange::exchange_balances_routine::ExchangeBalancesRoutine;
 use application::exchange::kraken::KrakenUseCases;
 
 use application::price::token_prices::TokenPricesRoutine;
-use application::sheets::spreadsheet::SpreadsheetUseCasesImpl;
 use domain::routine::Routine;
 use domain::routine::RoutineError;
 use infrastructure::config::app_config::CONFIG;
 use infrastructure::exchange::binance_factory::BinanceAccountFactory;
+use infrastructure::exchange::spreadsheet_balance_repository::SpreadsheetBalanceRepository;
 // External
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
@@ -37,29 +37,32 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry
 #[instrument]
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
-    let spreadsheet_manager =
+    let spreadsheet_manager = Arc::new(
         infrastructure::sheets::spreadsheet_manager::SpreadsheetManager::new(CONFIG.sheets.clone())
-            .await;
+            .await,
+    );
 
-    let persistence = Arc::new(SpreadsheetUseCasesImpl::new(&spreadsheet_manager));
+    let balance_repository = Arc::new(SpreadsheetBalanceRepository::new(
+        spreadsheet_manager.clone(),
+    ));
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
         Box::new(DebankRoutine::new(
             CONFIG.blockchain.airdrops.evm.clone(),
-            &spreadsheet_manager,
+            spreadsheet_manager.clone(),
         )),
         Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
         Box::new(ExchangeBalancesRoutine::new(
             Box::new(BinanceUseCases::new(BinanceAccountFactory::new(
                 CONFIG.binance.clone(),
             ))),
-            persistence.clone(),
+            balance_repository.clone(),
         )),
         Box::new(ExchangeBalancesRoutine::new(
             Box::new(KrakenUseCases::new(
                 infrastructure::exchange::kraken_factory::KrakenFactory::new(CONFIG.kraken.clone()),
             )),
-            persistence.clone(),
+            balance_repository.clone(),
         )),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];

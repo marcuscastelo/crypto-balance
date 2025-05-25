@@ -3,9 +3,10 @@ use std::collections::HashMap;
 #[allow(unused_imports)]
 use num_traits::ToPrimitive;
 
+use crate::domain::exchange::BalanceUpdateTarget;
 use crate::infrastructure::exchange::kraken_factory::KrakenFactory;
 
-use super::use_cases::{BalanceUpdateTarget, ExchangeUseCases};
+use super::use_cases::ExchangeUseCases;
 
 pub struct KrakenUseCases {
     pub kraken_factory: KrakenFactory,

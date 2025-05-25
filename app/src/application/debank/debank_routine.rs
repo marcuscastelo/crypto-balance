@@ -1,5 +1,6 @@
 use core::fmt;
 use error_stack::ResultExt;
+use std::sync::Arc;
 use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
@@ -130,20 +131,20 @@ impl RelevantDebankToken {
     }
 }
 
-pub struct DebankRoutine<'s> {
+pub struct DebankRoutine {
     config: EvmBlockchainConfig,
-    spreadsheet_manager: &'s SpreadsheetManager,
+    spreadsheet_manager: Arc<SpreadsheetManager>,
 }
 
-impl<'s> fmt::Debug for DebankRoutine<'s> {
+impl fmt::Debug for DebankRoutine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DebankRoutine").finish()
     }
 }
 
-impl<'s> DebankRoutine<'s> {
+impl DebankRoutine {
     #[instrument]
-    pub fn new(config: EvmBlockchainConfig, spreadsheet_manager: &'s SpreadsheetManager) -> Self {
+    pub fn new(config: EvmBlockchainConfig, spreadsheet_manager: Arc<SpreadsheetManager>) -> Self {
         Self {
             config,
             spreadsheet_manager,
@@ -340,7 +341,7 @@ impl<'s> DebankRoutine<'s> {
 }
 
 #[async_trait::async_trait]
-impl<'s> Routine for DebankRoutine<'s> {
+impl Routine for DebankRoutine {
     fn name(&self) -> &'static str {
         "DebankRoutine"
     }
