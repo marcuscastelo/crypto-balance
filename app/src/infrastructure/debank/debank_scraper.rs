@@ -490,7 +490,10 @@ impl DebankBalanceScraper {
                 }
             }
 
-            name.ok_or(DebankScraperError::ElementTextNotFound)?
+            name.ok_or(DebankScraperError::ElementTextNotFound)
+                .attach_printable_lazy(|| {
+                    format!("Failed to get project name after 3 retries: {:?}", project)
+                })?
         };
 
         let tracking_elements = project
