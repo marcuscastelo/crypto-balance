@@ -1,8 +1,9 @@
 use std::num::TryFromIntError;
 
-use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
-
-use super::cell_position::CellPosition;
+use crate::{
+    domain::sheets::cell_position::CellPosition,
+    infrastructure::sheets::spreadsheet_manager::SpreadsheetManager,
+};
 
 use google_sheets4::api::GridRange;
 use thiserror::Error;

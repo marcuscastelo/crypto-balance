@@ -3,9 +3,9 @@ use thiserror::Error;
 
 use super::{
     cell_position::CellPosition,
-    cell_range::CellRange,
     column::{number_to_letters, ColumnParseError},
 };
+use crate::infrastructure::sheets::cell_range::CellRange;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub struct A1Notation(String);

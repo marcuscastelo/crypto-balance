@@ -1,4 +1,4 @@
-use crate::domain::sheets::{a1_notation::ToA1Notation, cell_range::CellRange};
+use crate::domain::sheets::a1_notation::ToA1Notation;
 use error_stack::{report, ResultExt};
 use google_sheets4::{
     api::{GridRange, NamedRange, ValueRange},
@@ -14,6 +14,7 @@ use crate::infrastructure::config::sheets_config::SpreadsheetConfig;
 
 use super::{
     auth::{self},
+    cell_range::CellRange,
     http_client::{self},
 };
 

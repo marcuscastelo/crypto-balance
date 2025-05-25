@@ -1,5 +1,5 @@
-use crate::domain::sheets::flatten_double_vec::FlattenDoubleVec;
 use crate::domain::sheets::ranges;
+use crate::infrastructure::sheets::flatten_double_vec::FlattenDoubleVec;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::infrastructure::sheets::spreadsheet_read::SpreadsheetRead;
 use crate::infrastructure::sheets::spreadsheet_write::SpreadsheetWrite;

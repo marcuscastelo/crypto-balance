@@ -2,7 +2,9 @@ use error_stack::{report, ResultExt};
 use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
-use crate::domain::sheets::{a1_notation::ToA1Notation, cell_range::CellRange};
+use crate::domain::sheets::a1_notation::ToA1Notation;
+
+use crate::infrastructure::sheets::cell_range::CellRange;
 
 use super::spreadsheet_manager::{SpreadsheetManager, SpreadsheetManagerError};
 

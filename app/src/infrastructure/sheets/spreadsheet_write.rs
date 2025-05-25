@@ -1,6 +1,6 @@
 use crate::domain::sheets::a1_notation::A1Notation;
 use crate::domain::sheets::a1_notation::ToA1Notation;
-use crate::domain::sheets::cell_range::CellRange;
+use crate::infrastructure::sheets::cell_range::CellRange;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManagerError;
 use error_stack::{report, ResultExt};
