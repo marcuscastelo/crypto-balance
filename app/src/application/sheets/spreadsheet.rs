@@ -1,5 +1,4 @@
 use crate::domain::sheets::ranges;
-use crate::infrastructure::sheets::flatten_double_vec::FlattenDoubleVec;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::infrastructure::sheets::spreadsheet_read::SpreadsheetRead;
 use crate::infrastructure::sheets::spreadsheet_write::SpreadsheetWrite;
@@ -31,10 +30,7 @@ impl<'s> SpreadsheetUseCasesImpl<'s> {
         self.spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
             .await
-            .expect("Should have content, when getting token names, can't continue without it")
-            .values
-            .expect("Should have values when getting token names, can't continue without them")
-            .flatten_double_vec()
+            .expect("Should read token names from the spreadsheet")
     }
 
     pub async fn update_balances_on_spreadsheet(

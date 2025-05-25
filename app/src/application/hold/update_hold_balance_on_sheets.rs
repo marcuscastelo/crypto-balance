@@ -17,7 +17,6 @@ use crate::domain::sheets::row::Row;
 use crate::infrastructure::blockchain::chains::{ARBITRUM, OPTIMISM, POLYGON};
 use crate::infrastructure::config::app_config::CONFIG;
 use crate::infrastructure::sheets::cell_range::CellRange;
-use crate::infrastructure::sheets::flatten_double_vec::FlattenDoubleVec;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::infrastructure::sheets::spreadsheet_read::SpreadsheetRead;
 use crate::infrastructure::sheets::spreadsheet_write::SpreadsheetWrite;
@@ -133,10 +132,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
         spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
             .await
-            .expect("Should have content")
-            .values
-            .expect("Should have values")
-            .flatten_double_vec()
+            .expect("Should read token names from the spreadsheet")
     }
 }
 
