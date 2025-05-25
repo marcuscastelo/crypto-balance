@@ -8,9 +8,9 @@ mod infrastructure;
 mod prettyprint;
 
 use application::debank::debank_routine::DebankRoutine;
-use application::exchange::binance::BinanceUseCases;
+use application::exchange::binance_use_cases::BinanceUseCases;
 use application::exchange::exchange_balances_routine::ExchangeBalancesRoutine;
-use application::exchange::kraken::KrakenUseCases;
+use application::exchange::kraken_use_cases::KrakenUseCases;
 
 use application::price::token_prices::TokenPricesRoutine;
 use domain::exchange::BalanceRepository;
