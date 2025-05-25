@@ -13,10 +13,12 @@ use application::exchange::exchange_balances_routine::ExchangeBalancesRoutine;
 use application::exchange::kraken::KrakenUseCases;
 
 use application::price::token_prices::TokenPricesRoutine;
+use domain::exchange::BalanceRepository;
 use domain::routine::Routine;
 use domain::routine::RoutineError;
 use infrastructure::config::app_config::CONFIG;
 use infrastructure::exchange::binance_factory::BinanceAccountFactory;
+use infrastructure::exchange::kraken_factory::KrakenFactory;
 use infrastructure::exchange::spreadsheet_balance_repository::SpreadsheetBalanceRepository;
 // External
 use opentelemetry::KeyValue;
@@ -42,27 +44,23 @@ async fn run_routines(parallel: bool) {
             .await,
     );
 
-    let balance_repository = Arc::new(SpreadsheetBalanceRepository::new(
-        spreadsheet_manager.clone(),
-    ));
+    let balance_repository: Arc<dyn BalanceRepository> = Arc::new(
+        SpreadsheetBalanceRepository::new(Arc::clone(&spreadsheet_manager)),
+    );
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
         Box::new(DebankRoutine::new(
             CONFIG.blockchain.airdrops.evm.clone(),
-            spreadsheet_manager.clone(),
+            Arc::clone(&spreadsheet_manager),
         )),
         Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
         Box::new(ExchangeBalancesRoutine::new(
-            Box::new(BinanceUseCases::new(BinanceAccountFactory::new(
-                CONFIG.binance.clone(),
-            ))),
-            balance_repository.clone(),
+            BinanceUseCases::new(BinanceAccountFactory::new(CONFIG.binance.clone())),
+            Arc::clone(&balance_repository),
         )),
         Box::new(ExchangeBalancesRoutine::new(
-            Box::new(KrakenUseCases::new(
-                infrastructure::exchange::kraken_factory::KrakenFactory::new(CONFIG.kraken.clone()),
-            )),
-            balance_repository.clone(),
+            KrakenUseCases::new(KrakenFactory::new(CONFIG.kraken.clone())),
+            Arc::clone(&balance_repository),
         )),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];

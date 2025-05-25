@@ -10,13 +10,13 @@ use crate::domain::{
 
 use super::use_cases::ExchangeUseCases;
 
-pub struct ExchangeBalancesRoutine {
+pub struct ExchangeBalancesRoutine<T: ExchangeUseCases> {
     routine_name: String,
-    exchange: Box<dyn ExchangeUseCases>,
+    use_cases: T,
     persistence: Arc<dyn BalanceRepository>,
 }
 
-impl fmt::Debug for ExchangeBalancesRoutine {
+impl<T: ExchangeUseCases> fmt::Debug for ExchangeBalancesRoutine<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExchangeBalancesRoutine")
             .field("routine_name", &self.routine_name)
@@ -24,14 +24,11 @@ impl fmt::Debug for ExchangeBalancesRoutine {
     }
 }
 
-impl ExchangeBalancesRoutine {
-    pub fn new(
-        exchange: Box<dyn ExchangeUseCases>,
-        persistence: Arc<dyn BalanceRepository>,
-    ) -> Self {
+impl<T: ExchangeUseCases> ExchangeBalancesRoutine<T> {
+    pub fn new(use_cases: T, persistence: Arc<dyn BalanceRepository>) -> Self {
         Self {
-            routine_name: format!("{} Balances", exchange.exchange_name()),
-            exchange,
+            routine_name: format!("{} Balances", use_cases.exchange_name()),
+            use_cases,
             persistence,
         }
     }
@@ -48,14 +45,14 @@ impl ExchangeBalancesRoutine {
 }
 
 #[async_trait::async_trait]
-impl Routine for ExchangeBalancesRoutine {
+impl<T: ExchangeUseCases> Routine for ExchangeBalancesRoutine<T> {
     fn name(&self) -> &str {
         self.routine_name.as_str()
     }
 
     #[instrument(skip(self), name = "ExchangeBalancesRoutine::run")]
     async fn run(&self) -> error_stack::Result<(), RoutineError> {
-        tracing::info!("Binance: Running BinanceRoutine");
+        tracing::info!("{} started", self.name());
 
         tracing::trace!("{}: 📋 Listing all tokens from persistence", self.name());
         let token_names = self.persistence.get_token_names().await.change_context(
@@ -63,7 +60,7 @@ impl Routine for ExchangeBalancesRoutine {
         )?;
 
         tracing::trace!("{}: ☁️  Getting balances from exchange", self.name());
-        let balance_by_token = self.exchange.fetch_balances().await.map_err(|err| {
+        let balance_by_token = self.use_cases.fetch_balances().await.map_err(|err| {
             tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
             RoutineError::routine_failure("Failed to fetch balances from exchange")
         })?;
@@ -71,13 +68,10 @@ impl Routine for ExchangeBalancesRoutine {
         tracing::trace!("{}: 📊 Ordering balances", self.name());
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);
 
-        tracing::trace!(
-            "{}: 📝 Updating Binance balances on the spreadsheet",
-            self.name()
-        );
+        tracing::trace!("{}: 📝 Updating balances on the spreadsheet", self.name());
         self.persistence
             .update_balances(
-                self.exchange.spreadsheet_target(),
+                self.use_cases.spreadsheet_target(),
                 token_balances.as_slice(),
             )
             .await
@@ -86,8 +80,9 @@ impl Routine for ExchangeBalancesRoutine {
             ))?;
 
         tracing::info!(
-            "{}: ✅ Updated Binance balances on the spreadsheet",
-            self.name()
+            "{}: ✅ Updated {} balances on the spreadsheet",
+            self.name(),
+            token_balances.len()
         );
 
         Ok(())
