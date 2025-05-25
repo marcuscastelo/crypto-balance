@@ -1,10 +1,7 @@
 use std::fmt::Formatter;
 use thiserror::Error;
 
-use super::{
-    cell_position::CellPosition,
-    column::{number_to_letters, ColumnParseError},
-};
+use super::{cell_position::CellPosition, column::ColumnParseError};
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub struct A1Notation(pub String);
@@ -53,11 +50,9 @@ pub trait FromA1Notation: Sized {
 
 impl ToA1Notation for CellPosition {
     fn to_a1_notation(&self, sheet_name: Option<&str>) -> A1Notation {
-        let col_letter = number_to_letters(self.col.into());
-
         match sheet_name {
-            Some(sheet_name) => A1Notation(format!("'{}'!{}{}", sheet_name, col_letter, self.row)),
-            None => A1Notation(format!("{}{}", col_letter, self.row)),
+            Some(sheet_name) => A1Notation(format!("'{}'!{}{}", sheet_name, self.col, self.row)),
+            None => A1Notation(format!("{}{}", self.col, self.row)),
         }
     }
 }

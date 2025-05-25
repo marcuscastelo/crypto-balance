@@ -23,11 +23,11 @@ pub struct CellRange {
 
 impl CellRange {
     pub fn row_count(&self) -> u32 {
-        self.end.row.0 - self.start.row.0 + 1
+        self.end.row.value() - self.start.row.value() + 1
     }
 
     pub fn column_count(&self) -> u32 {
-        self.end.col.0 - self.start.col.0 + 1
+        self.end.col.value() - self.start.col.value() + 1
     }
 
     pub fn with_sheet_title(&self, sheet_title: String) -> Self {
