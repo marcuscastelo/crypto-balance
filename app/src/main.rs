@@ -2,30 +2,27 @@
 #![feature(try_trait_v2)]
 #![feature(iter_next_chunk)]
 
-mod blockchain;
-mod config;
-mod exchange;
-mod prelude;
+mod application;
+mod domain;
+mod infrastructure;
 mod prettyprint;
-mod price;
-mod routines;
-mod scraping;
-mod sheets;
 
-use exchange::data::binance::binance_use_cases::BinanceUseCases;
-use exchange::data::kraken::kraken_use_cases::KrakenUseCases;
+use application::debank::debank_routine::DebankRoutine;
+use application::exchange::binance::BinanceUseCases;
+use application::exchange::exchange_balances_routine::ExchangeBalancesRoutine;
+use application::exchange::kraken::KrakenUseCases;
+
+use application::price::token_prices::TokenPricesRoutine;
+use application::sheets::spreadsheet::SpreadsheetUseCasesImpl;
+use domain::routine::Routine;
+use domain::routine::RoutineError;
+use infrastructure::config::app_config::CONFIG;
+// External
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace as sdktrace;
 use opentelemetry_sdk::Resource;
-use prettyprint::PrettyFormatter;
-use routines::debank_routine::DebankRoutine;
-use routines::exchange_balances_routine::ExchangeBalancesRoutine;
-use routines::routine::Routine;
-use routines::routine::RoutineError;
-use routines::token_prices::TokenPricesRoutine;
-use sheets::data::spreadsheet::SpreadsheetUseCasesImpl;
-use sheets::data::spreadsheet_manager;
+use prettyprint::prettyprint::PrettyFormatter;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
@@ -40,7 +37,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
     let spreadsheet_manager =
-        spreadsheet_manager::SpreadsheetManager::new(config::app_config::CONFIG.sheets.clone())
+        infrastructure::sheets::spreadsheet_manager::SpreadsheetManager::new(CONFIG.sheets.clone())
             .await;
 
     let persistence = Arc::new(SpreadsheetUseCasesImpl::new(&spreadsheet_manager));
@@ -143,17 +140,16 @@ async fn main() {
     //     .with_span_events(fmt::format::FmtSpan::FULL);
 
     // let (chrome_layer, _guard) = ChromeLayerBuilder::new()
-    //     .file("chrome_trace.json") // nome do arquivo final
+    //     .file("chrome_trace.json")
     //     .include_args(true)
     //     .build();
 
     // let file = File::create("flame.folded").unwrap();
     // let flame_layer = FlameLayer::new(file);
 
-    // Cria um tracer que envia para o agente Jaeger local
     let exporter = opentelemetry_otlp::new_exporter()
-        .tonic() // para gRPC
-        .with_endpoint("http://localhost:4317"); // default do OTel Collector ou Tempo
+        .tonic()
+        .with_endpoint("http://localhost:4317");
 
     let tracer =
         opentelemetry_otlp::new_pipeline()
@@ -180,8 +176,6 @@ async fn main() {
     tracing::trace!("Setting panic hook");
     std::panic::set_hook(Box::new(|info| {
         tracing::error!("panic: {info}");
-
-        // tenta forçar exportação
         opentelemetry::global::shutdown_tracer_provider();
     }));
 
