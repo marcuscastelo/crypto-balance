@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{
-    application::sheets::spreadsheet::BalanceUpdateTarget,
-    infrastructure::exchange::binance_factory::BinanceAccountFactory,
-};
+use crate::infrastructure::exchange::binance_factory::BinanceAccountFactory;
 use anyhow::Ok;
 
-use super::use_cases::ExchangeUseCases;
+use super::use_cases::{BalanceUpdateTarget, ExchangeUseCases};
 
 pub struct BinanceUseCases {
     pub binance_account_factory: BinanceAccountFactory,

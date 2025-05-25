@@ -1,5 +1,4 @@
 use error_stack::{report, ResultExt};
-use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
 use crate::domain::sheets::a1_notation::ToA1Notation;

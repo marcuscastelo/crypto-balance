@@ -1,3 +1,4 @@
+use crate::application::exchange::use_cases::{get_target_range, BalanceUpdateTarget};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::infrastructure::sheets::spreadsheet_read::SpreadsheetRead;
@@ -5,18 +6,6 @@ use crate::infrastructure::sheets::spreadsheet_write::SpreadsheetWrite;
 
 pub struct SpreadsheetUseCasesImpl<'s> {
     pub spreadsheet_manager: &'s SpreadsheetManager,
-}
-
-pub enum BalanceUpdateTarget {
-    Binance,
-    Kraken,
-}
-
-fn get_target_range(target: BalanceUpdateTarget) -> &'static str {
-    match target {
-        BalanceUpdateTarget::Binance => ranges::balances::binance::RW_AMOUNTS,
-        BalanceUpdateTarget::Kraken => ranges::balances::kraken::RW_AMOUNTS,
-    }
 }
 
 impl<'s> SpreadsheetUseCasesImpl<'s> {
