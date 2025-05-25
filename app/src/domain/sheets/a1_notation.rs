@@ -31,10 +31,12 @@ pub trait ToA1Notation {
     fn to_a1_notation(&self, sheet_name: Option<&str>) -> A1Notation;
 }
 
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[derive(Debug, Error)]
 pub enum A1NotationParseError {
     #[error("Error parsing column: {0}")]
     ColumnParseError(ColumnParseError),
+    #[error("Error parsing row")]
+    RowParseError,
 }
 
 impl From<String> for A1Notation {
@@ -46,7 +48,7 @@ impl From<String> for A1Notation {
 pub trait FromA1Notation: Sized {
     type Err;
 
-    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err>;
+    fn from_a1_notation(a1_notation: &A1Notation) -> error_stack::Result<Self, Self::Err>;
 }
 
 impl ToA1Notation for CellPosition {

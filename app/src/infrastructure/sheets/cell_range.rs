@@ -150,7 +150,7 @@ impl ToA1Notation for CellRange {
 impl FromA1Notation for CellRange {
     type Err = A1NotationParseError;
 
-    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err> {
+    fn from_a1_notation(a1_notation: &A1Notation) -> error_stack::Result<Self, Self::Err> {
         let parts = generic_a1_notation_split(a1_notation);
 
         Ok(CellRange {

@@ -169,18 +169,19 @@ impl From<CellPosition> for (u32, u32) {
     }
 }
 
+/// Conversions: CellPosition -> Others
 impl FromA1Notation for CellPosition {
     type Err = A1NotationParseError;
 
-    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err> {
+    fn from_a1_notation(a1_notation: &A1Notation) -> error_stack::Result<Self, Self::Err> {
         let parts: A1NotationParts = generic_a1_notation_split(a1_notation);
 
         Ok(CellPosition {
             row: parts
                 .start
                 .as_str()
-                .parse()
-                .expect(format!("Error parsing row: {}", parts.start).as_str()),
+                .parse::<Row>()
+                .change_context(A1NotationParseError::RowParseError)?,
             col: parse_col(&parts.end).map_err(A1NotationParseError::ColumnParseError)?,
         })
     }
