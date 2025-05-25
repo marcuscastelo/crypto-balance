@@ -38,17 +38,17 @@ pub struct EtherscanImplementation {
 async fn fetch_and_deserialize<T: DeserializeOwned>(url: &str) -> Result<T, FetchBalanceError> {
     let resp = reqwest::get(url)
         .await
-        .change_context(FetchBalanceError::ReqwestError)
+        .change_context(FetchBalanceError::ApiRequestError)
         .attach_printable("Failed to make GET request")
         .attach_printable_lazy(|| format!("URL: {}", url))?;
     let resp = resp
         .text()
         .await
-        .change_context(FetchBalanceError::ReqwestError)
+        .change_context(FetchBalanceError::ApiRequestError)
         .attach_printable("Failed to get response text")
         .attach_printable_lazy(|| format!("URL: {}", url))?;
     let resp = serde_json::from_str(resp.as_str())
-        .change_context(FetchBalanceError::DataFormatError)
+        .change_context(FetchBalanceError::ResponseParsingError)
         .attach_printable("Failed to parse balance response as json")
         .attach_printable_lazy(|| format!("Response: {}", resp))?;
     Ok(resp)
@@ -59,7 +59,7 @@ async fn parse_balance_from_response(resp: FetchBalanceResponse) -> Result<f64, 
     let balance = resp
         .result
         .parse::<f64>()
-        .change_context(FetchBalanceError::DataFormatError)
+        .change_context(FetchBalanceError::ResponseParsingError)
         .attach_printable_lazy(|| format!("Result was not a float! Result: {}", resp.result))?;
     Ok(balance)
 }
@@ -87,7 +87,7 @@ impl BlockExplorer for EtherscanImplementation {
         let balance = parse_balance_from_response(resp).await? / WEI_CONVERSION;
 
         Ok(TokenBalance {
-            symbol: self.get_chain().native_token.symbol(),
+            symbol: self.chain().native_token.symbol(),
             balance,
         })
     }
@@ -174,7 +174,7 @@ impl BlockExplorer for EtherscanImplementation {
         Ok(balances)
     }
 
-    fn get_chain(&self) -> &'static Chain {
+    fn chain(&self) -> &'static Chain {
         *self.chain
     }
 }
