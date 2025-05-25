@@ -3,12 +3,11 @@ use thiserror::Error;
 
 use super::{
     cell_position::CellPosition,
-    cell_range::CellRange,
     column::{number_to_letters, ColumnParseError},
 };
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub struct A1Notation(String);
+pub struct A1Notation(pub String);
 
 impl std::fmt::Display for A1Notation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -61,26 +60,6 @@ impl ToA1Notation for CellPosition {
     }
 }
 
-impl ToA1Notation for CellRange {
-    fn to_a1_notation(&self, sheet_name: Option<&str>) -> A1Notation {
-        let start = self.start.to_a1_notation(sheet_name);
-        let end = self.end.to_a1_notation(sheet_name);
-
-        let (_, start) = start.0.split_at(start.0.find('!').unwrap_or(0));
-        let (_, end) = end.0.split_at(end.0.find('!').unwrap_or(0));
-
-        match sheet_name {
-            Some(sheet_name) => A1Notation(format!(
-                "'{}'!{}:{}",
-                sheet_name.trim_start_matches('\'').trim_end_matches('\''),
-                start.trim_start_matches('!'),
-                end.trim_start_matches('!')
-            )),
-            None => A1Notation(format!("{}:{}", start, end)),
-        }
-    }
-}
-
 pub struct A1NotationParts {
     pub start: String,
     pub end: String,
@@ -111,19 +90,5 @@ pub fn generic_a1_notation_split(a1_notation: &A1Notation) -> A1NotationParts {
         sheet_title,
         start,
         end,
-    }
-}
-
-impl FromA1Notation for CellRange {
-    type Err = A1NotationParseError;
-
-    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err> {
-        let parts = generic_a1_notation_split(a1_notation);
-
-        Ok(CellRange {
-            start: CellPosition::from_a1_notation(&A1Notation(parts.start))?,
-            end: CellPosition::from_a1_notation(&A1Notation(parts.end))?,
-            sheet_title: parts.sheet_title,
-        })
     }
 }

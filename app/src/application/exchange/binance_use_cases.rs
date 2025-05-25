@@ -1,14 +1,24 @@
 use std::collections::HashMap;
 
+use error_stack::{Report, ResultExt};
+
 use crate::{
-    application::sheets::spreadsheet::BalanceUpdateTarget,
+    domain::exchange::BalanceUpdateTarget,
     infrastructure::exchange::binance_factory::BinanceAccountFactory,
 };
-use anyhow::Ok;
 
-use super::use_cases::ExchangeUseCases;
+use super::use_cases::{ExchangeUseCases, ExchangeUseCasesError};
 
-pub struct BinanceUseCases;
+pub struct BinanceUseCases {
+    pub binance_account_factory: BinanceAccountFactory,
+}
+impl BinanceUseCases {
+    pub fn new(binance_account_factory: BinanceAccountFactory) -> Self {
+        Self {
+            binance_account_factory,
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for BinanceUseCases {
@@ -20,13 +30,16 @@ impl ExchangeUseCases for BinanceUseCases {
         BalanceUpdateTarget::Binance
     }
 
-    async fn fetch_balances(&self) -> anyhow::Result<HashMap<String, f64>> {
-        let binance_account = BinanceAccountFactory::create();
+    async fn fetch_balances(
+        &self,
+    ) -> error_stack::Result<HashMap<String, f64>, ExchangeUseCasesError> {
+        let binance_account = self.binance_account_factory.create();
 
         let balances = binance_account
             .get_account()
             .await
-            .unwrap()
+            .map_err(Report::from)
+            .change_context(ExchangeUseCasesError::FetchBalancesError("Binance"))?
             .balances
             .into_iter()
             .filter(|x| x.free > 0.0)

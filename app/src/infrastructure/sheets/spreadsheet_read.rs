@@ -1,20 +1,24 @@
 use error_stack::{report, ResultExt};
-use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
-use crate::domain::sheets::{a1_notation::ToA1Notation, cell_range::CellRange};
+use crate::domain::sheets::a1_notation::ToA1Notation;
 
-use super::spreadsheet_manager::{SpreadsheetManager, SpreadsheetManagerError};
+use crate::infrastructure::sheets::cell_range::CellRange;
+
+use super::{
+    flatten_double_vec::FlattenDoubleVec,
+    spreadsheet_manager::{SpreadsheetManager, SpreadsheetManagerError},
+};
 
 pub trait SpreadsheetRead {
     async fn read_range(
         &self,
         range: &str,
-    ) -> error_stack::Result<ValueRange, SpreadsheetManagerError>;
+    ) -> error_stack::Result<Vec<String>, SpreadsheetManagerError>;
     async fn read_named_range(
         &self,
         name: &str,
-    ) -> error_stack::Result<ValueRange, SpreadsheetManagerError>;
+    ) -> error_stack::Result<Vec<String>, SpreadsheetManagerError>;
 }
 
 impl SpreadsheetRead for SpreadsheetManager {
@@ -22,7 +26,7 @@ impl SpreadsheetRead for SpreadsheetManager {
     async fn read_range(
         &self,
         range: &str,
-    ) -> error_stack::Result<ValueRange, SpreadsheetManagerError> {
+    ) -> error_stack::Result<Vec<String>, SpreadsheetManagerError> {
         let response = self
             .hub
             .spreadsheets()
@@ -32,14 +36,21 @@ impl SpreadsheetRead for SpreadsheetManager {
             .change_context(SpreadsheetManagerError::FailedToFetchRange)?;
 
         let value_range = response.1;
-        Ok(value_range)
+
+        let values = value_range
+            .values
+            .ok_or(report!(SpreadsheetManagerError::FailedToFetchRange))
+            .attach_printable_lazy(|| format!("Failed to fetch values for range {}", range))?
+            .flatten_double_vec();
+
+        Ok(values)
     }
 
     #[instrument]
     async fn read_named_range(
         &self,
         name: &str,
-    ) -> error_stack::Result<ValueRange, SpreadsheetManagerError> {
+    ) -> error_stack::Result<Vec<String>, SpreadsheetManagerError> {
         let named_range = self.get_named_range(name).await?;
         let sheet_title = self
             .get_sheet_title(

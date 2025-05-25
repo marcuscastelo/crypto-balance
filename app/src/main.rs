@@ -8,15 +8,18 @@ mod infrastructure;
 mod prettyprint;
 
 use application::debank::debank_routine::DebankRoutine;
-use application::exchange::binance::BinanceUseCases;
+use application::exchange::binance_use_cases::BinanceUseCases;
 use application::exchange::exchange_balances_routine::ExchangeBalancesRoutine;
-use application::exchange::kraken::KrakenUseCases;
+use application::exchange::kraken_use_cases::KrakenUseCases;
 
 use application::price::token_prices::TokenPricesRoutine;
-use application::sheets::spreadsheet::SpreadsheetUseCasesImpl;
+use domain::exchange::BalanceRepository;
 use domain::routine::Routine;
 use domain::routine::RoutineError;
 use infrastructure::config::app_config::CONFIG;
+use infrastructure::exchange::binance_factory::BinanceAccountFactory;
+use infrastructure::exchange::kraken_factory::KrakenFactory;
+use infrastructure::exchange::spreadsheet_balance_repository::SpreadsheetBalanceRepository;
 // External
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
@@ -36,21 +39,29 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry
 #[instrument]
 async fn run_routines(parallel: bool) {
     let _ = Command::new("pkill").arg("geckodriver").output().await;
-    let spreadsheet_manager =
+    let spreadsheet_manager = Arc::new(
         infrastructure::sheets::spreadsheet_manager::SpreadsheetManager::new(CONFIG.sheets.clone())
-            .await;
+            .await,
+    );
 
-    let persistence = Arc::new(SpreadsheetUseCasesImpl::new(&spreadsheet_manager));
+    let balance_repository: Arc<dyn BalanceRepository> = Arc::new(
+        SpreadsheetBalanceRepository::new(Arc::clone(&spreadsheet_manager)),
+    );
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankRoutine::new(&spreadsheet_manager)),
+        Box::new(DebankRoutine::new(
+            CONFIG.blockchain.airdrops.evm.clone(),
+            Arc::clone(&spreadsheet_manager),
+        )),
         Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
         Box::new(ExchangeBalancesRoutine::new(
-            &BinanceUseCases,
-            persistence.clone(),
+            BinanceUseCases::new(BinanceAccountFactory::new(CONFIG.binance.clone())),
+            Arc::clone(&balance_repository),
         )),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases, persistence)),
-        // Box::new(SonarWatchRoutine),
+        Box::new(ExchangeBalancesRoutine::new(
+            KrakenUseCases::new(KrakenFactory::new(CONFIG.kraken.clone())),
+            Arc::clone(&balance_repository),
+        )),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 

@@ -4,13 +4,21 @@ use std::collections::HashMap;
 use num_traits::ToPrimitive;
 
 use crate::{
-    application::sheets::spreadsheet::BalanceUpdateTarget,
-    infrastructure::exchange::kraken_factory::KrakenFactory,
+    domain::exchange::BalanceUpdateTarget, infrastructure::exchange::kraken_factory::KrakenFactory,
 };
+use error_stack::{report, ResultExt};
 
-use super::use_cases::ExchangeUseCases;
+use super::use_cases::{ExchangeUseCases, ExchangeUseCasesError};
 
-pub struct KrakenUseCases;
+pub struct KrakenUseCases {
+    pub kraken_factory: KrakenFactory,
+}
+
+impl KrakenUseCases {
+    pub fn new(kraken_factory: KrakenFactory) -> Self {
+        Self { kraken_factory }
+    }
+}
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for KrakenUseCases {
@@ -22,12 +30,17 @@ impl ExchangeUseCases for KrakenUseCases {
         BalanceUpdateTarget::Kraken
     }
 
-    async fn fetch_balances(&self) -> anyhow::Result<HashMap<String, f64>> {
-        let kraken_api = KrakenFactory::create();
+    async fn fetch_balances(
+        &self,
+    ) -> error_stack::Result<HashMap<String, f64>, ExchangeUseCasesError> {
+        let kraken_api = self.kraken_factory.create();
         let balances = kraken_api
             .get_account_balance()
             .await
-            .unwrap()
+            .map_err(|error| report!(ExchangeUseCasesError::InternalError(format!("{error:?}"))))
+            .change_context(ExchangeUseCasesError::FetchBalancesError(
+                "Failed to fetch balances from Kraken",
+            ))?
             .into_iter()
             .map(|(symbol, amount)| {
                 (

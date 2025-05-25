@@ -1,21 +1,22 @@
 use std::{collections::HashMap, fmt, sync::Arc};
 
+use error_stack::ResultExt;
 use tracing::instrument;
 
-use crate::{
-    application::sheets::spreadsheet::SpreadsheetUseCasesImpl,
-    domain::routine::{Routine, RoutineError},
+use crate::domain::{
+    exchange::BalanceRepository,
+    routine::{Routine, RoutineError},
 };
 
 use super::use_cases::ExchangeUseCases;
 
-pub struct ExchangeBalancesRoutine<'s> {
+pub struct ExchangeBalancesRoutine<T: ExchangeUseCases> {
     routine_name: String,
-    exchange: &'static dyn ExchangeUseCases,
-    persistence: Arc<SpreadsheetUseCasesImpl<'s>>,
+    use_cases: T,
+    persistence: Arc<dyn BalanceRepository>,
 }
 
-impl<'s> fmt::Debug for ExchangeBalancesRoutine<'s> {
+impl<T: ExchangeUseCases> fmt::Debug for ExchangeBalancesRoutine<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExchangeBalancesRoutine")
             .field("routine_name", &self.routine_name)
@@ -23,14 +24,11 @@ impl<'s> fmt::Debug for ExchangeBalancesRoutine<'s> {
     }
 }
 
-impl<'s> ExchangeBalancesRoutine<'s> {
-    pub fn new(
-        exchange: &'static dyn ExchangeUseCases,
-        persistence: Arc<SpreadsheetUseCasesImpl<'s>>,
-    ) -> Self {
+impl<T: ExchangeUseCases> ExchangeBalancesRoutine<T> {
+    pub fn new(use_cases: T, persistence: Arc<dyn BalanceRepository>) -> Self {
         Self {
-            routine_name: format!("{} Balances", exchange.exchange_name()),
-            exchange,
+            routine_name: format!("{} Balances", use_cases.exchange_name()),
+            use_cases,
             persistence,
         }
     }
@@ -47,41 +45,47 @@ impl<'s> ExchangeBalancesRoutine<'s> {
 }
 
 #[async_trait::async_trait]
-impl<'s> Routine for ExchangeBalancesRoutine<'s> {
+impl<T: ExchangeUseCases> Routine for ExchangeBalancesRoutine<T> {
     fn name(&self) -> &str {
         self.routine_name.as_str()
     }
 
     #[instrument(skip(self), name = "ExchangeBalancesRoutine::run")]
     async fn run(&self) -> error_stack::Result<(), RoutineError> {
-        tracing::info!("Binance: Running BinanceRoutine");
+        tracing::info!("{} started", self.name());
 
         tracing::trace!("{}: 📋 Listing all tokens from persistence", self.name());
-        let token_names = self.persistence.get_token_names_from_spreadsheet().await;
+        let token_names = self.persistence.get_token_names().await.change_context(
+            RoutineError::routine_failure("Failed to get token names from persistence"),
+        )?;
 
         tracing::trace!("{}: ☁️  Getting balances from exchange", self.name());
-        let balance_by_token = self.exchange.fetch_balances().await.map_err(|err| {
-            tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
-            RoutineError::routine_failure("Failed to fetch balances from exchange")
-        })?;
+        let balance_by_token =
+            self.use_cases
+                .fetch_balances()
+                .await
+                .change_context(RoutineError::routine_failure(
+                    "Failed to fetch balances from exchange",
+                ))?;
 
         tracing::trace!("{}: 📊 Ordering balances", self.name());
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);
 
-        tracing::trace!(
-            "{}: 📝 Updating Binance balances on the spreadsheet",
-            self.name()
-        );
+        tracing::trace!("{}: 📝 Updating balances on the spreadsheet", self.name());
         self.persistence
-            .update_balances_on_spreadsheet(
-                self.exchange.spreadsheet_target(),
+            .update_balances(
+                self.use_cases.spreadsheet_target(),
                 token_balances.as_slice(),
             )
-            .await;
+            .await
+            .change_context(RoutineError::routine_failure(
+                "Failed to update balances in persistence",
+            ))?;
 
         tracing::info!(
-            "{}: ✅ Updated Binance balances on the spreadsheet",
-            self.name()
+            "{}: ✅ Updated {} balances on the spreadsheet",
+            self.name(),
+            token_balances.len()
         );
 
         Ok(())

@@ -1,8 +1,15 @@
 use std::num::TryFromIntError;
 
-use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
-
-use super::cell_position::CellPosition;
+use crate::{
+    domain::sheets::{
+        a1_notation::{
+            generic_a1_notation_split, A1Notation, A1NotationParseError, FromA1Notation,
+            ToA1Notation,
+        },
+        cell_position::CellPosition,
+    },
+    infrastructure::sheets::spreadsheet_manager::SpreadsheetManager,
+};
 
 use google_sheets4::api::GridRange;
 use thiserror::Error;
@@ -116,6 +123,40 @@ impl CellRange {
             start,
             end,
             sheet_title,
+        })
+    }
+}
+
+impl ToA1Notation for CellRange {
+    fn to_a1_notation(&self, sheet_name: Option<&str>) -> A1Notation {
+        let start = self.start.to_a1_notation(sheet_name);
+        let end = self.end.to_a1_notation(sheet_name);
+
+        let (_, start) = start.0.split_at(start.0.find('!').unwrap_or(0));
+        let (_, end) = end.0.split_at(end.0.find('!').unwrap_or(0));
+
+        match sheet_name {
+            Some(sheet_name) => A1Notation(format!(
+                "'{}'!{}:{}",
+                sheet_name.trim_start_matches('\'').trim_end_matches('\''),
+                start.trim_start_matches('!'),
+                end.trim_start_matches('!')
+            )),
+            None => A1Notation(format!("{}:{}", start, end)),
+        }
+    }
+}
+
+impl FromA1Notation for CellRange {
+    type Err = A1NotationParseError;
+
+    fn from_a1_notation(a1_notation: &A1Notation) -> Result<Self, Self::Err> {
+        let parts = generic_a1_notation_split(a1_notation);
+
+        Ok(CellRange {
+            start: CellPosition::from_a1_notation(&A1Notation(parts.start))?,
+            end: CellPosition::from_a1_notation(&A1Notation(parts.end))?,
+            sheet_title: parts.sheet_title,
         })
     }
 }

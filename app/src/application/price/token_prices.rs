@@ -1,5 +1,4 @@
 use crate::domain::routine::{Routine, RoutineError};
-use crate::domain::sheets::flatten_double_vec::FlattenDoubleVec;
 use crate::domain::sheets::ranges;
 use crate::infrastructure::price::price::get_token_prices;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
@@ -39,12 +38,7 @@ impl<'s> TokenPricesRoutine<'s> {
             .spreadsheet_manager
             .read_named_range(ranges::tokens::RO_IDS)
             .await
-            .change_context(TokenPricesRoutineError::SpreadsheetError)?
-            .values
-            .ok_or(TokenPricesRoutineError::InvalidDataError {
-                details: "No values found in the spreadsheet",
-            })?
-            .flatten_double_vec();
+            .change_context(TokenPricesRoutineError::SpreadsheetError)?;
 
         Ok(token_ids)
     }
@@ -54,10 +48,7 @@ impl<'s> TokenPricesRoutine<'s> {
         self.spreadsheet_manager
             .read_named_range(ranges::tokens::RW_PRICES)
             .await
-            .expect("Should have content")
-            .values
-            .unwrap_or(vec![])
-            .flatten_double_vec()
+            .expect("Should read token prices from the spreadsheet")
             .into_iter()
             .map(|x| {
                 x.replace(['$', ','], "")

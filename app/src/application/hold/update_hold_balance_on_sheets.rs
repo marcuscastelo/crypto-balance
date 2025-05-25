@@ -11,19 +11,22 @@ use crate::domain::blockchain::token_balance::TokenBalance;
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::a1_notation::ToA1Notation;
 use crate::domain::sheets::cell_position::CellPosition;
-use crate::domain::sheets::cell_range::CellRange;
 use crate::domain::sheets::column::Column;
-use crate::domain::sheets::flatten_double_vec::FlattenDoubleVec;
 use crate::domain::sheets::ranges;
 use crate::domain::sheets::row::Row;
 use crate::infrastructure::blockchain::chains::{ARBITRUM, OPTIMISM, POLYGON};
-use crate::infrastructure::config::app_config::CONFIG;
+use crate::infrastructure::config::blockchain_config::BlockchainConfig;
+use crate::infrastructure::config::sheets_config::SpreadsheetConfig;
+use crate::infrastructure::sheets::cell_range::CellRange;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::infrastructure::sheets::spreadsheet_read::SpreadsheetRead;
 use crate::infrastructure::sheets::spreadsheet_write::SpreadsheetWrite;
 
 #[derive(Debug)]
-pub struct UpdateHoldBalanceOnSheetsRoutine;
+pub struct UpdateHoldBalanceOnSheetsRoutine {
+    sheets_config: SpreadsheetConfig,
+    blockchain_config: BlockchainConfig,
+}
 
 struct TokenBalanceProcessor;
 
@@ -61,6 +64,13 @@ impl TokenBalanceProcessor {
 }
 
 impl UpdateHoldBalanceOnSheetsRoutine {
+    pub fn new(sheets_config: SpreadsheetConfig, blockchain_config: BlockchainConfig) -> Self {
+        Self {
+            sheets_config,
+            blockchain_config,
+        }
+    }
+
     #[instrument]
     pub async fn fetch_all_evm_balances(
         &self,
@@ -106,7 +116,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
 
     #[instrument]
     async fn fetch_balance_hold(&self, chain: &Chain) -> HashMap<Arc<Token>, TokenBalance<String>> {
-        self.fetch_all_evm_balances(chain, &CONFIG.blockchain.hold.evm.address)
+        self.fetch_all_evm_balances(chain, &self.blockchain_config.hold.evm.address)
             .await
             .expect(format!("Should fetch '{}' chain balances for hold", chain.name).as_str())
     }
@@ -116,14 +126,14 @@ impl UpdateHoldBalanceOnSheetsRoutine {
         &self,
         chain: &Chain,
     ) -> HashMap<Arc<Token>, TokenBalance<String>> {
-        self.fetch_all_evm_balances(chain, &CONFIG.blockchain.hold_sc.evm.address)
+        self.fetch_all_evm_balances(chain, &self.blockchain_config.hold_sc.evm.address)
             .await
             .expect(format!("Should fetch '{}' chain balances for hold_sc", chain.name).as_str())
     }
 
     #[instrument]
     async fn create_spreadsheet_manager(&self) -> SpreadsheetManager {
-        SpreadsheetManager::new(CONFIG.sheets.clone()).await
+        SpreadsheetManager::new(self.sheets_config.clone()).await
     }
 
     #[instrument]
@@ -133,10 +143,7 @@ impl UpdateHoldBalanceOnSheetsRoutine {
         spreadsheet_manager
             .read_named_range(ranges::tokens::RO_NAMES)
             .await
-            .expect("Should have content")
-            .values
-            .expect("Should have values")
-            .flatten_double_vec()
+            .expect("Should read token names from the spreadsheet")
     }
 }
 
@@ -205,7 +212,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
 
         tracing::info!("Chains scanned: {:?}", hashmaps.keys().collect::<Vec<_>>());
 
-        let spreadsheet_manager = SpreadsheetManager::new(CONFIG.sheets.clone()).await;
+        let spreadsheet_manager = SpreadsheetManager::new(self.sheets_config.clone()).await;
 
         let named_range = spreadsheet_manager
             .get_named_range(ranges::balances::hold::RW_DATA)
