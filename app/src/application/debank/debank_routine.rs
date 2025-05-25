@@ -6,7 +6,7 @@ use tracing::{event, instrument, Level};
 
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
-use crate::infrastructure::config::app_config::CONFIG;
+use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
 use crate::infrastructure::debank::aah_parser::AaHParser;
 use crate::infrastructure::debank::debank_scraper::{ChainInfo, DebankBalanceScraper};
 use crate::infrastructure::sheets::spreadsheet_manager::{
@@ -131,6 +131,7 @@ impl RelevantDebankToken {
 }
 
 pub struct DebankRoutine<'s> {
+    config: EvmBlockchainConfig,
     spreadsheet_manager: &'s SpreadsheetManager,
 }
 
@@ -142,8 +143,9 @@ impl<'s> fmt::Debug for DebankRoutine<'s> {
 
 impl<'s> DebankRoutine<'s> {
     #[instrument]
-    pub fn new(spreadsheet_manager: &'s SpreadsheetManager) -> Self {
+    pub fn new(config: EvmBlockchainConfig, spreadsheet_manager: &'s SpreadsheetManager) -> Self {
         Self {
+            config,
             spreadsheet_manager,
         }
     }
@@ -157,7 +159,7 @@ impl<'s> DebankRoutine<'s> {
         scraper
     }
 
-    #[instrument(skip(self), name = "DebankRoutine::fetch_relevant_token_amounts", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
+    #[instrument(skip(self), name = "DebankRoutine::fetch_relevant_token_amounts", fields(user_id = self.config.address))]
     async fn fetch_relevant_token_amounts(
         &self,
     ) -> error_stack::Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
@@ -165,14 +167,14 @@ impl<'s> DebankRoutine<'s> {
             .await
             .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
         let chain_infos = scraper
-            .explore_debank_profile(&CONFIG.blockchain.airdrops.evm.address)
+            .explore_debank_profile(&self.config.address)
             .await
             .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
 
         return self.parse_debank_profile(chain_infos).await;
     }
 
-    #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = CONFIG.blockchain.airdrops.evm.address))]
+    #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
     async fn parse_debank_profile(
         &self,
         chain_infos: HashMap<String, ChainInfo>,
@@ -264,7 +266,7 @@ impl<'s> DebankRoutine<'s> {
     #[instrument(skip(self), name = "DebankRoutine::main_routine")]
     async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
         let scraper = self.create_scraper().await;
-        let user_id = CONFIG.blockchain.airdrops.evm.address.as_ref();
+        let user_id = self.config.address.as_ref();
 
         tracing::debug!(user_id = user_id, "Accessing Debank profile");
         scraper

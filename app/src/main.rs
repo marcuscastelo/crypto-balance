@@ -17,6 +17,7 @@ use application::sheets::spreadsheet::SpreadsheetUseCasesImpl;
 use domain::routine::Routine;
 use domain::routine::RoutineError;
 use infrastructure::config::app_config::CONFIG;
+use infrastructure::exchange::binance_factory::BinanceAccountFactory;
 // External
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
@@ -43,14 +44,23 @@ async fn run_routines(parallel: bool) {
     let persistence = Arc::new(SpreadsheetUseCasesImpl::new(&spreadsheet_manager));
 
     let routines_to_run: Vec<Box<dyn Routine>> = vec![
-        Box::new(DebankRoutine::new(&spreadsheet_manager)),
+        Box::new(DebankRoutine::new(
+            CONFIG.blockchain.airdrops.evm.clone(),
+            &spreadsheet_manager,
+        )),
         Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
         Box::new(ExchangeBalancesRoutine::new(
-            &BinanceUseCases,
+            Box::new(BinanceUseCases::new(BinanceAccountFactory::new(
+                CONFIG.binance.clone(),
+            ))),
             persistence.clone(),
         )),
-        Box::new(ExchangeBalancesRoutine::new(&KrakenUseCases, persistence)),
-        // Box::new(SonarWatchRoutine),
+        Box::new(ExchangeBalancesRoutine::new(
+            Box::new(KrakenUseCases::new(
+                infrastructure::exchange::kraken_factory::KrakenFactory::new(CONFIG.kraken.clone()),
+            )),
+            persistence.clone(),
+        )),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 

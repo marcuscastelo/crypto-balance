@@ -8,7 +8,16 @@ use anyhow::Ok;
 
 use super::use_cases::ExchangeUseCases;
 
-pub struct BinanceUseCases;
+pub struct BinanceUseCases {
+    pub binance_account_factory: BinanceAccountFactory,
+}
+impl BinanceUseCases {
+    pub fn new(binance_account_factory: BinanceAccountFactory) -> Self {
+        Self {
+            binance_account_factory,
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for BinanceUseCases {
@@ -21,7 +30,7 @@ impl ExchangeUseCases for BinanceUseCases {
     }
 
     async fn fetch_balances(&self) -> anyhow::Result<HashMap<String, f64>> {
-        let binance_account = BinanceAccountFactory::create();
+        let binance_account = self.binance_account_factory.create();
 
         let balances = binance_account
             .get_account()

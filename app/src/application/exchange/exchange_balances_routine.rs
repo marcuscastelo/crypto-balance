@@ -11,7 +11,7 @@ use super::use_cases::ExchangeUseCases;
 
 pub struct ExchangeBalancesRoutine<'s> {
     routine_name: String,
-    exchange: &'static dyn ExchangeUseCases,
+    exchange: Box<dyn ExchangeUseCases>,
     persistence: Arc<SpreadsheetUseCasesImpl<'s>>,
 }
 
@@ -25,7 +25,7 @@ impl<'s> fmt::Debug for ExchangeBalancesRoutine<'s> {
 
 impl<'s> ExchangeBalancesRoutine<'s> {
     pub fn new(
-        exchange: &'static dyn ExchangeUseCases,
+        exchange: Box<dyn ExchangeUseCases>,
         persistence: Arc<SpreadsheetUseCasesImpl<'s>>,
     ) -> Self {
         Self {

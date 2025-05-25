@@ -10,7 +10,15 @@ use crate::{
 
 use super::use_cases::ExchangeUseCases;
 
-pub struct KrakenUseCases;
+pub struct KrakenUseCases {
+    pub kraken_factory: KrakenFactory,
+}
+
+impl KrakenUseCases {
+    pub fn new(kraken_factory: KrakenFactory) -> Self {
+        Self { kraken_factory }
+    }
+}
 
 #[async_trait::async_trait]
 impl ExchangeUseCases for KrakenUseCases {
@@ -23,7 +31,7 @@ impl ExchangeUseCases for KrakenUseCases {
     }
 
     async fn fetch_balances(&self) -> anyhow::Result<HashMap<String, f64>> {
-        let kraken_api = KrakenFactory::create();
+        let kraken_api = self.kraken_factory.create();
         let balances = kraken_api
             .get_account_balance()
             .await
