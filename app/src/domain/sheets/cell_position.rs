@@ -1,13 +1,11 @@
-use std::{num::ParseIntError, str::FromStr};
-
-use thiserror::Error;
+use error_stack::ResultExt;
 
 use super::{
     a1_notation::{
         generic_a1_notation_split, A1Notation, A1NotationParseError, A1NotationParts,
         FromA1Notation,
     },
-    column::{parse_col, Column, ColumnParseError},
+    column::{parse_col, Column},
     row::Row,
 };
 
@@ -18,28 +16,6 @@ pub struct CellPosition {
 }
 
 /// CellPosition operations
-
-impl std::ops::Add<(u32, u32)> for CellPosition {
-    type Output = CellPosition;
-
-    fn add(self, rhs: (u32, u32)) -> Self::Output {
-        CellPosition {
-            col: self.col + rhs.0,
-            row: self.row + rhs.1,
-        }
-    }
-}
-
-impl std::ops::Sub<(u32, u32)> for CellPosition {
-    type Output = CellPosition;
-
-    fn sub(self, rhs: (u32, u32)) -> Self::Output {
-        CellPosition {
-            col: self.col - rhs.0,
-            row: self.row - rhs.1,
-        }
-    }
-}
 
 impl std::ops::Add<CellPosition> for CellPosition {
     type Output = CellPosition;
@@ -104,68 +80,6 @@ impl std::ops::Sub<Column> for CellPosition {
             col: self.col - rhs,
             row: self.row,
         }
-    }
-}
-
-/// Conversions: Others -> CellPosition
-
-impl<C: Into<Column>, R: Into<Row>> From<(C, R)> for CellPosition {
-    fn from((col, row): (C, R)) -> Self {
-        CellPosition {
-            col: col.into(),
-            row: row.into(),
-        }
-    }
-}
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum CellPositionParseError {
-    #[error("Error parsing column: {0}")]
-    ColumnParseError(ColumnParseError),
-    #[error("Error parsing row: {0}")]
-    RowParseError(ParseIntError),
-}
-
-impl<R: Into<Row>> TryFrom<(char, R)> for CellPosition {
-    type Error = CellPositionParseError;
-
-    fn try_from((col, row): (char, R)) -> Result<Self, Self::Error> {
-        Ok(CellPosition {
-            col: col
-                .try_into()
-                .map_err(CellPositionParseError::ColumnParseError)?,
-            row: row.into(),
-        })
-    }
-}
-
-impl TryFrom<&str> for CellPosition {
-    type Error = CellPositionParseError;
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let (col, row) = s.split_at(s.chars().position(char::is_numeric).unwrap());
-        Ok(CellPosition {
-            col: col
-                .parse()
-                .map_err(CellPositionParseError::ColumnParseError)?,
-            row: row.parse().map_err(CellPositionParseError::RowParseError)?,
-        })
-    }
-}
-
-impl FromStr for CellPosition {
-    type Err = CellPositionParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.try_into()
-    }
-}
-
-/// Conversions: CellPosition -> Others
-
-impl From<CellPosition> for (u32, u32) {
-    fn from(cell_position: CellPosition) -> Self {
-        (cell_position.row.into(), cell_position.col.into())
     }
 }
 

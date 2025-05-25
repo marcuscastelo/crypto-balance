@@ -1,22 +1,22 @@
-use std::{fmt::Formatter, num::ParseIntError, ops::Deref, str::FromStr};
+use std::{fmt::Formatter, num::ParseIntError, str::FromStr};
 
 // TODO: Forbid 0 or change to 0-indexed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Row(pub u32);
 
-impl<T: Into<Row>> std::ops::Add<T> for Row {
+impl std::ops::Add for Row {
     type Output = Row;
 
-    fn add(self, rhs: T) -> Self::Output {
-        Row(self.0 + rhs.into().0)
+    fn add(self, rhs: Row) -> Self::Output {
+        Row(self.0 + rhs.0)
     }
 }
 
-impl<T: Into<Row>> std::ops::Sub<T> for Row {
+impl std::ops::Sub for Row {
     type Output = Row;
 
-    fn sub(self, rhs: T) -> Self::Output {
-        Row(self.0 - rhs.into().0)
+    fn sub(self, rhs: Row) -> Self::Output {
+        Row(self.0 - rhs.0)
     }
 }
 
@@ -26,23 +26,11 @@ impl std::fmt::Display for Row {
     }
 }
 
-impl Deref for Row {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+/// Conversions: Others -> Row
 
 impl From<u32> for Row {
     fn from(value: u32) -> Self {
         Row(value)
-    }
-}
-
-impl From<usize> for Row {
-    fn from(value: usize) -> Self {
-        Row(value as u32)
     }
 }
 
@@ -53,6 +41,8 @@ impl FromStr for Row {
         Ok(Row(s.parse()?))
     }
 }
+
+/// Conversions: Row -> u32
 
 impl From<Row> for u32 {
     fn from(row: Row) -> Self {

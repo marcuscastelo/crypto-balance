@@ -1,4 +1,4 @@
-use std::{fmt::Formatter, ops::Deref, str::FromStr};
+use std::{fmt::Formatter, str::FromStr};
 
 use thiserror::Error;
 
@@ -10,33 +10,25 @@ pub struct Column(pub u32);
 ///
 /// This is done to allow for easy manipulation of the inner value
 
-impl<T: Into<Column>> std::ops::Add<T> for Column {
+impl std::ops::Add for Column {
     type Output = Column;
 
-    fn add(self, rhs: T) -> Self::Output {
-        Column(self.0 + rhs.into().0)
+    fn add(self, rhs: Column) -> Self::Output {
+        Column(self.0 + rhs.0)
     }
 }
 
-impl<T: Into<Column>> std::ops::Sub<T> for Column {
+impl std::ops::Sub for Column {
     type Output = Column;
 
-    fn sub(self, rhs: T) -> Self::Output {
-        Column(self.0 - rhs.into().0)
+    fn sub(self, rhs: Column) -> Self::Output {
+        Column(self.0 - rhs.0)
     }
 }
 
 impl std::fmt::Display for Column {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl Deref for Column {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
@@ -48,24 +40,10 @@ impl From<u32> for Column {
     }
 }
 
-impl From<usize> for Column {
-    fn from(value: usize) -> Self {
-        Column(value as u32)
-    }
-}
-
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ColumnParseError {
     #[error("Non-alphabetic character in column")]
     NonAlphabeticCharacter,
-}
-
-impl TryFrom<char> for Column {
-    type Error = ColumnParseError;
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        parse_col(value.to_string())
-    }
 }
 
 impl FromStr for Column {
@@ -73,14 +51,6 @@ impl FromStr for Column {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         parse_col(s)
-    }
-}
-
-impl TryFrom<&str> for Column {
-    type Error = ColumnParseError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        parse_col(value)
     }
 }
 
