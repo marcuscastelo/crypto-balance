@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use error_stack::ResultExt;
 
-use crate::application::exchange::use_cases::get_target_range;
 use crate::domain::exchange::{BalanceRepository, BalanceRepositoryError, BalanceUpdateTarget};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::sheets::spreadsheet_manager::SpreadsheetManager;
@@ -35,15 +34,13 @@ impl BalanceRepository for SpreadsheetBalanceRepository {
         target: BalanceUpdateTarget,
         balances: &[f64],
     ) -> error_stack::Result<(), BalanceRepositoryError> {
-        let range = get_target_range(target);
-
         let balances_str = balances
             .iter()
             .map(|x| format!("${}", x))
             .collect::<Vec<_>>();
 
         self.spreadsheet_manager
-            .write_named_column(range, &balances_str)
+            .write_named_column(target.range(), &balances_str)
             .await
             .change_context(BalanceRepositoryError::UpdateBalancesError)
     }

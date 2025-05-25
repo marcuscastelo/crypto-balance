@@ -60,10 +60,13 @@ impl<T: ExchangeUseCases> Routine for ExchangeBalancesRoutine<T> {
         )?;
 
         tracing::trace!("{}: ☁️  Getting balances from exchange", self.name());
-        let balance_by_token = self.use_cases.fetch_balances().await.map_err(|err| {
-            tracing::error!("{}: ❌ Error fetching balances: {}", self.name(), err);
-            RoutineError::routine_failure("Failed to fetch balances from exchange")
-        })?;
+        let balance_by_token =
+            self.use_cases
+                .fetch_balances()
+                .await
+                .change_context(RoutineError::routine_failure(
+                    "Failed to fetch balances from exchange",
+                ))?;
 
         tracing::trace!("{}: 📊 Ordering balances", self.name());
         let token_balances = self.order_balances(token_names.as_slice(), &balance_by_token);

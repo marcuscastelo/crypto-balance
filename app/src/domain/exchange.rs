@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use super::sheets::ranges;
+
 #[derive(Error, Debug)]
 pub enum BalanceRepositoryError {
     #[error("Failed to fetch token names from repository")]
@@ -12,6 +14,15 @@ pub enum BalanceRepositoryError {
 pub enum BalanceUpdateTarget {
     Binance,
     Kraken,
+}
+
+impl BalanceUpdateTarget {
+    pub fn range(&self) -> &'static str {
+        match &self {
+            BalanceUpdateTarget::Binance => ranges::balances::binance::RW_AMOUNTS,
+            BalanceUpdateTarget::Kraken => ranges::balances::kraken::RW_AMOUNTS,
+        }
+    }
 }
 
 #[async_trait::async_trait]
