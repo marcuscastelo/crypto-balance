@@ -6,7 +6,7 @@ use crate::{
 };
 use anyhow::Ok;
 
-use super::exchange::ExchangeUseCases;
+use super::use_cases::ExchangeUseCases;
 
 pub struct BinanceUseCases;
 

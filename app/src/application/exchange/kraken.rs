@@ -8,7 +8,7 @@ use crate::{
     infrastructure::exchange::kraken_factory::KrakenFactory,
 };
 
-use super::exchange::ExchangeUseCases;
+use super::use_cases::ExchangeUseCases;
 
 pub struct KrakenUseCases;
 

@@ -7,7 +7,7 @@ use crate::{
     domain::routine::{Routine, RoutineError},
 };
 
-use super::exchange::ExchangeUseCases;
+use super::use_cases::ExchangeUseCases;
 
 pub struct ExchangeBalancesRoutine<'s> {
     routine_name: String,
