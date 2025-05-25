@@ -18,7 +18,7 @@ services:
     ports:
       - "16686:16686" # UI
       - "14268:14268" # Jaeger Collector HTTP (Thrift)
-      - "9411:9411"   # habilita Zipkin receiver
+      - "9411:9411"   # enables Zipkin receiver
     environment:
       - COLLECTOR_ZIPKIN_HOST_PORT=:9411
     networks:
