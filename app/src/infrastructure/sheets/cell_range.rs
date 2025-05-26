@@ -1,5 +1,3 @@
-use std::num::TryFromIntError;
-
 use crate::{
     domain::sheets::{
         a1_notation::{
@@ -7,10 +5,13 @@ use crate::{
             ToA1Notation,
         },
         cell_position::CellPosition,
+        column::Column,
+        row::Row,
     },
     infrastructure::sheets::spreadsheet_manager::SpreadsheetManager,
 };
 
+use error_stack::{report, ResultExt};
 use google_sheets4::api::GridRange;
 use thiserror::Error;
 
@@ -23,11 +24,11 @@ pub struct CellRange {
 
 impl CellRange {
     pub fn row_count(&self) -> u32 {
-        self.end.row.value() - self.start.row.value() + 1
+        self.end.row.index() - self.start.row.index() + 1
     }
 
     pub fn column_count(&self) -> u32 {
-        self.end.col.value() - self.start.col.value() + 1
+        self.end.col.index() - self.start.col.index() + 1
     }
 
     pub fn with_sheet_title(&self, sheet_title: String) -> Self {
@@ -38,77 +39,40 @@ impl CellRange {
         }
     }
 
+    fn convert_index(
+        grid_range_index: Option<i32>,
+        field: &str,
+    ) -> error_stack::Result<u32, CellRangeParseError> {
+        grid_range_index
+            .ok_or_else(|| report!(CellRangeParseError::InvalidGridRange))
+            .attach_printable_lazy(|| format!("Missing {field} index in grid range"))
+            .and_then(|i| u32::try_from(i).change_context(CellRangeParseError::InvalidGridRange))
+            .attach_printable_lazy(|| {
+                format!("Invalid {field} index in grid rangem, could not convert to u32",)
+            })
+    }
+
     pub async fn try_from_grid_range_with_sheet_manager(
         grid_range: GridRange,
         spreadsheet_manager: &SpreadsheetManager,
-    ) -> Result<Self, CellRangeParseError> {
-        let start_column_index =
-            grid_range
-                .start_column_index
-                .ok_or(CellRangeParseError::InvalidGridRange(
-                    InvalidGridRangeKind::Missing(InvalidGridRangeTarget::StartColumn),
-                ))?
-                + 1;
+    ) -> error_stack::Result<Self, CellRangeParseError> {
+        let (start_column_index, end_column_index, start_row_index, end_row_index) = (
+            CellRange::convert_index(grid_range.start_column_index, "start_column")?,
+            CellRange::convert_index(grid_range.end_column_index, "end_column")? - 1, // End is exclusive, so we subtract 1
+            CellRange::convert_index(grid_range.start_row_index, "start_row")?,
+            CellRange::convert_index(grid_range.end_row_index, "end_row")? - 1, // End is exclusive, so we subtract 1
+        );
 
-        let end_column_index =
-            grid_range
-                .end_column_index
-                .ok_or(CellRangeParseError::InvalidGridRange(
-                    InvalidGridRangeKind::Missing(InvalidGridRangeTarget::EndColumn),
-                ))?;
-
-        let start_row_index =
-            grid_range
-                .start_row_index
-                .ok_or(CellRangeParseError::InvalidGridRange(
-                    InvalidGridRangeKind::Missing(InvalidGridRangeTarget::StartRow),
-                ))?
-                + 1;
-
-        let end_row_index =
-            grid_range
-                .end_row_index
-                .ok_or(CellRangeParseError::InvalidGridRange(
-                    InvalidGridRangeKind::Missing(InvalidGridRangeTarget::EndRow),
-                ))?;
-
-        let start = CellPosition {
-            row: u32::try_from(start_row_index)
-                .map_err(|error| {
-                    CellRangeParseError::InvalidGridRange(InvalidGridRangeKind::TryFromIntError {
-                        target: InvalidGridRangeTarget::StartRow,
-                        error,
-                    })
-                })?
-                .into(),
-            col: u32::try_from(start_column_index)
-                .map_err(|error| {
-                    CellRangeParseError::InvalidGridRange(InvalidGridRangeKind::TryFromIntError {
-                        target: InvalidGridRangeTarget::StartColumn,
-                        error,
-                    })
-                })?
-                .into(),
-        };
-
-        let end = CellPosition {
-            row: u32::try_from(end_row_index)
-                .map_err(|error| {
-                    CellRangeParseError::InvalidGridRange(InvalidGridRangeKind::TryFromIntError {
-                        target: InvalidGridRangeTarget::EndRow,
-                        error,
-                    })
-                })?
-                .into(),
-            col: u32::try_from(end_column_index)
-                .map_err(|error| {
-                    CellRangeParseError::InvalidGridRange(InvalidGridRangeKind::TryFromIntError {
-                        target: InvalidGridRangeTarget::EndColumn,
-                        error,
-                    })
-                })?
-                .into(),
-        };
+        let (start, end) = (
+            CellPosition {
+                row: Row::from_index(start_row_index),
+                col: Column::from_index(start_column_index),
+            },
+            CellPosition {
+                row: Row::from_index(end_row_index),
+                col: Column::from_index(end_column_index),
+            },
+        );
 
         let sheet_title = match grid_range.sheet_id {
             None => None,
@@ -165,31 +129,8 @@ impl FromA1Notation for CellRange {
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum CellRangeParseError {
-    #[error("Invalid grid range: {0}")]
-    InvalidGridRange(InvalidGridRangeKind),
+    #[error("Missing or invalid grid range field")]
+    InvalidGridRange,
     #[error("Error getting sheet title: {0}")]
     GetSheetTitleError(String),
-}
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum InvalidGridRangeKind {
-    #[error("Missing {0}")]
-    Missing(InvalidGridRangeTarget),
-    #[error("Error while parsing {target} as an integer: {error} ")]
-    TryFromIntError {
-        target: InvalidGridRangeTarget,
-        error: TryFromIntError,
-    },
-}
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum InvalidGridRangeTarget {
-    #[error("Start column")]
-    StartColumn,
-    #[error("End column")]
-    EndColumn,
-    #[error("Start row")]
-    StartRow,
-    #[error("End row")]
-    EndRow,
 }

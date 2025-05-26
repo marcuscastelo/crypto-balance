@@ -30,8 +30,8 @@ pub trait ToA1Notation {
 
 #[derive(Debug, Error)]
 pub enum A1NotationParseError {
-    #[error("Error parsing column: {0}")]
-    ColumnParseError(ColumnParseError),
+    #[error("Error parsing column")]
+    ColumnParseError,
     #[error("Error parsing row")]
     RowParseError,
 }

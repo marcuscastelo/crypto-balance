@@ -5,7 +5,7 @@ use super::{
         generic_a1_notation_split, A1Notation, A1NotationParseError, A1NotationParts,
         FromA1Notation,
     },
-    column::{parse_col, Column},
+    column::Column,
     row::Row,
 };
 
@@ -95,8 +95,13 @@ impl FromA1Notation for CellPosition {
                 .start
                 .as_str()
                 .parse::<Row>()
-                .change_context(A1NotationParseError::RowParseError)?,
-            col: parse_col(&parts.end).map_err(A1NotationParseError::ColumnParseError)?,
+                .change_context(A1NotationParseError::RowParseError)
+                .attach_printable_lazy(|| format!("Failed to parse row from: {}", parts.start))?,
+            col: parts
+                .end
+                .parse::<Column>()
+                .change_context(A1NotationParseError::ColumnParseError)
+                .attach_printable_lazy(|| format!("Failed to parse column from: {}", parts.end))?,
         })
     }
 }

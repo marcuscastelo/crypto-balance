@@ -245,10 +245,10 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
             let chain_title_col: Column = chain_title_cell.col;
             let chain_title_row = chain_title_cell.row;
 
-            let wallet_hold_title_cell = chain_title_cell.clone() + Row::new(1);
+            let wallet_hold_title_cell = chain_title_cell.clone() + Row::from_index(1);
             let wallet_hold_title_cell_a1 =
                 wallet_hold_title_cell.to_a1_notation("Balance - Trezor HOLD".into());
-            let wallet_hold_sc_title_cell = wallet_hold_title_cell + Column::new(1);
+            let wallet_hold_sc_title_cell = wallet_hold_title_cell + Column::from_index(1);
 
             spreadsheet_manager
                 .write_value(&wallet_hold_title_cell_a1, "Hold")
@@ -270,9 +270,9 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
             let token_names = self.get_token_names_from_spreadsheet().await;
 
             let hold_col = chain_title_col;
-            let hold_sc_col: Column = chain_title_col + Column::new(1);
+            let hold_sc_col: Column = chain_title_col + Column::from_index(1);
 
-            let tokens_start_row = chain_title_row + Row::new(1);
+            let tokens_start_row = chain_title_row + Row::from_index(1);
             let tokens_end_row = cell_range.end.row;
 
             let hold_balances_range = CellRange {
@@ -332,7 +332,7 @@ impl Routine for UpdateHoldBalanceOnSheetsRoutine {
                 .await
                 .expect("Should write hold sc balances");
 
-            chain_title_cell = chain_title_cell + Column::new(2);
+            chain_title_cell = chain_title_cell + Column::from_index(2);
         }
         Ok(())
     }
