@@ -241,7 +241,7 @@ impl DebankBalanceScraper {
         Ok(Self { driver })
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     async fn open_debank_url(&self, user_id: &str) -> Result<(), DebankScraperError> {
         let url = Url::parse(format!("https://debank.com/profile/{}", user_id).as_str())
             .change_context(DebankScraperError::UrlParseError)?;
@@ -267,7 +267,7 @@ impl DebankBalanceScraper {
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     async fn wait_data_updated(&self) -> Result<(), DebankScraperError> {
         let update_xpath =
             "/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[2]/div[2]/span";
@@ -300,7 +300,7 @@ impl DebankBalanceScraper {
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     async fn locate_chain_summary_elements(&self) -> Result<Vec<Element>, DebankScraperError> {
         let chains_selector = "div.AssetsOnChain_chainInfo__fKA2k";
         let chains = self
@@ -313,7 +313,7 @@ impl DebankBalanceScraper {
         Ok(chains)
     }
 
-    #[instrument]
+    #[instrument(skip(self, chain))]
     async fn get_chain_info(&self, chain: &Element) -> Result<ChainInfo, DebankScraperError> {
         let chain_name = chain
             .find(Locator::XPath("div[1]"))
@@ -328,6 +328,10 @@ impl DebankBalanceScraper {
             .click()
             .await
             .change_context(DebankScraperError::FailedToClickElement)?;
+
+        tokio::time::sleep(Duration::from_millis(100))
+            .instrument(tracing::span!(Level::DEBUG, "sleep_after_click"))
+            .await;
 
         let token_wallet_selector = "div.TokenWallet_container__FUGTE";
         let project_selector = "div.Project_project__GCrhx";
@@ -349,6 +353,7 @@ impl DebankBalanceScraper {
             .await;
     }
 
+    #[instrument(skip(self, wallet, projects))]
     async fn get_chain_info_parallel(
         &self,
         chain_name: String,
@@ -381,7 +386,7 @@ impl DebankBalanceScraper {
         })
     }
 
-    #[instrument]
+    #[instrument(skip(self, wallet))]
     async fn get_chain_wallet_info(
         &self,
         wallet: &Element,
@@ -418,6 +423,7 @@ impl DebankBalanceScraper {
         Ok(ChainWalletInfo { usd_value, tokens })
     }
 
+    #[instrument(skip(self, row))]
     async fn get_chain_wallet_row_info(
         &self,
         row: &Element,
@@ -441,6 +447,8 @@ impl DebankBalanceScraper {
             usd_value: usd_value?,
         })
     }
+
+    #[instrument(skip(self, row))]
     async fn get_chain_wallet_row_field(
         &self,
         row: &Element,
@@ -456,7 +464,7 @@ impl DebankBalanceScraper {
         Ok(field)
     }
 
-    #[instrument]
+    #[instrument(skip(self, project))]
     async fn get_chain_project_info(
         &self,
         project: &Element,
@@ -495,20 +503,27 @@ impl DebankBalanceScraper {
                 }
             }
 
+            let html = project.html(false).await;
             name.ok_or(DebankScraperError::ElementTextNotFound)
                 .attach_printable_lazy(|| {
-                    format!("Failed to get project name after 3 retries: {:?}", project)
+                    format!(
+                        "Failed to get project name after 3 retries: html={:?}",
+                        html
+                    )
                 })?
         };
 
         let tracking_elements = project
             .find_all(Locator::Css("div.Panel_container__Vltd1"))
             .await
-            .change_context(DebankScraperError::ElementNotFound)?;
+            .change_context(DebankScraperError::ElementNotFound)?
+            .into_iter()
+            .map(|element| (name.as_ref(), element))
+            .collect::<Vec<_>>();
 
         let tracking_futures = tracking_elements
             .iter()
-            .map(|tracking_element| self.explore_tracking(tracking_element));
+            .map(|(name, element)| self.explore_tracking(name, element));
 
         let trackings = futures::future::join_all(tracking_futures)
             .await
@@ -519,13 +534,14 @@ impl DebankBalanceScraper {
         Ok(ChainProjectInfo { name, trackings })
     }
 
-    #[instrument]
+    #[instrument(skip(self, tracking_vltd1_element))]
     async fn explore_tracking(
         &self,
-        tracking: &Element,
+        project_name: &str,
+        tracking_vltd1_element: &Element,
     ) -> Result<ProjectTracking, DebankScraperError> {
-        tracing::trace!("Fetching tracking type...");
-        let tracking_type = tracking
+        tracing::info!("Fetching tracking type for project: {project_name}");
+        let tracking_type = tracking_vltd1_element
             .find(Locator::XPath("div[1]/div[1]/div[1]"))
             .instrument(tracing::span!(Level::DEBUG, "tracking_type"))
             .await
@@ -534,20 +550,51 @@ impl DebankBalanceScraper {
             .await
             .change_context(DebankScraperError::ElementTextNotFound)?;
 
-        tracing::trace!("Tracking type: {}", tracking_type);
+        tracing::info!(
+            "Tracking type for project {}: {}",
+            project_name,
+            tracking_type
+        );
 
-        tracing::trace!("Locating tracking tables...");
-        let tables = tracking
+        tracing::info!(
+            "Locating tracking tables for project/type: {}/{}",
+            project_name,
+            tracking_type
+        );
+        let tables = tracking_vltd1_element
             .find_all(Locator::XPath("div[2]/div"))
             .instrument(tracing::span!(Level::DEBUG, "tracking_tables"))
             .await
             .change_context(DebankScraperError::ElementNotFound)?;
 
-        tracing::trace!("Found {} tables", tables.len());
+        tracing::info!(
+            "Found {} tables for project/type: {}/{}",
+            tables.len(),
+            project_name,
+            tracking_type
+        );
 
-        let generic_infos = self.extract_generic_infos_from_tables(tables).await?;
+        let generic_infos = self
+            .extract_generic_infos_from_tables(project_name, &tracking_type, tables)
+            .await?;
 
-        let specialized = self.specialize_generic_info(&tracking_type, generic_infos)?;
+        tracing::debug!(
+            "Extracted {} generic infos for project/type: {}/{} -> {:?}",
+            generic_infos.len(),
+            project_name,
+            tracking_type,
+            generic_infos
+        );
+
+        let specialized =
+            self.specialize_generic_info(project_name, &tracking_type, generic_infos)?;
+
+        tracing::info!(
+            "Specialized tracking for project/type: {}/{} -> {:?}",
+            project_name,
+            tracking_type,
+            specialized,
+        );
 
         Ok(specialized)
     }
@@ -555,6 +602,8 @@ impl DebankBalanceScraper {
     #[instrument(skip(self, tables), fields(tables_len = tables.len()))]
     async fn extract_generic_infos_from_tables(
         &self,
+        project_name: &str,
+        tracking_type: &str,
         tables: Vec<Element>,
     ) -> Result<Vec<GenericTokenInfo>, DebankScraperError> {
         let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
@@ -562,32 +611,57 @@ impl DebankBalanceScraper {
         let table_len = tables.len();
         for (index, table) in tables.into_iter().enumerate() {
             tracing::trace!("Processing table {}/{}", index + 1, table_len);
-            let generic_info = self.extract_generic_infos_from_table(&table).await?;
+            let generic_info = self
+                .extract_generic_infos_from_table(project_name, tracking_type, &table)
+                .await?;
             tracing::trace!(
-                "Extracted {} generic infos from table {}/{}",
+                "Extracted {} generic infos from table {}/{}: {:?}",
                 generic_info.len(),
                 index + 1,
-                table_len
+                table_len,
+                generic_infos
             );
-            generic_infos.push(generic_info);
+            generic_infos.extend(generic_info);
         }
-        tracing::trace!("Finished processing tables");
+        tracing::info!(
+            "Finished processing tables for project/type: {}/{} -> {:?}",
+            project_name,
+            tracking_type,
+            generic_infos
+        );
 
         let generic_infos = self.parse_generic_info(generic_infos)?;
+
+        tracing::info!(
+            "Parsed {} generic infos for project/type: {}/{} -> {:?}",
+            generic_infos.len(),
+            project_name,
+            tracking_type,
+            generic_infos
+        );
         Ok(generic_infos)
     }
 
     #[instrument(skip(self, table))]
     async fn extract_generic_infos_from_table(
         &self,
+        project_name: &str,
+        tracking_type: &str,
         table: &Element,
-    ) -> Result<Vec<(String, String)>, DebankScraperError> {
-        let mut generic_infos: Vec<(String, String)> = Vec::new();
+    ) -> Result<Vec<Vec<(String, String)>>, DebankScraperError> {
+        let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
         tracing::trace!("Locating tracking headers...");
+        // table_header__onfbK
+        let html = table.html(false).await;
         let tracking_headers = table
             .find_all(Locator::XPath("div[1]//span"))
             .await
-            .change_context(DebankScraperError::ElementNotFound)?;
+            .change_context(DebankScraperError::ElementNotFound)
+            .attach_printable_lazy(|| {
+                let msg = format!("Failed to find tracking headers in table for project: {project_name}, type: {tracking_type}, html: {html:?}");
+                tracing::error!("{}", msg);
+                msg
+            })?;
         tracing::trace!("Found {} headers", tracking_headers.len());
 
         tracing::trace!("Fetching header texts...");
@@ -629,13 +703,28 @@ impl DebankBalanceScraper {
 
         let row_len = rows.len();
         for (index, row) in rows.iter().enumerate() {
-            tracing::trace!("Processing row {}/{}", index + 1, row_len);
-            let zipped = self
+            tracing::trace!(
+                "Processing row {}/{} of {}/{}",
+                index + 1,
+                row_len,
+                project_name,
+                tracking_type
+            );
+            let row_key_values = self
                 .extract_generic_infos_from_row(row, headers.clone())
                 .await
                 .change_context(DebankScraperError::ElementNotFound)?;
 
-            generic_infos.extend(zipped);
+            tracing::info!(
+                "Processed row {}/{} of {}/{} -> {:?}",
+                index + 1,
+                row_len,
+                project_name,
+                tracking_type,
+                row_key_values,
+            );
+
+            generic_infos.push(row_key_values);
         }
 
         tracing::trace!("Finished processing rows");
@@ -675,9 +764,10 @@ impl DebankBalanceScraper {
         Ok(zipped)
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     fn specialize_generic_info(
         &self,
+        project_name: &str,
         tracking_type: &str,
         generic_infos: Vec<GenericTokenInfo>,
     ) -> Result<ProjectTracking, DebankScraperError> {
@@ -838,15 +928,19 @@ impl DebankBalanceScraper {
         }
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     fn parse_generic_info(
         &self,
         generic_info: Vec<Vec<(String, String)>>,
     ) -> Result<Vec<GenericTokenInfo>, DebankScraperError> {
         let mut infos = Vec::new();
+        tracing::trace!("Parsing {} generic infos", generic_info.len());
         for row_values in generic_info.as_slice() {
+            tracing::trace!("Parsing row: {:?}", row_values);
             let mut info = GenericTokenInfo::default();
             for (header, value) in row_values.as_slice() {
+                tracing::trace!("Info before: {:?}", info);
+                tracing::trace!("Header: {}, Value: {}", header, value);
                 match header.as_str() {
                     " " => info.token_name = value.clone().into(),
                     "Pool" => info.pool = value.clone().into(),
@@ -868,6 +962,7 @@ impl DebankBalanceScraper {
                         return Err(DebankScraperError::UnknownHeader.into());
                     }
                 }
+                tracing::trace!("Info after: {:?}", info);
             }
             infos.push(info);
         }
@@ -875,7 +970,7 @@ impl DebankBalanceScraper {
         Ok(infos)
     }
 
-    #[instrument]
+    #[instrument(skip(self, cell))]
     async fn extract_cell_info(&self, cell: &Element) -> Result<String, DebankScraperError> {
         let simple_span = cell.find(Locator::XPath("span")).await;
 
@@ -936,14 +1031,14 @@ impl DebankBalanceScraper {
 }
 
 impl DebankBalanceScraper {
-    #[instrument]
+    #[instrument(skip(self))]
     pub async fn access_profile(&self, user_id: &str) -> Result<(), DebankScraperError> {
         self.open_debank_url(user_id).await?;
         self.wait_data_updated().await?;
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     pub async fn get_total_balance(&self) -> Result<f64, DebankScraperError> {
         let xpath = "//*[@id=\"root\"]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]";
         let balance_text = self
@@ -969,7 +1064,7 @@ impl DebankBalanceScraper {
             })
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     pub async fn explore_debank_profile(
         &self,
         user_id: &str,
