@@ -175,7 +175,10 @@ async fn main() {
     let otel_layer = OpenTelemetryLayer::new(tracer);
 
     Registry::default()
-        .with(tracing_subscriber::filter::LevelFilter::INFO)
+        .with(
+            tracing_subscriber::filter::Targets::new()
+                .with_target("crypto_balance", tracing::Level::TRACE),
+        )
         // .with(json_layer)
         // .with(chrome_layer)
         // .with(flame_layer)
