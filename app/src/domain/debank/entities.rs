@@ -33,32 +33,12 @@ pub struct ChainProjectInfo {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum ProjectTracking {
+    WillBeRefactored {
+        tracking_type: String, // e.g., "Spot", "Lending", "Staked", etc.
+        token_sections: Vec<ProjectTrackingSection<TokenInfo>>,
+    },
     Lending {
         token_sections: Vec<ProjectTrackingSection<LendingTokenInfo>>,
-    },
-    Staked {
-        token_sections: Vec<ProjectTrackingSection<StakeTokenInfo>>,
-    },
-    Locked {
-        token_sections: Vec<ProjectTrackingSection<LockedTokenInfo>>,
-    },
-    Rewards {
-        token_sections: Vec<ProjectTrackingSection<RewardTokenInfo>>,
-    },
-    Vesting {
-        token_sections: Vec<ProjectTrackingSection<VestingTokenInfo>>,
-    },
-    YieldFarm {
-        token_sections: Vec<ProjectTrackingSection<SimpleTokenInfo>>,
-    },
-    Deposit {
-        token_sections: Vec<ProjectTrackingSection<SimpleTokenInfo>>,
-    },
-    LiquidityPool {
-        token_sections: Vec<ProjectTrackingSection<LiquidityPoolTokenInfo>>,
-    },
-    Farming {
-        token_sections: Vec<ProjectTrackingSection<FarmingTokenInfo>>,
     },
 }
 
