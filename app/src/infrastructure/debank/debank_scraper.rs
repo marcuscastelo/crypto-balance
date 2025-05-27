@@ -771,6 +771,23 @@ impl DebankBalanceScraper {
         tracking_type: &str,
         generic_infos: Vec<GenericTokenInfo>,
     ) -> Result<ProjectTracking, DebankScraperError> {
+        // Remove ($XX.XX) from rewards, if present
+        let regex = regex::Regex::new(r"\(<?\$[0-9,.]+\)")
+            .change_context(DebankScraperError::GenericError)?;
+
+        let generic_infos = generic_infos
+            .into_iter()
+            .map(|mut generic| {
+                if let Some(rewards) = &generic.rewards {
+                    tracing::trace!("Replacing rewards dollar representation in generic info");
+                    tracing::trace!("Original rewards: {:?}", rewards);
+                    generic.rewards = Some(regex.replace_all(rewards, "").trim().to_string());
+                    tracing::trace!("Updated rewards: {:?}", generic.rewards);
+                }
+                generic
+            })
+            .collect::<Vec<_>>();
+
         match tracking_type {
             "Yield" => Ok(ProjectTracking::YieldFarm {
                 yield_farm: generic_infos
@@ -952,7 +969,9 @@ impl DebankBalanceScraper {
                     "Supplied" | "Borrowed" | "Rewards" => {
                         // Variant header
                         info.variant_header = header.clone().into();
-                        info.token_name = value.clone().into();
+                        if info.token_name.is_none() {
+                            info.token_name = value.clone().into();
+                        }
                         if header == "Rewards" {
                             info.rewards = value.clone().into();
                         }
@@ -963,6 +982,9 @@ impl DebankBalanceScraper {
                     }
                 }
                 tracing::trace!("Info after: {:?}", info);
+            }
+            if info.token_name.is_none() {
+                info.token_name = info.pool.clone();
             }
             infos.push(info);
         }
