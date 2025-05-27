@@ -37,25 +37,25 @@ pub enum ProjectTracking {
         token_sections: Vec<ProjectTrackingSection<LendingTokenInfo>>,
     },
     Staked {
-        staked: Vec<StakeTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<StakeTokenInfo>>,
     },
     Locked {
-        locked: Vec<LockedTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<LockedTokenInfo>>,
     },
     Rewards {
-        rewards: Vec<RewardTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<RewardTokenInfo>>,
     },
     Vesting {
-        vesting: Vec<VestingTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<VestingTokenInfo>>,
     },
     YieldFarm {
-        yield_farm: Vec<SimpleTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<SimpleTokenInfo>>,
     },
     Deposit {
-        deposit: Vec<SimpleTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<SimpleTokenInfo>>,
     },
     LiquidityPool {
-        liquidity_pool: Vec<LiquidityPoolTokenInfo>,
+        token_sections: Vec<ProjectTrackingSection<LiquidityPoolTokenInfo>>,
     },
     Farming {
         token_sections: Vec<ProjectTrackingSection<FarmingTokenInfo>>,

@@ -405,55 +405,68 @@ impl AaHParser {
 
         for tracking in project.trackings.as_slice() {
             match tracking {
-                ProjectTracking::YieldFarm { yield_farm } => {
-                    for token in yield_farm {
-                        self.parse_simple_token(
-                            chain,
-                            project_name.as_str(),
-                            "Yield",
-                            &SimpleTokenInfo {
-                                token_name: token.token_name.clone(),
-                                pool: token.pool.clone(),
-                                balance: token.balance.clone(),
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
+                ProjectTracking::YieldFarm { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_simple_token(
+                                chain,
+                                project_name.as_str(),
+                                "Yield",
+                                &SimpleTokenInfo {
+                                    token_name: token.token_name.clone(),
+                                    pool: token.pool.clone(),
+                                    balance: token.balance.clone(),
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
-                ProjectTracking::Staked { staked } => {
-                    for token in staked {
-                        self.parse_stake_shaped_token(chain, project_name.as_str(), "Stake", token);
+                ProjectTracking::Staked { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_stake_shaped_token(
+                                chain,
+                                project_name.as_str(),
+                                "Stake",
+                                token,
+                            );
+                        }
                     }
                 }
-                ProjectTracking::Deposit { deposit } => {
-                    for token in deposit {
-                        self.parse_simple_token(
-                            chain,
-                            project_name.as_str(),
-                            "Deposit",
-                            &SimpleTokenInfo {
-                                token_name: token.token_name.clone(),
-                                pool: token.pool.clone(),
-                                balance: token.balance.clone(),
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
+                ProjectTracking::Deposit { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_simple_token(
+                                chain,
+                                project_name.as_str(),
+                                "Deposit",
+                                &SimpleTokenInfo {
+                                    token_name: token.token_name.clone(),
+                                    pool: token.pool.clone(),
+                                    balance: token.balance.clone(),
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
-                ProjectTracking::LiquidityPool { liquidity_pool } => {
-                    for token in liquidity_pool {
-                        self.parse_stake_shaped_token(
-                            chain,
-                            project_name.as_str(),
-                            format!("LiquidityPool: {}", token.pool).as_str(),
-                            &StakeTokenInfo {
-                                balance: token.balance.clone(),
-                                pool: token.pool.clone(),
-                                token_name: token.token_name.clone(),
-                                rewards: None,
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
+                ProjectTracking::LiquidityPool { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_stake_shaped_token(
+                                chain,
+                                project_name.as_str(),
+                                format!("LiquidityPool: {}", token.pool).as_str(),
+                                &StakeTokenInfo {
+                                    balance: token.balance.clone(),
+                                    pool: token.pool.clone(),
+                                    token_name: token.token_name.clone(),
+                                    rewards: None,
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
                 ProjectTracking::Lending { token_sections } => {
@@ -463,10 +476,8 @@ impl AaHParser {
                                 "Lending section without title found in project: '{}', this should not happen",
                                 project_name
                             );
-                            // TODO: return an error instead of panicking
                             panic!("Lending section without title found, this should not happen");
                         };
-
                         for token in section.tokens.as_slice() {
                             let mut token = token.clone();
                             if title == "Borrowed" {
@@ -481,62 +492,64 @@ impl AaHParser {
                         }
                     }
                 }
-                ProjectTracking::Locked { locked } => {
-                    for token in locked {
-                        // TODO: Create a proper function for parsing locked tokens
-                        self.parse_stake_shaped_token(
-                            chain,
-                            project_name.as_str(),
-                            "Locked",
-                            &StakeTokenInfo {
-                                balance: token.balance.clone(),
-                                pool: token.pool.clone(),
-                                token_name: token
-                                    .token_name
-                                    .as_ref()
-                                    .map(|s| s.as_str().to_owned()),
-                                rewards: token.rewards.clone(),
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
+                ProjectTracking::Locked { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_stake_shaped_token(
+                                chain,
+                                project_name.as_str(),
+                                "Locked",
+                                &StakeTokenInfo {
+                                    balance: token.balance.clone(),
+                                    pool: token.pool.clone(),
+                                    token_name: token
+                                        .token_name
+                                        .as_ref()
+                                        .map(|s| s.as_str().to_owned()),
+                                    rewards: token.rewards.clone(),
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
-                ProjectTracking::Vesting { vesting } => {
-                    for token in vesting {
-                        // TODO: Create a proper function for parsing vesting tokens
-                        self.parse_stake_shaped_token(
-                            chain,
-                            project_name.as_str(),
-                            "Vesting",
-                            &StakeTokenInfo {
-                                balance: token.balance.clone(), // TODO: Show claimable amount in the future somehow
-                                pool: token.pool.clone(),
-                                token_name: None,
-                                rewards: None,
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
+                ProjectTracking::Vesting { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_stake_shaped_token(
+                                chain,
+                                project_name.as_str(),
+                                "Vesting",
+                                &StakeTokenInfo {
+                                    balance: token.balance.clone(), // TODO: Show claimable amount in the future
+                                    pool: token.pool.clone(),
+                                    token_name: None,
+                                    rewards: None,
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
-                ProjectTracking::Rewards { rewards } => {
-                    for token in rewards {
-                        // TODO: Create a proper function for parsing rewards tokens
-                        self.parse_stake_shaped_token(
-                            chain,
-                            project_name.as_str(),
-                            "Rewards",
-                            &StakeTokenInfo {
-                                balance: token.balance.clone(),
-                                pool: token.pool.clone(),
-                                token_name: None,
-                                rewards: None,
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
+                ProjectTracking::Rewards { token_sections } => {
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_stake_shaped_token(
+                                chain,
+                                project_name.as_str(),
+                                "Rewards",
+                                &StakeTokenInfo {
+                                    balance: token.balance.clone(),
+                                    pool: token.pool.clone(),
+                                    token_name: None,
+                                    rewards: None,
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
                 ProjectTracking::Farming { token_sections } => {
-                    // TODO: Create a proper function for parsing farming tokens
                     for section in token_sections {
                         for token in section.tokens.as_slice() {
                             self.parse_stake_shaped_token(
