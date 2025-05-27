@@ -4,16 +4,18 @@ use std::{
     vec,
 };
 
-use crate::application::debank::debank_routine::{
-    RelevantDebankToken, TokenMatch, RELEVANT_DEBANK_TOKENS,
+use crate::{
+    application::debank::debank_routine::{
+        RelevantDebankToken, TokenMatch, RELEVANT_DEBANK_TOKENS,
+    },
+    domain::debank::SimpleTokenInfo,
 };
 
 use crate::domain::debank::{
-    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, ProjectTracking,
-    StakeTokenInfo, YieldFarmTokenInfo,
+    ChainProjectInfo, ChainWalletInfo, LendingTokenInfo, ProjectTracking, StakeTokenInfo,
 };
 use anyhow::Ok;
-use tracing::{instrument, Level};
+use tracing::instrument;
 
 #[derive(Debug)]
 pub struct AaHParser {
@@ -258,7 +260,13 @@ impl AaHParser {
     }
 
     #[instrument(skip(self, token), fields(token = ?token.token_name))]
-    fn parse_yield_token(&mut self, chain: &str, project_name: &str, token: &YieldFarmTokenInfo) {
+    fn parse_simple_token(
+        &mut self,
+        chain: &str,
+        project_name: &str,
+        tracking_type: &str,
+        token: &SimpleTokenInfo,
+    ) {
         let extra_names = if let Some(token_name) = token.token_name.as_deref() {
             Some(vec![token_name])
         } else {
@@ -269,7 +277,7 @@ impl AaHParser {
             AaHLocation::from_project_tracking(
                 chain,
                 project_name,
-                "Yield",
+                tracking_type,
                 "Balance",
                 token.pool.as_str(),
             ),
@@ -278,35 +286,8 @@ impl AaHParser {
         )
         .unwrap_or_else(|error: anyhow::Error| {
             tracing::error!(
-                "Failed to parse yield farm token: {}. Error: {:?}",
-                token.pool,
-                error
-            );
-        });
-    }
-
-    #[instrument(skip(self, token), fields(token = ?token.token_name))]
-    fn parse_deposit_token(&mut self, chain: &str, project_name: &str, token: &DepositTokenInfo) {
-        let extra_names = if let Some(token_name) = token.token_name.as_deref() {
-            Some(vec![token_name])
-        } else {
-            None
-        };
-
-        self.parse_generic(
-            AaHLocation::from_project_tracking(
-                chain,
-                project_name,
-                "Deposit",
-                "Balance",
-                token.pool.as_str(),
-            ),
-            token.balance.as_str(),
-            extra_names.as_deref(),
-        )
-        .unwrap_or_else(|error| {
-            tracing::error!(
-                "Failed to parse deposit token: {}. Error: {:?}",
+                "Failed to parse {} farm token: {}. Error: {:?}",
+                tracking_type,
                 token.pool,
                 error
             );
@@ -322,7 +303,7 @@ impl AaHParser {
         &mut self,
         chain: &str,
         project_name: &str,
-        actual_tracking: &str,
+        tracking_type: &str,
         token: &StakeTokenInfo,
     ) {
         let tokens_with_balances = token
@@ -375,7 +356,7 @@ impl AaHParser {
                 AaHLocation::from_project_tracking(
                     chain,
                     project_name,
-                    actual_tracking,
+                    tracking_type,
                     balance_type,
                     token_name,
                 ),
@@ -384,7 +365,7 @@ impl AaHParser {
             )
             .unwrap_or_else(|error| {
                 tracing::error!(
-                    "Failed to parse stake-like token (Project: {project_name}, Tracking: {actual_tracking}): balance: {balance}, token_name: {token_name}. Error: {error:?}",
+                    "Failed to parse stake-like token (Project: {project_name}, Tracking: {tracking_type}): balance: {balance}, token_name: {token_name}. Error: {error:?}",
                 );
             });
         }
@@ -426,7 +407,17 @@ impl AaHParser {
             match tracking {
                 ProjectTracking::YieldFarm { yield_farm } => {
                     for token in yield_farm {
-                        self.parse_yield_token(chain, project_name.as_str(), token);
+                        self.parse_simple_token(
+                            chain,
+                            project_name.as_str(),
+                            "Yield",
+                            &SimpleTokenInfo {
+                                token_name: token.token_name.clone(),
+                                pool: token.pool.clone(),
+                                balance: token.balance.clone(),
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
                     }
                 }
                 ProjectTracking::Staked { staked } => {
@@ -436,7 +427,17 @@ impl AaHParser {
                 }
                 ProjectTracking::Deposit { deposit } => {
                     for token in deposit {
-                        self.parse_deposit_token(chain, project_name.as_str(), token);
+                        self.parse_simple_token(
+                            chain,
+                            project_name.as_str(),
+                            "Deposit",
+                            &SimpleTokenInfo {
+                                token_name: token.token_name.clone(),
+                                pool: token.pool.clone(),
+                                balance: token.balance.clone(),
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
                     }
                 }
                 ProjectTracking::LiquidityPool { liquidity_pool } => {

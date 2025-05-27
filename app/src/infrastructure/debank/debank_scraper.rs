@@ -9,10 +9,9 @@ use tracing::{event, info, instrument, Instrument, Level};
 
 use super::fantoccini_scraper_driver::FantocciniScraperDriver;
 use crate::domain::debank::{
-    ChainInfo, ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, FarmingTokenInfo,
-    LendingTokenInfo, LiquidityPoolTokenInfo, LockedTokenInfo, ProjectTracking,
-    ProjectTrackingSection, RewardTokenInfo, SpotTokenInfo, StakeTokenInfo, TokenInfo,
-    VestingTokenInfo, YieldFarmTokenInfo,
+    ChainInfo, ChainProjectInfo, ChainWalletInfo, FarmingTokenInfo, LendingTokenInfo,
+    LiquidityPoolTokenInfo, LockedTokenInfo, ProjectTracking, ProjectTrackingSection,
+    RewardTokenInfo, SimpleTokenInfo, SpotTokenInfo, StakeTokenInfo, TokenInfo, VestingTokenInfo,
 };
 
 use crate::infrastructure::debank::balance::format_balance;
@@ -617,7 +616,7 @@ impl DebankBalanceScraper {
             "Yield" => Ok(ProjectTracking::YieldFarm {
                 yield_farm: generic_infos
                     .into_iter()
-                    .map(|generic| YieldFarmTokenInfo {
+                    .map(|generic| SimpleTokenInfo {
                         token_name: generic.token_name,
                         pool: generic.pool.expect("Pool not found"),
                         balance: generic.balance.expect("Balance not found"),
@@ -640,7 +639,7 @@ impl DebankBalanceScraper {
             "Deposit" => Ok(ProjectTracking::Deposit {
                 deposit: generic_infos
                     .into_iter()
-                    .map(|generic| DepositTokenInfo {
+                    .map(|generic| SimpleTokenInfo {
                         token_name: generic.token_name,
                         pool: generic.pool.expect("Pool not found"),
                         balance: generic.balance.expect("Balance not found"),

@@ -51,10 +51,10 @@ pub enum ProjectTracking {
         vesting: Vec<VestingTokenInfo>,
     },
     YieldFarm {
-        yield_farm: Vec<YieldFarmTokenInfo>,
+        yield_farm: Vec<SimpleTokenInfo>,
     },
     Deposit {
-        deposit: Vec<DepositTokenInfo>,
+        deposit: Vec<SimpleTokenInfo>,
     },
     LiquidityPool {
         liquidity_pool: Vec<LiquidityPoolTokenInfo>,
@@ -119,17 +119,8 @@ pub struct VestingTokenInfo {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub struct YieldFarmTokenInfo {
+pub struct SimpleTokenInfo {
     pub token_name: Option<String>,
-    pub pool: String,
-    pub balance: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct DepositTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
     pub balance: String,
     pub usd_value: String,
