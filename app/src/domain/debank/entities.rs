@@ -34,9 +34,7 @@ pub struct ChainProjectInfo {
 #[allow(dead_code)]
 pub enum ProjectTracking {
     Lending {
-        supplied: Vec<LendingTokenInfo>,
-        borrowed: Option<Vec<LendingTokenInfo>>,
-        rewards: Option<Vec<LendingTokenInfo>>,
+        token_sections: Vec<ProjectTrackingSection<LendingTokenInfo>>,
     },
     Staked {
         staked: Vec<StakeTokenInfo>,

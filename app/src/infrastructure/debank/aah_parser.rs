@@ -456,30 +456,27 @@ impl AaHParser {
                         );
                     }
                 }
-                ProjectTracking::Lending {
-                    supplied,
-                    borrowed,
-                    rewards: _,
-                } => {
-                    for supplied_token in supplied.as_slice() {
-                        self.parse_lending_token(
-                            chain,
-                            project_name.as_str(),
-                            "Supplied",
-                            supplied_token,
-                        );
-                    }
+                ProjectTracking::Lending { token_sections } => {
+                    for section in token_sections {
+                        let Some(title) = section.title.as_deref() else {
+                            tracing::error!(
+                                "Lending section without title found in project: '{}', this should not happen",
+                                project_name
+                            );
+                            // TODO: return an error instead of panicking
+                            panic!("Lending section without title found, this should not happen");
+                        };
 
-                    if let Some(borrowed_tokens) = borrowed.as_ref() {
-                        for borrowed_token in borrowed_tokens.as_slice() {
-                            let mut borrowed_token = borrowed_token.clone();
-                            borrowed_token.balance =
-                                format!("-{}", borrowed_token.balance.as_str());
+                        for token in section.tokens.as_slice() {
+                            let mut token = token.clone();
+                            if title == "Borrowed" {
+                                token.balance = format!("-{}", token.balance.as_str());
+                            }
                             self.parse_lending_token(
                                 chain,
                                 project_name.as_str(),
-                                "Borrowed",
-                                &borrowed_token,
+                                section.title.as_deref().unwrap_or("Supplied"),
+                                &token,
                             );
                         }
                     }

@@ -710,59 +710,81 @@ impl DebankBalanceScraper {
                 }],
             }),
             "Lending" => Ok(ProjectTracking::Lending {
-                supplied: generic_infos
-                    .iter()
-                    .filter(|generic| generic.variant_header == Some("Supplied".into()))
-                    .map(|generic| LendingTokenInfo {
-                        token_name: generic
-                            .token_name
-                            .as_ref()
-                            .expect("Token name not found")
-                            .clone(),
-                        balance: generic.balance.as_ref().expect("Balance not found").clone(),
-                        usd_value: generic
-                            .usd_value
-                            .as_ref()
-                            .expect("USD value not found")
-                            .clone(),
-                    })
-                    .collect(),
-                borrowed: generic_infos
-                    .iter()
-                    .filter(|generic| generic.variant_header == Some("Borrowed".into()))
-                    .map(|generic| LendingTokenInfo {
-                        token_name: generic
-                            .token_name
-                            .as_ref()
-                            .expect("Token name not found")
-                            .clone(),
-                        balance: generic.balance.as_ref().expect("Balance not found").clone(),
-                        usd_value: generic
-                            .usd_value
-                            .as_ref()
-                            .expect("USD value not found")
-                            .clone(),
-                    })
-                    .collect::<Vec<_>>()
-                    .into(),
-                rewards: generic_infos
-                    .iter()
-                    .filter(|generic| generic.variant_header == Some("Rewards".into()))
-                    .map(|generic| LendingTokenInfo {
-                        token_name: generic
-                            .token_name
-                            .as_ref()
-                            .expect("Token name not found")
-                            .clone(),
-                        balance: generic.balance.as_ref().expect("Balance not found").clone(),
-                        usd_value: generic
-                            .usd_value
-                            .as_ref()
-                            .expect("USD value not found")
-                            .clone(),
-                    })
-                    .collect::<Vec<_>>()
-                    .into(),
+                token_sections: vec![
+                    ProjectTrackingSection {
+                        title: Some("Supplied".into()),
+                        tokens: generic_infos
+                            .iter()
+                            .filter(|generic| generic.variant_header == Some("Supplied".into()))
+                            .map(|generic| LendingTokenInfo {
+                                token_name: generic
+                                    .token_name
+                                    .as_ref()
+                                    .expect("Token name not found")
+                                    .clone(),
+                                balance: generic
+                                    .balance
+                                    .as_ref()
+                                    .expect("Balance not found")
+                                    .clone(),
+                                usd_value: generic
+                                    .usd_value
+                                    .as_ref()
+                                    .expect("USD value not found")
+                                    .clone(),
+                            })
+                            .collect(),
+                    },
+                    ProjectTrackingSection {
+                        title: Some("Borrowed".into()),
+                        tokens: generic_infos
+                            .iter()
+                            .filter(|generic| generic.variant_header == Some("Borrowed".into()))
+                            .map(|generic| LendingTokenInfo {
+                                token_name: generic
+                                    .token_name
+                                    .as_ref()
+                                    .expect("Token name not found")
+                                    .clone(),
+                                balance: generic
+                                    .balance
+                                    .as_ref()
+                                    .expect("Balance not found")
+                                    .clone(),
+                                usd_value: generic
+                                    .usd_value
+                                    .as_ref()
+                                    .expect("USD value not found")
+                                    .clone(),
+                            })
+                            .collect(),
+                    },
+                    ProjectTrackingSection {
+                        title: Some("Rewards".into()),
+                        tokens: generic_infos
+                            .iter()
+                            .filter(|generic| generic.variant_header == Some("Rewards".into()))
+                            .map(|generic| LendingTokenInfo {
+                                token_name: generic
+                                    .token_name
+                                    .as_ref()
+                                    .expect("Token name not found")
+                                    .clone(),
+                                balance: generic
+                                    .balance
+                                    .as_ref()
+                                    .expect("Balance not found")
+                                    .clone(),
+                                usd_value: generic
+                                    .usd_value
+                                    .as_ref()
+                                    .expect("USD value not found")
+                                    .clone(),
+                            })
+                            .collect::<Vec<_>>()
+                            .into(),
+                    },
+                ],
             }),
             _ => {
                 tracing::error!("Unknown tracking type: {}", tracking_type);
