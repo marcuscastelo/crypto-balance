@@ -1,4 +1,3 @@
-use core::fmt;
 use std::{collections::HashMap, fmt::Debug, time::Duration};
 use thiserror::Error;
 
@@ -8,9 +7,15 @@ use futures::join;
 use reqwest::Url;
 use tracing::{event, info, instrument, Instrument, Level};
 
-use crate::infrastructure::debank::{balance::format_balance, scraper_driver::ScraperDriver};
-
 use super::fantoccini_scraper_driver::FantocciniScraperDriver;
+use crate::domain::debank::{
+    ChainInfo, ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, FarmingTokenInfo,
+    LendingTokenInfo, LiquidityPoolTokenInfo, LockedTokenInfo, ProjectTracking,
+    ProjectTrackingSection, RewardTokenInfo, SpotTokenInfo, StakeTokenInfo, TokenInfo,
+    VestingTokenInfo, YieldFarmTokenInfo,
+};
+
+use crate::infrastructure::debank::balance::format_balance;
 
 pub struct DebankBalanceScraper {
     driver: FantocciniScraperDriver,
@@ -50,186 +55,6 @@ pub enum DebankScraperError {
     FailedToClickElement,
     #[error("Generic error")]
     GenericError,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct ChainInfo {
-    pub name: String,
-    pub wallet_info: Option<ChainWalletInfo>,
-    pub project_info: Vec<ChainProjectInfo>,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct ChainWalletInfo {
-    pub usd_value: String,
-    pub tokens: Vec<SpotTokenInfo>,
-}
-
-impl fmt::Display for ChainWalletInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let tokens = self
-            .tokens
-            .iter()
-            .map(|x| format!("{} {}: {}", x.amount, x.name, x.usd_value))
-            .reduce(|a, b| format!("{}; {}", a, b))
-            .unwrap_or("<no tokens>".to_string());
-
-        write!(f, "Wallet: {} USD\nTokens: {}", self.usd_value, tokens)
-    }
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct SpotTokenInfo {
-    pub name: String,
-    pub price: String,
-    pub amount: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct ChainProjectInfo {
-    pub name: String,
-    pub trackings: Vec<ProjectTracking>,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub enum ProjectTracking {
-    Lending {
-        supplied: Vec<LendingTokenInfo>,
-        borrowed: Option<Vec<LendingTokenInfo>>,
-        rewards: Option<Vec<LendingTokenInfo>>,
-    },
-    Staked {
-        staked: Vec<StakeTokenInfo>,
-    },
-    Locked {
-        locked: Vec<LockedTokenInfo>,
-    },
-    Rewards {
-        rewards: Vec<RewardTokenInfo>,
-    },
-    Vesting {
-        vesting: Vec<VestingTokenInfo>,
-    },
-    YieldFarm {
-        yield_farm: Vec<YieldFarmTokenInfo>,
-    },
-    Deposit {
-        deposit: Vec<DepositTokenInfo>,
-    },
-    LiquidityPool {
-        liquidity_pool: Vec<LiquidityPoolTokenInfo>,
-    },
-    Farming {
-        farming: Vec<FarmingTokenInfo>,
-    },
-    Generic {
-        info: Vec<GenericTokenInfo>,
-    },
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct LendingTokenInfo {
-    pub token_name: String,
-    pub balance: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct StakeTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct LockedTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub unlock_time: Option<String>,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct RewardTokenInfo {
-    pub pool: String,
-    pub balance: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct VestingTokenInfo {
-    pub pool: String,
-    pub balance: String,
-    pub claimable_amount: Option<String>,
-    pub end_time: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct YieldFarmTokenInfo {
-    pub token_name: Option<String>,
-    pub pool: String,
-    pub balance: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct DepositTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct LiquidityPoolTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct FarmingTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub usd_value: String,
-}
-
-// Contains all fields from before, but optional
-#[derive(Debug, Clone, Default)]
-pub struct GenericTokenInfo {
-    pub token_name: Option<String>,
-    pub pool: Option<String>,
-    pub balance: Option<String>,
-    pub rewards: Option<String>,
-    pub unlock_time: Option<String>,
-    pub claimable_amount: Option<String>,
-    pub end_time: Option<String>,
-    pub usd_value: Option<String>,
-    pub variant_header: Option<String>, // Supplied, Borrowed, Rewards, etc. (not to be confused with tracking title)
 }
 
 impl DebankBalanceScraper {
@@ -605,7 +430,7 @@ impl DebankBalanceScraper {
         project_name: &str,
         tracking_type: &str,
         tables: Vec<Element>,
-    ) -> Result<Vec<GenericTokenInfo>, DebankScraperError> {
+    ) -> Result<Vec<TokenInfo>, DebankScraperError> {
         let mut generic_infos: Vec<Vec<(String, String)>> = Vec::new();
 
         let table_len = tables.len();
@@ -769,7 +594,7 @@ impl DebankBalanceScraper {
         &self,
         project_name: &str,
         tracking_type: &str,
-        generic_infos: Vec<GenericTokenInfo>,
+        generic_infos: Vec<TokenInfo>,
     ) -> Result<ProjectTracking, DebankScraperError> {
         // Remove ($XX.XX) from rewards, if present
         let regex = regex::Regex::new(r"\(<?\$[0-9,.]+\)")
@@ -871,16 +696,19 @@ impl DebankBalanceScraper {
                     .collect(),
             }),
             "Farming" => Ok(ProjectTracking::Farming {
-                farming: generic_infos
-                    .into_iter()
-                    .map(|generic| FarmingTokenInfo {
-                        token_name: generic.token_name,
-                        pool: generic.pool.expect("Pool not found"),
-                        balance: generic.balance.expect("Balance not found"),
-                        usd_value: generic.usd_value.expect("USD value not found"),
-                        rewards: generic.rewards,
-                    })
-                    .collect(),
+                token_sections: vec![ProjectTrackingSection {
+                    title: None,
+                    tokens: generic_infos
+                        .into_iter()
+                        .map(|generic| FarmingTokenInfo {
+                            token_name: generic.token_name,
+                            pool: generic.pool.expect("Pool not found"),
+                            balance: generic.balance.expect("Balance not found"),
+                            usd_value: generic.usd_value.expect("USD value not found"),
+                            rewards: generic.rewards,
+                        })
+                        .collect(),
+                }],
             }),
             "Lending" => Ok(ProjectTracking::Lending {
                 supplied: generic_infos
@@ -949,12 +777,12 @@ impl DebankBalanceScraper {
     fn parse_generic_info(
         &self,
         generic_info: Vec<Vec<(String, String)>>,
-    ) -> Result<Vec<GenericTokenInfo>, DebankScraperError> {
+    ) -> Result<Vec<TokenInfo>, DebankScraperError> {
         let mut infos = Vec::new();
         tracing::trace!("Parsing {} generic infos", generic_info.len());
         for row_values in generic_info.as_slice() {
             tracing::trace!("Parsing row: {:?}", row_values);
-            let mut info = GenericTokenInfo::default();
+            let mut info = TokenInfo::default();
             for (header, value) in row_values.as_slice() {
                 tracing::trace!("Info before: {:?}", info);
                 tracing::trace!("Header: {}, Value: {}", header, value);

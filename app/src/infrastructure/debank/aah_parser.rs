@@ -8,9 +8,9 @@ use crate::application::debank::debank_routine::{
     RelevantDebankToken, TokenMatch, RELEVANT_DEBANK_TOKENS,
 };
 
-use super::debank_scraper::{
-    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, LiquidityPoolTokenInfo,
-    ProjectTracking, StakeTokenInfo, YieldFarmTokenInfo,
+use crate::domain::debank::{
+    ChainProjectInfo, ChainWalletInfo, DepositTokenInfo, LendingTokenInfo, ProjectTracking,
+    StakeTokenInfo, YieldFarmTokenInfo,
 };
 use anyhow::Ok;
 use tracing::{instrument, Level};
@@ -537,32 +537,23 @@ impl AaHParser {
                         );
                     }
                 }
-                ProjectTracking::Farming { farming } => {
+                ProjectTracking::Farming { token_sections } => {
                     // TODO: Create a proper function for parsing farming tokens
-                    for token in farming {
-                        self.parse_stake_shaped_token(
-                            chain,
-                            project_name.as_str(),
-                            "Farming",
-                            &StakeTokenInfo {
-                                balance: token.balance.clone(),
-                                pool: token.pool.clone(),
-                                token_name: token.token_name.clone(),
-                                rewards: token.rewards.clone(),
-                                usd_value: token.usd_value.clone(),
-                            },
-                        );
-                    }
-                }
-                ProjectTracking::Generic { info } => {
-                    for token in info {
-                        tracing::event!(
-                            Level::ERROR,
-                            token = ?token,
-                            project = ?project_name,
-                            chain = ?chain,
-                            "Generic token parsing is not supported! Something is wrong!"
-                        );
+                    for section in token_sections {
+                        for token in section.tokens.as_slice() {
+                            self.parse_stake_shaped_token(
+                                chain,
+                                project_name.as_str(),
+                                "Farming",
+                                &StakeTokenInfo {
+                                    balance: token.balance.clone(),
+                                    pool: token.pool.clone(),
+                                    token_name: token.token_name.clone(),
+                                    rewards: token.rewards.clone(),
+                                    usd_value: token.usd_value.clone(),
+                                },
+                            );
+                        }
                     }
                 }
             }

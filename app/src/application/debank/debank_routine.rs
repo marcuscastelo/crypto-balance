@@ -5,11 +5,12 @@ use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
 
+use crate::domain::debank::ChainInfo;
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
 use crate::infrastructure::debank::aah_parser::AaHParser;
-use crate::infrastructure::debank::debank_scraper::{ChainInfo, DebankBalanceScraper};
+use crate::infrastructure::debank::debank_scraper::DebankBalanceScraper;
 use crate::infrastructure::sheets::spreadsheet_manager::{
     SpreadsheetManager, SpreadsheetManagerError,
 };
