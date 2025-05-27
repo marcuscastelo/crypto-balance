@@ -1,41 +1,40 @@
-use error_stack::{Context, Result, ResultExt};
-use std::fmt;
 use std::process::{Child, Command};
+
+use error_stack::ResultExt;
+use thiserror::Error;
 use tracing::instrument;
 
-use fantoccini::{Client, ClientBuilder};
-
-pub struct ScraperDriver {
-    driver_process: Option<Child>,
-    pub client: Client,
+pub trait ScraperDriver {
+    type Selector;
+    async fn visit_url(&mut self, url: &str) -> error_stack::Result<(), ScraperDriverError>;
+    async fn wait_for_url(&mut self, url: &str) -> error_stack::Result<(), ScraperDriverError>;
+    async fn close(&mut self) -> error_stack::Result<(), ScraperDriverError>;
+    async fn find(
+        &mut self,
+        selector: Self::Selector,
+    ) -> error_stack::Result<(), ScraperDriverError>;
+    async fn find_all(
+        &mut self,
+        selector: Self::Selector,
+    ) -> error_stack::Result<(), ScraperDriverError>;
 }
 
-impl fmt::Debug for ScraperDriver {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ScraperDriver {{ }}")
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ScraperDriverError {
+    #[error("Failed to spawn geckodriver process")]
     FailedToSpawnGeckodriver,
+    #[error("Failed to create client for geckodriver")]
     FailedToCreateClient,
 }
 
-impl Context for ScraperDriverError {}
-
-impl fmt::Display for ScraperDriverError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{:?}", self)
-    }
-}
-
-fn random_port() -> u16 {
+pub fn random_port() -> u16 {
     rand::random::<u16>() % (65535 - 1024) + 1024
 }
 
 #[instrument]
-async fn spawn_geckodriver_process(port: u16) -> Result<Child, ScraperDriverError> {
+pub async fn spawn_geckodriver_process(
+    port: u16,
+) -> error_stack::Result<Child, ScraperDriverError> {
     Command::new("geckodriver")
         .arg("--port")
         .arg(port.to_string())
@@ -45,68 +44,4 @@ async fn spawn_geckodriver_process(port: u16) -> Result<Child, ScraperDriverErro
         .stderr(std::process::Stdio::null())
         .spawn()
         .change_context(ScraperDriverError::FailedToSpawnGeckodriver)
-}
-
-#[instrument]
-async fn create_and_configure_client(port: u16) -> Result<Client, ScraperDriverError> {
-    // tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    let client = ClientBuilder::native()
-        .connect(format!("http://localhost:{}", port).as_str())
-        .await
-        .change_context(ScraperDriverError::FailedToCreateClient)
-        .attach_printable_lazy(|| format!("Failed to connect to geckodriver on port {}", port))?;
-
-    client.set_ua("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OPR/112.0.0.0").await.change_context(ScraperDriverError::FailedToCreateClient)?;
-
-    Ok(client)
-}
-
-impl ScraperDriver {
-    #[instrument]
-    pub async fn new() -> Result<Self, ScraperDriverError> {
-        let port = random_port();
-
-        let scraper = ScraperDriver {
-            driver_process: spawn_geckodriver_process(port).await?.into(),
-            client: create_and_configure_client(port).await?.into(),
-        };
-
-        Ok(scraper)
-    }
-
-    #[instrument]
-    pub fn close(&mut self) {
-        let process = self
-            .driver_process
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("No geckodriver process to close"));
-
-        let client_clone = self.client.clone();
-        let client = std::mem::replace(&mut self.client, client_clone);
-
-        let future = async {
-            client.close().await.unwrap_or_else(|error| {
-                tracing::error!("Failed to close WebDriver client: {}", error)
-            });
-
-            if let Ok(mut process) = process {
-                process.kill().unwrap_or_else(|error| {
-                    tracing::error!("Failed to kill geckodriver process: {}", error)
-                })
-            } else {
-                tracing::error!("Failed to close geckodriver process")
-            }
-        };
-
-        tokio::spawn(future);
-    }
-}
-
-impl Drop for ScraperDriver {
-    fn drop(&mut self) {
-        self.close();
-
-        // Sleep for a bit to allow future to run (hacky, but it works for now)
-        std::thread::sleep(std::time::Duration::from_secs(1));
-    }
 }

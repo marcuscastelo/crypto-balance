@@ -8,12 +8,12 @@ use futures::join;
 use reqwest::Url;
 use tracing::{event, info, instrument, Instrument, Level};
 
-use crate::infrastructure::debank::balance::format_balance;
+use crate::infrastructure::debank::{balance::format_balance, scraper_driver::ScraperDriver};
 
-use super::scraper_driver::ScraperDriver;
+use super::fantoccini_scraper_driver::FantocciniScraperDriver;
 
 pub struct DebankBalanceScraper {
-    driver: ScraperDriver,
+    driver: FantocciniScraperDriver,
 }
 
 impl Debug for DebankBalanceScraper {
@@ -235,7 +235,7 @@ pub struct GenericTokenInfo {
 impl DebankBalanceScraper {
     #[instrument]
     pub async fn new() -> Result<Self, DebankScraperError> {
-        let driver = ScraperDriver::new()
+        let driver = FantocciniScraperDriver::new()
             .await
             .change_context(DebankScraperError::FailedToCreateDriver)?;
         Ok(Self { driver })
