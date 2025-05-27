@@ -26,3 +26,4 @@ priv_key.json
 Config.toml
 
 crypto-balance
+*.log

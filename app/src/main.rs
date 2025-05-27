@@ -140,23 +140,15 @@ async fn main() {
     let indicatif_layer = IndicatifLayer::new();
 
     let stdout_layer = tracing_subscriber::fmt::layer()
-        .event_format(PrettyFormatter::new())
-        .with_writer(indicatif_layer.get_stderr_writer())
-        .with_ansi(true);
+        .event_format(PrettyFormatter::new(true))
+        .with_writer(indicatif_layer.get_stderr_writer());
 
-    // let file = File::create("log.ndjson").unwrap();
-    // let json_layer = tracing_subscriber::fmt::layer()
-    //     .json()
-    //     .with_writer(file)
-    //     .with_span_events(fmt::format::FmtSpan::FULL);
-
-    // let (chrome_layer, _guard) = ChromeLayerBuilder::new()
-    //     .file("chrome_trace.json")
-    //     .include_args(true)
-    //     .build();
-
-    // let file = File::create("flame.folded").unwrap();
-    // let flame_layer = FlameLayer::new(file);
+    let log_file_layer = tracing_subscriber::fmt::layer()
+        .event_format(PrettyFormatter::new(false))
+        .with_writer(
+            std::fs::File::create("crypto_balance.log").expect("Failed to create log file"),
+        )
+        .with_ansi(false);
 
     let exporter = opentelemetry_otlp::new_exporter()
         .tonic()
@@ -179,11 +171,9 @@ async fn main() {
             tracing_subscriber::filter::Targets::new()
                 .with_target("crypto_balance", tracing::Level::TRACE),
         )
-        // .with(json_layer)
-        // .with(chrome_layer)
-        // .with(flame_layer)
         .with(otel_layer)
         .with(indicatif_layer)
+        .with(log_file_layer)
         .with(stdout_layer)
         .init();
 

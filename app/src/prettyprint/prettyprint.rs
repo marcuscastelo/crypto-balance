@@ -13,10 +13,10 @@ pub struct PrettyFormatter {
 }
 
 impl PrettyFormatter {
-    pub fn new() -> Self {
+    pub fn new(ansi: bool) -> Self {
         Self {
             inner: fmt::format()
-                .with_ansi(true)
+                .with_ansi(ansi)
                 .with_target(false)
                 .with_file(false)
                 .with_line_number(false)
