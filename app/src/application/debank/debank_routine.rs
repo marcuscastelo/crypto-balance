@@ -85,6 +85,8 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "RUSD",
                 "USDX(Stables Labs)",
                 "atUSD",
+                "GHO",
+                "lvlUSD",
             ],
         },
         RelevantDebankToken {
