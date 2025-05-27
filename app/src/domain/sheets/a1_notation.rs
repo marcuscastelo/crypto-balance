@@ -1,7 +1,7 @@
 use std::fmt::Formatter;
 use thiserror::Error;
 
-use super::{cell_position::CellPosition, column::ColumnParseError};
+use super::cell_position::CellPosition;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub struct A1Notation(pub String);

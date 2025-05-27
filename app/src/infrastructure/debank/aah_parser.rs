@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Debug,
+    fmt::{Debug, Display},
     vec,
 };
 
@@ -48,6 +48,68 @@ fn parse_amount(amount: &str) -> anyhow::Result<f64> {
     })?)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AaHLocation<'a> {
+    pub chain: &'a str,
+    pub custody: AaHCustody<'a>,
+    pub token_name: &'a str,
+}
+
+impl<'a> AaHLocation<'a> {
+    pub fn from_wallet_token(chain: &'a str, token_name: &'a str) -> AaHLocation<'a> {
+        AaHLocation {
+            chain,
+            custody: AaHCustody::Wallet,
+            token_name,
+        }
+    }
+
+    pub fn from_project_tracking(
+        chain: &'a str,
+        project_name: &'a str,
+        tracking_type: &'a str,
+        balance_type: &'a str,
+        token_name: &'a str,
+    ) -> AaHLocation<'a> {
+        AaHLocation {
+            chain,
+            custody: AaHCustody::Project {
+                project_name,
+                tracking_type,
+                balance_type,
+            },
+            token_name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AaHCustody<'a> {
+    Wallet,
+    Project {
+        project_name: &'a str,
+        tracking_type: &'a str,
+        balance_type: &'a str,
+    },
+}
+
+impl<'a> Display for AaHLocation<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.custody {
+            AaHCustody::Wallet => write!(f, "{} - <wallet> ({})", self.chain, self.token_name),
+            AaHCustody::Project {
+                project_name,
+                tracking_type,
+                balance_type,
+            } => write!(
+                f,
+                "{} - {}<{}, {}> ({})",
+                self.chain, project_name, tracking_type, balance_type, self.token_name
+            ),
+        }
+    }
+}
+
 impl AaHParser {
     #[instrument]
     pub fn new() -> AaHParser {
@@ -59,16 +121,17 @@ impl AaHParser {
     #[instrument(skip(self))]
     fn parse_generic(
         &mut self,
-        chain: &str,
-        location: &str,
+        token_location: AaHLocation,
         amount: &str,
-        token_name: &str,
         extra_names: Option<&[&str]>,
     ) -> anyhow::Result<()> {
         let matches = RELEVANT_DEBANK_TOKENS
             .iter()
             .flat_map(|relevant_token: &RelevantDebankToken| {
-                let main_match = (relevant_token, relevant_token.matches(token_name));
+                let main_match = (
+                    relevant_token,
+                    relevant_token.matches(token_location.token_name),
+                );
 
                 let extras = if let Some(extra_names) = extra_names {
                     extra_names
@@ -110,21 +173,21 @@ impl AaHParser {
             if similar_matches.is_empty() {
                 tracing::error!(
                     "No exact nor similar matches found for token: '{}', cannot parse",
-                    token_name
+                    token_location
                 );
                 return Err(anyhow::anyhow!(
                     "No exact nor similar matches found for token: '{}'",
-                    token_name
+                    token_location
                 ));
             } else {
                 tracing::error!(
                     "No exact matches found for token: '{}', but found similar matches: \n{:#?}, please check if this is any should be added",
-                    token_name,
+                    token_location,
                     similar_matches
                 );
                 return Err(anyhow::anyhow!(
                     "No exact matches found for token: '{}', but found similar matches: \n{:#?}, please check if this is any should be added",
-                    token_name, similar_matches
+                    token_location, similar_matches
                 ));
             }
         }
@@ -137,7 +200,7 @@ impl AaHParser {
         if unique_exact_match_names.len() > 1 {
             tracing::error!(
                 "Multiple exact_matches found for token {} -> \n{:#?}, cannot parse",
-                token_name,
+                token_location,
                 exact_matches
             );
             return Err(anyhow::anyhow!("Multiple exact matches found for token"));
@@ -145,10 +208,8 @@ impl AaHParser {
 
         let Some((token, _)) = exact_matches.first() else {
             tracing::warn!(
-                "Ignoring token: '{}' - Location: '{}', Chain: '{}'. No exact match found.",
-                token_name,
-                location,
-                chain
+                "Ignoring token: '{}' since it does not seem to be relevant (no exact matches found)",
+                token_location,
             );
             return Ok(());
         };
@@ -159,11 +220,20 @@ impl AaHParser {
             .or_insert(HashMap::new());
 
         let mut amount = parse_amount(amount)?;
-        let name = format!("{} - {} ({})", chain, location, token_name);
+        let name = format!("{token_location}");
 
         if token_balances.contains_key(&name) {
-            tracing::warn!("Duplicate token found: {}. Proceed with caution!", name);
+            tracing::warn!(
+                "The same location has appeared multiple times: '{}', adding amounts together",
+                name
+            );
+            tracing::warn!(
+                "Previous amount for '{}': {}",
+                name,
+                token_balances.get(&name).unwrap()
+            );
             amount += token_balances.get(&name).unwrap();
+            tracing::warn!("New amount for '{}': {}", name, amount);
         }
         token_balances.insert(name, amount);
         Ok(())
@@ -173,10 +243,8 @@ impl AaHParser {
     pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWalletInfo) {
         for token in wallet.tokens.as_slice() {
             self.parse_generic(
-                chain,
-                "Wallet",
+                AaHLocation::from_wallet_token(chain, token.name.as_str()),
                 token.amount.as_str(),
-                token.name.as_str(),
                 None,
             )
             .unwrap_or_else(|error| {
@@ -198,10 +266,14 @@ impl AaHParser {
         };
 
         self.parse_generic(
-            chain,
-            format!("{}(Yield)", project_name).as_str(),
+            AaHLocation::from_project_tracking(
+                chain,
+                project_name,
+                "Yield",
+                "Balance",
+                token.pool.as_str(),
+            ),
             token.balance.as_str(),
-            token.pool.as_str(),
             extra_names.as_deref(),
         )
         .unwrap_or_else(|error: anyhow::Error| {
@@ -222,10 +294,14 @@ impl AaHParser {
         };
 
         self.parse_generic(
-            chain,
-            format!("{}(Deposit)", project_name).as_str(),
+            AaHLocation::from_project_tracking(
+                chain,
+                project_name,
+                "Deposit",
+                "Balance",
+                token.pool.as_str(),
+            ),
             token.balance.as_str(),
-            token.pool.as_str(),
             extra_names.as_deref(),
         )
         .unwrap_or_else(|error| {
@@ -237,147 +313,100 @@ impl AaHParser {
         });
     }
 
+    fn split_balance_token(s: &str) -> Option<(&str, &str)> {
+        s.split_once(' ')
+    }
+
     #[instrument(skip(self, token), fields(token = ?token.token_name))]
-    fn parse_liquidity_pool_token(
+    fn parse_stake_shaped_token(
         &mut self,
         chain: &str,
         project_name: &str,
-        token: &LiquidityPoolTokenInfo,
+        actual_tracking: &str,
+        token: &StakeTokenInfo,
     ) {
-        let (balance1, balance2) = token
+        let tokens_with_balances = token
             .balance
-            .split_once('\n')
-            .map_or((token.balance.as_str(), None), |(balance1, balance2)| {
-                (balance1, Some(balance2))
-            });
+            .split('\n')
+            .filter_map(|s| {
+                let Some((balance, token_name)) = AaHParser::split_balance_token(s) else {
+                    tracing::error!(
+                        "Failed to split stake-like token balance and token name: '{}'. Skipping.",
+                        s
+                    );
+                    return None;
+                };
 
-        let (balance1, token1) = balance1.split_once(' ').unwrap_or((balance1, ""));
-        let (balance2, token2) = balance2.map_or((None, None), |balance2| {
-            let (balance2, token2) = balance2.split_once(' ').unwrap_or((balance2, ""));
-            (Some(balance2), Some(token2))
-        });
+                Some(("Balance", balance, token_name))
+            })
+            .collect::<Vec<_>>();
 
-        let extra_names =
-            AaHParser::get_extra_names(token.pool.as_str(), token.token_name.as_deref());
+        let rewards_with_balances = token
+            .rewards
+            .as_ref()
+            .map(|rewards| {
+                rewards
+                    .split('\n')
+                    .filter_map(|s| {
+                        let Some((balance, token_name)) = AaHParser::split_balance_token(s) else {
+                            tracing::error!(
+                                "Failed to split rewards balance and token name: '{}'. Skipping.",
+                                s
+                            );
+                            return None;
+                        };
 
-        self.parse_generic(
-            chain,
-            format!("{}(Liquidity Pool: {})", project_name, token1).as_str(),
-            balance1,
-            token1,
-            extra_names.as_deref(),
-        )
-        .unwrap_or_else(|error| {
-            tracing::error!(
-                "Failed to parse liquidity pool token: {}. Error: {:?}",
-                token1,
-                error
+                        Some(("Rewards", balance, token_name))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        let all_types_with_balances = tokens_with_balances
+            .into_iter()
+            .chain(rewards_with_balances.into_iter())
+            .collect::<Vec<_>>();
+
+        for (balance_type, balance, token_name) in all_types_with_balances.as_slice() {
+            tracing::info!(
+                "Parsing stake-like token (Project: {project_name}): balance: {balance}, token_name: {token_name}, type: {balance_type}",
             );
-        });
-
-        if let (Some(balance2), Some(token2)) = (balance2, token2) {
             self.parse_generic(
-                chain,
-                format!("{}(Liquidity Pool: {})", project_name, token2).as_str(),
-                balance2,
-                token2,
-                extra_names.as_deref(),
+                AaHLocation::from_project_tracking(
+                    chain,
+                    project_name,
+                    actual_tracking,
+                    balance_type,
+                    token_name,
+                ),
+                balance,
+                None,
             )
             .unwrap_or_else(|error| {
                 tracing::error!(
-                    "Failed to parse liquidity pool token: {}. Error: {:?}",
-                    token2,
-                    error
-                );
-            });
-        }
-    }
-
-    fn split_balance_token(s: &str) -> (&str, &str) {
-        s.split_once(' ').unwrap_or((s, ""))
-    }
-
-    fn get_extra_names<'a>(pool: &'a str, token_name: Option<&'a str>) -> Option<Vec<&'a str>> {
-        let mut extra_names = vec![];
-
-        let (pool_left, pool_right) = pool.split_once('+').unwrap_or(("", ""));
-
-        extra_names.push(pool);
-        if !pool_left.is_empty() {
-            extra_names.push(pool_left);
-        }
-        if !pool_right.is_empty() {
-            extra_names.push(pool_right);
-        }
-        if let Some(token_name) = token_name {
-            extra_names.push(token_name);
-        }
-
-        if extra_names.is_empty() {
-            None
-        } else {
-            Some(extra_names)
-        }
-    }
-
-    #[instrument(skip(self, token), fields(token = ?token.token_name))]
-    fn parse_stake_token(&mut self, chain: &str, project_name: &str, token: &StakeTokenInfo) {
-        let (balance1, balance2) = token
-            .balance
-            .split_once('\n')
-            .map_or((token.balance.as_str(), None), |(balance1, balance2)| {
-                (balance1, Some(balance2))
-            });
-
-        let (balance1, token1) = AaHParser::split_balance_token(balance1);
-        let (balance2, token2) = balance2.map_or((None, None), |balance2| {
-            let (balance2, token2) = AaHParser::split_balance_token(balance2);
-            (Some(balance2), Some(token2))
-        });
-
-        let extra_names =
-            AaHParser::get_extra_names(token.pool.as_str(), token.token_name.as_deref());
-
-        self.parse_generic(
-            chain,
-            format!("{}(Stake: {})", project_name, token1).as_str(),
-            balance1,
-            token1,
-            extra_names.as_deref(),
-        )
-        .unwrap_or_else(|error| {
-            tracing::error!(
-                "Failed to parse stake token: {}. Error: {:?}",
-                token1,
-                error
-            );
-        });
-
-        if let (Some(balance2), Some(token2)) = (balance2, token2) {
-            self.parse_generic(
-                chain,
-                format!("{}(Stake: {})", project_name, token2).as_str(),
-                balance2,
-                token2,
-                extra_names.as_deref(),
-            )
-            .unwrap_or_else(|error| {
-                tracing::error!(
-                    "Failed to parse stake token: {}. Error: {:?}",
-                    token2,
-                    error
+                    "Failed to parse stake-like token (Project: {project_name}, Tracking: {actual_tracking}): balance: {balance}, token_name: {token_name}. Error: {error:?}",
                 );
             });
         }
     }
 
     #[instrument(skip(self, token), fields(token = ?token.token_name))]
-    fn parse_lending_token(&mut self, chain: &str, project_name: &str, token: &LendingTokenInfo) {
+    fn parse_lending_token(
+        &mut self,
+        chain: &str,
+        project_name: &str,
+        balance_type: &str,
+        token: &LendingTokenInfo,
+    ) {
         self.parse_generic(
-            chain,
-            format!("{}(Lending)", project_name).as_str(),
+            AaHLocation::from_project_tracking(
+                chain,
+                project_name,
+                "Lending",
+                balance_type,
+                token.token_name.as_str(),
+            ),
             token.balance.as_str(),
-            token.token_name.as_str(),
             None,
         )
         .unwrap_or_else(|error| {
@@ -402,7 +431,7 @@ impl AaHParser {
                 }
                 ProjectTracking::Staked { staked } => {
                     for token in staked {
-                        self.parse_stake_token(chain, project_name.as_str(), token);
+                        self.parse_stake_shaped_token(chain, project_name.as_str(), "Stake", token);
                     }
                 }
                 ProjectTracking::Deposit { deposit } => {
@@ -412,7 +441,18 @@ impl AaHParser {
                 }
                 ProjectTracking::LiquidityPool { liquidity_pool } => {
                     for token in liquidity_pool {
-                        self.parse_liquidity_pool_token(chain, project_name.as_str(), token);
+                        self.parse_stake_shaped_token(
+                            chain,
+                            project_name.as_str(),
+                            format!("LiquidityPool: {}", token.pool).as_str(),
+                            &StakeTokenInfo {
+                                balance: token.balance.clone(),
+                                pool: token.pool.clone(),
+                                token_name: token.token_name.clone(),
+                                rewards: None,
+                                usd_value: token.usd_value.clone(),
+                            },
+                        );
                     }
                 }
                 ProjectTracking::Lending {
@@ -423,7 +463,8 @@ impl AaHParser {
                     for supplied_token in supplied.as_slice() {
                         self.parse_lending_token(
                             chain,
-                            format!("{}(Supplied)", project_name).as_str(),
+                            project_name.as_str(),
+                            "Supplied",
                             supplied_token,
                         );
                     }
@@ -435,7 +476,8 @@ impl AaHParser {
                                 format!("-{}", borrowed_token.balance.as_str());
                             self.parse_lending_token(
                                 chain,
-                                format!("{}(Borrowed)", project_name).as_str(),
+                                project_name.as_str(),
+                                "Borrowed",
                                 &borrowed_token,
                             );
                         }
@@ -444,9 +486,10 @@ impl AaHParser {
                 ProjectTracking::Locked { locked } => {
                     for token in locked {
                         // TODO: Create a proper function for parsing locked tokens
-                        self.parse_stake_token(
+                        self.parse_stake_shaped_token(
                             chain,
                             project_name.as_str(),
+                            "Locked",
                             &StakeTokenInfo {
                                 balance: token.balance.clone(),
                                 pool: token.pool.clone(),
@@ -463,9 +506,10 @@ impl AaHParser {
                 ProjectTracking::Vesting { vesting } => {
                     for token in vesting {
                         // TODO: Create a proper function for parsing vesting tokens
-                        self.parse_stake_token(
+                        self.parse_stake_shaped_token(
                             chain,
                             project_name.as_str(),
+                            "Vesting",
                             &StakeTokenInfo {
                                 balance: token.balance.clone(), // TODO: Show claimable amount in the future somehow
                                 pool: token.pool.clone(),
@@ -479,9 +523,10 @@ impl AaHParser {
                 ProjectTracking::Rewards { rewards } => {
                     for token in rewards {
                         // TODO: Create a proper function for parsing rewards tokens
-                        self.parse_stake_token(
+                        self.parse_stake_shaped_token(
                             chain,
                             project_name.as_str(),
+                            "Rewards",
                             &StakeTokenInfo {
                                 balance: token.balance.clone(),
                                 pool: token.pool.clone(),
@@ -495,14 +540,15 @@ impl AaHParser {
                 ProjectTracking::Farming { farming } => {
                     // TODO: Create a proper function for parsing farming tokens
                     for token in farming {
-                        self.parse_stake_token(
+                        self.parse_stake_shaped_token(
                             chain,
                             project_name.as_str(),
+                            "Farming",
                             &StakeTokenInfo {
                                 balance: token.balance.clone(),
                                 pool: token.pool.clone(),
                                 token_name: token.token_name.clone(),
-                                rewards: None,
+                                rewards: token.rewards.clone(),
                                 usd_value: token.usd_value.clone(),
                             },
                         );
