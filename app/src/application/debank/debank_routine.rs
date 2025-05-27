@@ -21,19 +21,56 @@ pub enum DebankTokensRoutineError {
     FailedToFetchRelevantTokenAmounts,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct RelevantDebankToken {
     pub token_name: &'static str,
     pub range_balance_two_cols: &'static str,
     pub alternative_names: Vec<&'static str>,
 }
 
+impl RelevantDebankToken {
+    pub fn matches(&self, token_name: &str) -> TokenMatch {
+        let names = vec![self.token_name]
+            .into_iter()
+            .chain(self.alternative_names.iter().cloned())
+            .collect::<Vec<_>>();
+
+        let exact_match = || names.iter().any(|name| *name == token_name);
+        let similar_match = || {
+            names
+                .iter()
+                .any(|name| token_name.to_lowercase().contains(&name.to_lowercase()))
+        };
+
+        if exact_match() {
+            TokenMatch::ExactMatch
+        } else if similar_match() {
+            TokenMatch::SimilarMatch(format!(
+                "Token '{}' is similar to '{}', but didn't match any of the known names: [{:}]",
+                token_name,
+                self.token_name,
+                names.join(", ")
+            ))
+        } else {
+            TokenMatch::NoMatch
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum TokenMatch {
+    ExactMatch,
+    SimilarMatch(String),
+    NoMatch,
+}
+
 pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock::new(|| {
     vec![
         RelevantDebankToken {
-            token_name: "USDT",
+            token_name: "USD",
             range_balance_two_cols: ranges::AaH::RW_USDT_BALANCES_NAMES,
             alternative_names: vec![
+                "USDT",
                 "USDC",
                 "DAI",
                 "TUSD",
@@ -46,6 +83,8 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "USDC(Bridged)",
                 "BUSD",
                 "RUSD",
+                "USDX(Stables Labs)",
+                "atUSD",
             ],
         },
         RelevantDebankToken {
@@ -121,16 +160,6 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
         },
     ]
 });
-
-impl RelevantDebankToken {
-    pub fn matches(&self, token_name: &str) -> bool {
-        self.token_name == token_name
-            || self
-                .alternative_names
-                .iter()
-                .any(|alternative_name| *alternative_name == token_name)
-    }
-}
 
 pub struct DebankRoutine {
     config: EvmBlockchainConfig,
@@ -214,7 +243,7 @@ impl DebankRoutine {
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self, balances), name = "DebankRoutine::update_debank_eth_AaH_balances_on_spreadsheet", fields(user_id = self.config.address))]
     #[allow(non_snake_case)] // Specially allowed for the sake of readability of an acronym
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
