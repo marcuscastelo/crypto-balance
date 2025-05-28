@@ -9,9 +9,8 @@ use tracing::{event, info, instrument, Instrument, Level};
 
 use super::fantoccini_scraper_driver::FantocciniScraperDriver;
 use crate::domain::debank::{
-    ChainInfo, ChainProjectInfo, ChainWalletInfo, FarmingTokenInfo, LendingTokenInfo,
-    LiquidityPoolTokenInfo, LockedTokenInfo, ProjectTracking, ProjectTrackingSection,
-    RewardTokenInfo, SimpleTokenInfo, SpotTokenInfo, StakeTokenInfo, TokenInfo, VestingTokenInfo,
+    ChainInfo, ChainProjectInfo, ChainWalletInfo, ProjectTracking, ProjectTrackingSection,
+    SpotTokenInfo, TokenInfo,
 };
 
 use crate::infrastructure::debank::balance::format_balance;
@@ -36,8 +35,6 @@ pub enum DebankScraperError {
     HeadersValuesLengthMismatch,
     #[error("Unknown header")]
     UnknownHeader,
-    #[error("Unknown tracking type")]
-    UnknownTrackingType,
     #[error("Failed to parse URL")]
     UrlParseError,
     #[error("Failed to create driver")]
@@ -613,163 +610,15 @@ impl DebankBalanceScraper {
             .collect::<Vec<_>>();
 
         match tracking_type {
-            "Yield" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Yield".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            token_name: generic.token_name,
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            usd_value: generic.usd_value,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Staked" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Staked".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            token_name: generic.token_name,
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            rewards: generic.rewards,
-                            usd_value: generic.usd_value,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Deposit" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Deposit".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            token_name: generic.token_name,
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            usd_value: generic.usd_value,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Locked" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Locked".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            token_name: generic.token_name,
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            unlock_time: generic.unlock_time,
-                            rewards: generic.rewards,
-                            usd_value: generic.usd_value,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Vesting" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Vesting".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            usd_value: generic.usd_value,
-                            end_time: generic.end_time,
-                            claimable_amount: generic.claimable_amount,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Rewards" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Rewards".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            usd_value: generic.usd_value,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Liquidity Pool" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Liquidity Pool".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            token_name: generic.token_name,
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            usd_value: generic.usd_value,
-                            rewards: generic.rewards,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Farming" => Ok(ProjectTracking::WillBeRefactored {
-                tracking_type: "Farming".into(),
-                token_sections: vec![ProjectTrackingSection {
-                    title: None,
-                    tokens: generic_infos
-                        .into_iter()
-                        .map(|generic| TokenInfo {
-                            token_name: generic.token_name,
-                            pool: generic.pool,
-                            balance: generic.balance,
-                            usd_value: generic.usd_value,
-                            rewards: generic.rewards,
-                            ..Default::default()
-                        })
-                        .collect(),
-                }],
-            }),
-            "Lending" => Ok(ProjectTracking::Lending {
+            "Lending" => Ok(ProjectTracking {
+                tracking_type: "Lending".into(),
                 token_sections: vec![
                     ProjectTrackingSection {
                         title: Some("Supplied".into()),
                         tokens: generic_infos
                             .iter()
                             .filter(|generic| generic.variant_header == Some("Supplied".into()))
-                            .map(|generic| LendingTokenInfo {
-                                token_name: generic
-                                    .token_name
-                                    .as_ref()
-                                    .expect("Token name not found")
-                                    .clone(),
-                                balance: generic
-                                    .balance
-                                    .as_ref()
-                                    .expect("Balance not found")
-                                    .clone(),
-                                usd_value: generic
-                                    .usd_value
-                                    .as_ref()
-                                    .expect("USD value not found")
-                                    .clone(),
-                            })
+                            .cloned()
                             .collect(),
                     },
                     ProjectTrackingSection {
@@ -777,23 +626,7 @@ impl DebankBalanceScraper {
                         tokens: generic_infos
                             .iter()
                             .filter(|generic| generic.variant_header == Some("Borrowed".into()))
-                            .map(|generic| LendingTokenInfo {
-                                token_name: generic
-                                    .token_name
-                                    .as_ref()
-                                    .expect("Token name not found")
-                                    .clone(),
-                                balance: generic
-                                    .balance
-                                    .as_ref()
-                                    .expect("Balance not found")
-                                    .clone(),
-                                usd_value: generic
-                                    .usd_value
-                                    .as_ref()
-                                    .expect("USD value not found")
-                                    .clone(),
-                            })
+                            .cloned()
                             .collect(),
                     },
                     ProjectTrackingSection {
@@ -801,32 +634,18 @@ impl DebankBalanceScraper {
                         tokens: generic_infos
                             .iter()
                             .filter(|generic| generic.variant_header == Some("Rewards".into()))
-                            .map(|generic| LendingTokenInfo {
-                                token_name: generic
-                                    .token_name
-                                    .as_ref()
-                                    .expect("Token name not found")
-                                    .clone(),
-                                balance: generic
-                                    .balance
-                                    .as_ref()
-                                    .expect("Balance not found")
-                                    .clone(),
-                                usd_value: generic
-                                    .usd_value
-                                    .as_ref()
-                                    .expect("USD value not found")
-                                    .clone(),
-                            })
+                            .cloned()
                             .collect::<Vec<_>>(),
                     },
                 ],
             }),
-            _ => {
-                tracing::error!("Unknown tracking type: {}", tracking_type);
-                return Err(DebankScraperError::UnknownTrackingType)
-                    .change_context(DebankScraperError::GenericError)?;
-            }
+            _ => Ok(ProjectTracking {
+                tracking_type: tracking_type.to_owned(),
+                token_sections: vec![ProjectTrackingSection {
+                    title: None,
+                    tokens: generic_infos,
+                }],
+            }),
         }
     }
 

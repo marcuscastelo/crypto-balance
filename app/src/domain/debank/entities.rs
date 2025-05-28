@@ -31,15 +31,9 @@ pub struct ChainProjectInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub enum ProjectTracking {
-    WillBeRefactored {
-        tracking_type: String, // e.g., "Spot", "Lending", "Staked", etc.
-        token_sections: Vec<ProjectTrackingSection<TokenInfo>>,
-    },
-    Lending {
-        token_sections: Vec<ProjectTrackingSection<LendingTokenInfo>>,
-    },
+pub struct ProjectTracking {
+    pub tracking_type: String, // e.g., "Spot", "Lending", "Staked", etc.
+    pub token_sections: Vec<ProjectTrackingSection<TokenInfo>>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,7 +43,6 @@ pub struct ProjectTrackingSection<T> {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct LendingTokenInfo {
     pub token_name: String,
     pub balance: String,
@@ -57,7 +50,6 @@ pub struct LendingTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct StakeTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -67,7 +59,6 @@ pub struct StakeTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct LockedTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -78,7 +69,6 @@ pub struct LockedTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct RewardTokenInfo {
     pub pool: String,
     pub balance: String,
@@ -86,17 +76,6 @@ pub struct RewardTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct VestingTokenInfo {
-    pub pool: String,
-    pub balance: String,
-    pub claimable_amount: Option<String>,
-    pub end_time: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct SimpleTokenInfo {
     pub token_name: Option<String>,
     pub pool: String,
@@ -105,7 +84,6 @@ pub struct SimpleTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct LiquidityPoolTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -115,7 +93,6 @@ pub struct LiquidityPoolTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct FarmingTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
@@ -125,7 +102,6 @@ pub struct FarmingTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct ChainInfo {
     pub name: String,
     pub wallet_info: Option<ChainWalletInfo>,
@@ -133,7 +109,6 @@ pub struct ChainInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct ChainWalletInfo {
     pub usd_value: String,
     pub tokens: Vec<SpotTokenInfo>,
