@@ -219,7 +219,9 @@ impl DebankRoutine {
             event!(Level::TRACE, chain = chain, "Parsing chain");
             if let Some(wallet) = chain_info.wallet_info.as_ref() {
                 event!(Level::TRACE, wallet = ?wallet, "Wallet detected, parsing");
-                aah_parser.parse_wallet(chain, wallet);
+                aah_parser
+                    .parse_wallet(chain, wallet)
+                    .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
             }
             for project in chain_info.project_info.as_slice() {
                 event!(

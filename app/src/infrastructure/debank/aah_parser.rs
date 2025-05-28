@@ -25,25 +25,32 @@ pub struct AaHParser {
 
 #[derive(Error, Debug)]
 pub enum AaHParserError {
-    // Parse error for a generic token
-    #[error("Failed to parse amount: {0}")]
-    ParseAmountError(String),
+    #[error("Parsing error: {0}")]
+    Parse(ParseError),
 
-    // No exact nor similar matches found for a token
+    #[error("Token match error: {0}")]
+    TokenMatch(TokenMatchError),
+
+    #[error("Unknown tracking type: {0}, cannot parse token: {1:?}")]
+    UnknownTrackingType(String, TokenInfo),
+}
+
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error("Failed to parse amount: {0}")]
+    Amount(String),
+}
+
+#[derive(Error, Debug)]
+pub enum TokenMatchError {
     #[error("No exact nor similar matches found for token: {0}")]
     NoExactOrSimilarMatch(String),
 
-    // No exact matches found for a token, but similar matches were found
     #[error("No exact matches found for token: {0}, but found similar matches: {1:?}")]
     NoExactMatchButSimilar(String, Vec<String>),
 
-    // Multiple exact matches found for a token
     #[error("Multiple exact matches found for token: {0} -> {1:?}, cannot parse")]
     MultipleExactMatches(String, Vec<String>),
-
-    // Unknown tracking type encountered
-    #[error("Unknown tracking type: {0}, cannot parse token: {1:?}")]
-    UnknownTrackingType(String, TokenInfo),
 }
 
 fn parse_amount(amount: &str) -> error_stack::Result<f64, AaHParserError> {
@@ -67,12 +74,13 @@ fn parse_amount(amount: &str) -> error_stack::Result<f64, AaHParserError> {
 
     let amount = amount.replace(",", "");
 
-    let amount = amount
-        .parse::<f64>()
-        .change_context(AaHParserError::ParseAmountError(format!(
-            "Failed to parse amount: '{}'",
-            amount
-        )))?;
+    let amount =
+        amount
+            .parse::<f64>()
+            .change_context(AaHParserError::Parse(ParseError::Amount(format!(
+                "Failed to parse amount: '{}'",
+                amount
+            ))))?;
 
     Ok(amount)
 }
@@ -200,16 +208,18 @@ impl AaHParser {
                 .collect::<Vec<_>>();
 
             if similar_matches.is_empty() {
-                return Err(report!(AaHParserError::NoExactOrSimilarMatch(
-                    token_location.to_string(),
+                return Err(report!(AaHParserError::TokenMatch(
+                    TokenMatchError::NoExactOrSimilarMatch(token_location.to_string(),)
                 )));
             } else {
-                return Err(report!(AaHParserError::NoExactMatchButSimilar(
-                    token_location.to_string(),
-                    similar_matches
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>()
+                return Err(report!(AaHParserError::TokenMatch(
+                    TokenMatchError::NoExactMatchButSimilar(
+                        token_location.to_string(),
+                        similar_matches
+                            .iter()
+                            .map(|s| s.to_string())
+                            .collect::<Vec<_>>()
+                    )
                 )));
             }
         }
@@ -225,12 +235,14 @@ impl AaHParser {
                 token_location,
                 exact_matches
             );
-            return Err(report!(AaHParserError::MultipleExactMatches(
-                token_location.to_string(),
-                unique_exact_match_names
-                    .into_iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>()
+            return Err(report!(AaHParserError::TokenMatch(
+                TokenMatchError::MultipleExactMatches(
+                    token_location.to_string(),
+                    unique_exact_match_names
+                        .into_iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                )
             )));
         }
 
@@ -268,21 +280,29 @@ impl AaHParser {
     }
 
     #[instrument(skip(self, wallet), fields(usd_value = ?wallet.usd_value, token_count = ?wallet.tokens.len()))]
-    pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWallet) {
+    pub fn parse_wallet(
+        &mut self,
+        chain: &str,
+        wallet: &ChainWallet,
+    ) -> error_stack::Result<(), AaHParserError> {
         for token in wallet.tokens.as_slice() {
-            self.parse_generic(
+            // Parse, return error, but ignore if error is a token match error
+            let result = self.parse_generic(
                 AaHLocation::from_wallet_token(chain, token.name.as_str()),
                 token.amount.as_str(),
                 None,
-            )
-            .unwrap_or_else(|error| {
-                tracing::error!(
-                    "Failed to parse wallet token: {}. Error: {:?}",
-                    token.name,
-                    error
-                );
-            })
+            );
+
+            if let Err(e) = result {
+                if let AaHParserError::TokenMatch(_) = e.current_context() {
+                    tracing::warn!("Ignoring token match error: {}", e);
+                } else {
+                    return Err(e);
+                }
+            }
         }
+
+        Ok(())
     }
 
     #[instrument(skip(self, token), fields(token = ?token.token_name))]
@@ -370,7 +390,7 @@ impl AaHParser {
             tracing::info!(
                 "Parsing stake-like token (Project: {project_name}): balance: {balance}, token_name: {token_name}, type: {balance_type}",
             );
-            self.parse_generic(
+            let result = self.parse_generic(
                 AaHLocation::from_project_tracking(
                     chain,
                     project_name,
@@ -380,7 +400,15 @@ impl AaHParser {
                 ),
                 balance,
                 None,
-            )?;
+            );
+
+            if let Err(e) = result {
+                if let AaHParserError::TokenMatch(_) = e.current_context() {
+                    tracing::warn!("Ignoring token match error: {}", e);
+                } else {
+                    return Err(e);
+                }
+            }
         }
 
         Ok(())
@@ -497,32 +525,40 @@ impl AaHParser {
                         token.balance = negative_balance;
                     }
 
-                    if SIMPLE.contains(&tracking_type.as_str()) {
+                    let result = if SIMPLE.contains(&tracking_type.as_str()) {
                         self.parse_simple_token(
                             chain,
                             project_name.as_str(),
                             tracking_type,
                             &convert_to_simple(&token),
-                        )?;
+                        )
                     } else if STAKE_SHAPED.contains(&tracking_type.as_str()) {
                         self.parse_stake_shaped_token(
                             chain,
                             project_name.as_str(),
                             tracking_type,
                             &convert_to_stake_shaped(&token),
-                        )?;
+                        )
                     } else if tracking_type == "Lending" {
                         self.parse_lending_token(
                             chain,
                             project_name.as_str(),
                             section.title.as_str(),
                             &convert_to_lending(&token),
-                        )?;
+                        )
                     } else {
                         return Err(report!(AaHParserError::UnknownTrackingType(
                             tracking_type.clone(),
                             token.clone()
                         )));
+                    };
+
+                    if let Err(e) = result {
+                        if let AaHParserError::TokenMatch(_) = e.current_context() {
+                            tracing::warn!("Ignoring token match error: {}", e);
+                        } else {
+                            return Err(e);
+                        }
                     }
                 }
             }
