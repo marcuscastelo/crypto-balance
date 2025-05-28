@@ -1,6 +1,52 @@
-use std::fmt::Display;
+#[derive(Debug, Clone)]
+/// Represents a chain in the DeBank ecosystem (e.g., Ethereum, Binance Smart Chain, etc.)
+/// Each chain is composed of one wallet (the user's tokens) and multiple projects (e.g., Aave, Compound, etc.).
+pub struct Chain {
+    pub name: String,
 
-// Contains all fields from before, but optional
+    /// Chain wallet tokens
+    pub wallet_info: Option<ChainWallet>,
+    pub project_info: Vec<Project>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChainWallet {
+    pub usd_value: String,
+    pub tokens: Vec<SpotTokenInfo>,
+}
+
+#[derive(Debug, Clone)]
+/// Represents a project in the DeBank ecosystem (e.g., Aave, Compound, etc.)
+/// A project is limited to a single chain, so if a project exists on multiple chains, they will be represented as separate `Project` instances.
+pub struct Project {
+    pub name: String,
+
+    /// One single project can have multiple features, like lending, staking, farming, etc. Each feature is represented as a `ProjectTracking`.
+    pub trackings: Vec<ProjectTracking>,
+}
+
+#[derive(Debug, Clone)]
+/// Represents a specific type of tracking for a project, such as lending, staking, farming, etc.
+pub struct ProjectTracking {
+    /// Type of tracking. Possible values include "Lending", "Staking", "Farming", "Liquidity Pool", etc.
+    /// TODO: Use an enum for better type safety.
+    pub tracking_type: String,
+
+    /// Sections for this tracking type.
+    /// It is only needed for now for "Lending" type, which has "Supplied", "Borrowed", and "Rewards" sections.
+    pub token_sections: Vec<ProjectTrackingSection>,
+}
+
+#[derive(Debug, Clone)]
+/// Represents a section within a project tracking, such as "Supplied", "Borrowed", "Rewards", etc.
+/// Most trackings will have only one section, but some (like "Lending") can have multiple sections.
+pub struct ProjectTrackingSection {
+    pub title: String,
+
+    /// Tokens in this section.
+    pub tokens: Vec<TokenInfo>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct TokenInfo {
     pub token_name: Option<String>,
@@ -15,31 +61,11 @@ pub struct TokenInfo {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct SpotTokenInfo {
     pub name: String,
     pub price: String,
     pub amount: String,
     pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct ChainProjectInfo {
-    pub name: String,
-    pub trackings: Vec<ProjectTracking>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProjectTracking {
-    pub tracking_type: String, // e.g., "Spot", "Lending", "Staked", etc.
-    pub token_sections: Vec<ProjectTrackingSection<TokenInfo>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProjectTrackingSection<T> {
-    pub title: Option<String>, // e.g., "Supplied", "Borrowed", "Rewards"
-    pub tokens: Vec<T>,
 }
 
 #[derive(Debug, Clone)]
@@ -59,70 +85,9 @@ pub struct StakeTokenInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct LockedTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub unlock_time: Option<String>,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct RewardTokenInfo {
-    pub pool: String,
-    pub balance: String,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct SimpleTokenInfo {
     pub token_name: Option<String>,
     pub pool: String,
     pub balance: String,
     pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct LiquidityPoolTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct FarmingTokenInfo {
-    pub token_name: Option<String>, // When token_name is not available, pool name is used
-    pub pool: String,
-    pub balance: String,
-    pub rewards: Option<String>,
-    pub usd_value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct ChainInfo {
-    pub name: String,
-    pub wallet_info: Option<ChainWalletInfo>,
-    pub project_info: Vec<ChainProjectInfo>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ChainWalletInfo {
-    pub usd_value: String,
-    pub tokens: Vec<SpotTokenInfo>,
-}
-
-impl Display for ChainWalletInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let tokens = self
-            .tokens
-            .iter()
-            .map(|x| format!("{} {}: {}", x.amount, x.name, x.usd_value))
-            .reduce(|a, b| format!("{}; {}", a, b))
-            .unwrap_or("<no tokens>".to_string());
-
-        write!(f, "Wallet: {} USD\nTokens: {}", self.usd_value, tokens)
-    }
 }

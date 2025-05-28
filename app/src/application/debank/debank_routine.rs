@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
 
-use crate::domain::debank::ChainInfo;
+use crate::domain::debank::Chain;
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
@@ -211,7 +211,7 @@ impl DebankRoutine {
     #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
     async fn parse_debank_profile(
         &self,
-        chain_infos: HashMap<String, ChainInfo>,
+        chain_infos: HashMap<String, Chain>,
     ) -> error_stack::Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
         let mut aah_parser = AaHParser::new();
 
@@ -227,7 +227,15 @@ impl DebankRoutine {
                     project = project.name,
                     "Project detected, parsing"
                 );
-                aah_parser.parse_project(chain, project);
+                aah_parser
+                    .parse_project(chain, project)
+                    .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)
+                    .attach_printable_lazy(|| {
+                        format!(
+                            "Failed to parse project: {} on chain: {}",
+                            project.name, chain
+                        )
+                    })?;
             }
         }
 

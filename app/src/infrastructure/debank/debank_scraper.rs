@@ -9,8 +9,7 @@ use tracing::{event, info, instrument, Instrument, Level};
 
 use super::fantoccini_scraper_driver::FantocciniScraperDriver;
 use crate::domain::debank::{
-    ChainInfo, ChainProjectInfo, ChainWalletInfo, ProjectTracking, ProjectTrackingSection,
-    SpotTokenInfo, TokenInfo,
+    Chain, ChainWallet, Project, ProjectTracking, ProjectTrackingSection, SpotTokenInfo, TokenInfo,
 };
 
 use crate::infrastructure::debank::balance::format_balance;
@@ -135,7 +134,7 @@ impl DebankBalanceScraper {
     }
 
     #[instrument(skip(self, chain))]
-    async fn get_chain_info(&self, chain: &Element) -> Result<ChainInfo, DebankScraperError> {
+    async fn get_chain_info(&self, chain: &Element) -> Result<Chain, DebankScraperError> {
         let chain_name = chain
             .find(Locator::XPath("div[1]"))
             .await
@@ -180,7 +179,7 @@ impl DebankBalanceScraper {
         chain_name: String,
         wallet: Option<&Element>,
         projects: Vec<Element>,
-    ) -> Result<ChainInfo, DebankScraperError> {
+    ) -> Result<Chain, DebankScraperError> {
         let wallet_info = if let Some(wallet) = wallet.as_ref() {
             self.get_chain_wallet_info(wallet)
                 .await
@@ -200,7 +199,7 @@ impl DebankBalanceScraper {
         .collect::<Result<Vec<_>, _>>()
         .change_context(DebankScraperError::FailedToGetChainInfo)?;
 
-        Ok(ChainInfo {
+        Ok(Chain {
             name: chain_name,
             wallet_info,
             project_info: projects_info,
@@ -211,7 +210,7 @@ impl DebankBalanceScraper {
     async fn get_chain_wallet_info(
         &self,
         wallet: &Element,
-    ) -> Result<ChainWalletInfo, DebankScraperError> {
+    ) -> Result<ChainWallet, DebankScraperError> {
         let usd_value = wallet
             .find(Locator::XPath("div[1]/div[2]"))
             .await
@@ -241,7 +240,7 @@ impl DebankBalanceScraper {
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(ChainWalletInfo { usd_value, tokens })
+        Ok(ChainWallet { usd_value, tokens })
     }
 
     #[instrument(skip(self, row))]
@@ -289,7 +288,7 @@ impl DebankBalanceScraper {
     async fn get_chain_project_info(
         &self,
         project: &Element,
-    ) -> Result<ChainProjectInfo, DebankScraperError> {
+    ) -> Result<Project, DebankScraperError> {
         let name = {
             // TODO: Move this retry logic to a common function if it really solves the problem (under testing for now)
             let mut name = None;
@@ -352,7 +351,7 @@ impl DebankBalanceScraper {
             .collect::<Result<Vec<_>, _>>()
             .change_context(DebankScraperError::FailedToExploreTracking)?;
 
-        Ok(ChainProjectInfo { name, trackings })
+        Ok(Project { name, trackings })
     }
 
     #[instrument(skip(self, tracking_vltd1_element))]
@@ -614,7 +613,7 @@ impl DebankBalanceScraper {
                 tracking_type: "Lending".into(),
                 token_sections: vec![
                     ProjectTrackingSection {
-                        title: Some("Supplied".into()),
+                        title: "Supplied".into(),
                         tokens: generic_infos
                             .iter()
                             .filter(|generic| generic.variant_header == Some("Supplied".into()))
@@ -622,7 +621,7 @@ impl DebankBalanceScraper {
                             .collect(),
                     },
                     ProjectTrackingSection {
-                        title: Some("Borrowed".into()),
+                        title: "Borrowed".into(),
                         tokens: generic_infos
                             .iter()
                             .filter(|generic| generic.variant_header == Some("Borrowed".into()))
@@ -630,7 +629,7 @@ impl DebankBalanceScraper {
                             .collect(),
                     },
                     ProjectTrackingSection {
-                        title: Some("Rewards".into()),
+                        title: "Rewards".into(),
                         tokens: generic_infos
                             .iter()
                             .filter(|generic| generic.variant_header == Some("Rewards".into()))
@@ -642,7 +641,7 @@ impl DebankBalanceScraper {
             _ => Ok(ProjectTracking {
                 tracking_type: tracking_type.to_owned(),
                 token_sections: vec![ProjectTrackingSection {
-                    title: None,
+                    title: "<unused>".into(), // For non-lending types, we use a generic section for now (currently there are no multi-section tracking in Debank except for Lending)
                     tokens: generic_infos,
                 }],
             }),
@@ -794,7 +793,7 @@ impl DebankBalanceScraper {
     pub async fn explore_debank_profile(
         &self,
         user_id: &str,
-    ) -> Result<HashMap<String, ChainInfo>, DebankScraperError> {
+    ) -> Result<HashMap<String, Chain>, DebankScraperError> {
         let chain_summaries: Vec<Element> = self.locate_chain_summary_elements().await?;
         return self.get_chains_info(&chain_summaries).await;
     }
@@ -803,7 +802,7 @@ impl DebankBalanceScraper {
     async fn get_chains_info(
         &self,
         chain_summaries: &[Element],
-    ) -> Result<HashMap<String, ChainInfo>, DebankScraperError> {
+    ) -> Result<HashMap<String, Chain>, DebankScraperError> {
         let mut chain_infos = HashMap::new();
         for (index, chain) in chain_summaries.iter().enumerate() {
             let span = tracing::span!(Level::DEBUG, "Chain", index = index);

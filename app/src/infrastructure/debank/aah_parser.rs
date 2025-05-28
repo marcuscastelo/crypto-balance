@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display},
@@ -13,9 +12,10 @@ use crate::{
 };
 
 use crate::domain::debank::{
-    ChainProjectInfo, ChainWalletInfo, LendingTokenInfo, ProjectTracking, StakeTokenInfo, TokenInfo,
+    ChainWallet, LendingTokenInfo, Project, ProjectTracking, StakeTokenInfo, TokenInfo,
 };
-use anyhow::Ok;
+use error_stack::{report, ResultExt};
+use thiserror::Error;
 use tracing::instrument;
 
 #[derive(Debug)]
@@ -23,7 +23,30 @@ pub struct AaHParser {
     pub balances: HashMap<String, HashMap<String, f64>>,
 }
 
-fn parse_amount(amount: &str) -> anyhow::Result<f64> {
+#[derive(Error, Debug)]
+pub enum AaHParserError {
+    // Parse error for a generic token
+    #[error("Failed to parse amount: {0}")]
+    ParseAmountError(String),
+
+    // No exact nor similar matches found for a token
+    #[error("No exact nor similar matches found for token: {0}")]
+    NoExactOrSimilarMatch(String),
+
+    // No exact matches found for a token, but similar matches were found
+    #[error("No exact matches found for token: {0}, but found similar matches: {1:?}")]
+    NoExactMatchButSimilar(String, Vec<String>),
+
+    // Multiple exact matches found for a token
+    #[error("Multiple exact matches found for token: {0} -> {1:?}, cannot parse")]
+    MultipleExactMatches(String, Vec<String>),
+
+    // Unknown tracking type encountered
+    #[error("Unknown tracking type: {0}, cannot parse token: {1:?}")]
+    UnknownTrackingType(String, TokenInfo),
+}
+
+fn parse_amount(amount: &str) -> error_stack::Result<f64, AaHParserError> {
     let more_than_10_zeroes_regex = regex::Regex::new(r"[₁-₉][^\d\w ]+").unwrap();
 
     let amount = more_than_10_zeroes_regex.replace_all(amount, "₀");
@@ -44,11 +67,14 @@ fn parse_amount(amount: &str) -> anyhow::Result<f64> {
 
     let amount = amount.replace(",", "");
 
-    Ok(amount.parse().map_err(|error| {
-        let message = format!("Failed to parse amount: '{}'. Error: {:?}", amount, error);
-        tracing::error!("{}", message);
-        anyhow::anyhow!(message)
-    })?)
+    let amount = amount
+        .parse::<f64>()
+        .change_context(AaHParserError::ParseAmountError(format!(
+            "Failed to parse amount: '{}'",
+            amount
+        )))?;
+
+    Ok(amount)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -127,7 +153,7 @@ impl AaHParser {
         token_location: AaHLocation,
         amount: &str,
         extra_names: Option<&[&str]>,
-    ) -> anyhow::Result<()> {
+    ) -> error_stack::Result<(), AaHParserError> {
         let matches = RELEVANT_DEBANK_TOKENS
             .iter()
             .flat_map(|relevant_token: &RelevantDebankToken| {
@@ -174,24 +200,17 @@ impl AaHParser {
                 .collect::<Vec<_>>();
 
             if similar_matches.is_empty() {
-                tracing::error!(
-                    "No exact nor similar matches found for token: '{}', cannot parse",
-                    token_location
-                );
-                return Err(anyhow::anyhow!(
-                    "No exact nor similar matches found for token: '{}'",
-                    token_location
-                ));
+                return Err(report!(AaHParserError::NoExactOrSimilarMatch(
+                    token_location.to_string(),
+                )));
             } else {
-                tracing::error!(
-                    "No exact matches found for token: '{}', but found similar matches: \n{:#?}, please check if this is any should be added",
-                    token_location,
+                return Err(report!(AaHParserError::NoExactMatchButSimilar(
+                    token_location.to_string(),
                     similar_matches
-                );
-                return Err(anyhow::anyhow!(
-                    "No exact matches found for token: '{}', but found similar matches: \n{:#?}, please check if this is any should be added",
-                    token_location, similar_matches
-                ));
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                )));
             }
         }
 
@@ -206,7 +225,13 @@ impl AaHParser {
                 token_location,
                 exact_matches
             );
-            return Err(anyhow::anyhow!("Multiple exact matches found for token"));
+            return Err(report!(AaHParserError::MultipleExactMatches(
+                token_location.to_string(),
+                unique_exact_match_names
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>()
+            )));
         }
 
         let Some((token, _)) = exact_matches.first() else {
@@ -243,7 +268,7 @@ impl AaHParser {
     }
 
     #[instrument(skip(self, wallet), fields(usd_value = ?wallet.usd_value, token_count = ?wallet.tokens.len()))]
-    pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWalletInfo) {
+    pub fn parse_wallet(&mut self, chain: &str, wallet: &ChainWallet) {
         for token in wallet.tokens.as_slice() {
             self.parse_generic(
                 AaHLocation::from_wallet_token(chain, token.name.as_str()),
@@ -267,7 +292,7 @@ impl AaHParser {
         project_name: &str,
         tracking_type: &str,
         token: &SimpleTokenInfo,
-    ) {
+    ) -> error_stack::Result<(), AaHParserError> {
         let extra_names = if let Some(token_name) = token.token_name.as_deref() {
             Some(vec![token_name])
         } else {
@@ -285,14 +310,6 @@ impl AaHParser {
             token.balance.as_str(),
             extra_names.as_deref(),
         )
-        .unwrap_or_else(|error: anyhow::Error| {
-            tracing::error!(
-                "Failed to parse {} farm token: {}. Error: {:?}",
-                tracking_type,
-                token.pool,
-                error
-            );
-        });
     }
 
     fn split_balance_token(s: &str) -> Option<(&str, &str)> {
@@ -306,7 +323,7 @@ impl AaHParser {
         project_name: &str,
         tracking_type: &str,
         token: &StakeTokenInfo,
-    ) {
+    ) -> error_stack::Result<(), AaHParserError> {
         let tokens_with_balances = token
             .balance
             .split('\n')
@@ -363,13 +380,10 @@ impl AaHParser {
                 ),
                 balance,
                 None,
-            )
-            .unwrap_or_else(|error| {
-                tracing::error!(
-                    "Failed to parse stake-like token (Project: {project_name}, Tracking: {tracking_type}): balance: {balance}, token_name: {token_name}. Error: {error:?}",
-                );
-            });
+            )?;
         }
+
+        Ok(())
     }
 
     #[instrument(skip(self, token), fields(token = ?token.token_name))]
@@ -379,7 +393,7 @@ impl AaHParser {
         project_name: &str,
         balance_type: &str,
         token: &LendingTokenInfo,
-    ) {
+    ) -> error_stack::Result<(), AaHParserError> {
         self.parse_generic(
             AaHLocation::from_project_tracking(
                 chain,
@@ -391,17 +405,14 @@ impl AaHParser {
             token.balance.as_str(),
             None,
         )
-        .unwrap_or_else(|error| {
-            tracing::error!(
-                "Failed to parse lending token: {}. Error: {:?}",
-                token.token_name,
-                error
-            );
-        });
     }
 
     #[instrument(skip(self, project), fields(project = ?project.name))]
-    pub fn parse_project(&mut self, chain: &str, project: &ChainProjectInfo) {
+    pub fn parse_project(
+        &mut self,
+        chain: &str,
+        project: &Project,
+    ) -> error_stack::Result<(), AaHParserError> {
         let project_name = project.name.clone();
 
         for tracking in project.trackings.as_slice() {
@@ -479,23 +490,9 @@ impl AaHParser {
             };
 
             for section in token_sections {
-                let section_title = section.title.as_deref().unwrap_or_else(|| {
-                    if tracking_type == "Lending" {
-                        tracing::error!(
-                            "Lending section without title found in project: '{}', this should not happen",
-                            project_name
-                        );
-                        panic!(
-                            "Lending section without title found, this should not happen"
-                        );
-                    };
-
-                    "<Unnamed>"
-                });
-
                 for token in section.tokens.as_slice() {
                     let mut token = token.clone();
-                    if section_title == "Borrowed" {
+                    if section.title == "Borrowed" {
                         let negative_balance = token.balance.map(|balance| format!("-{balance}"));
                         token.balance = negative_balance;
                     }
@@ -506,34 +503,31 @@ impl AaHParser {
                             project_name.as_str(),
                             tracking_type,
                             &convert_to_simple(&token),
-                        );
+                        )?;
                     } else if STAKE_SHAPED.contains(&tracking_type.as_str()) {
                         self.parse_stake_shaped_token(
                             chain,
                             project_name.as_str(),
                             tracking_type,
                             &convert_to_stake_shaped(&token),
-                        );
+                        )?;
                     } else if tracking_type == "Lending" {
                         self.parse_lending_token(
                             chain,
                             project_name.as_str(),
-                            section_title,
+                            section.title.as_str(),
                             &convert_to_lending(&token),
-                        );
+                        )?;
                     } else {
-                        tracing::error!(
-                            "Unknown tracking type: '{}', cannot parse token: {:#?}",
-                            tracking_type,
-                            token
-                        );
-                        panic!(
-                            "Unknown tracking type: '{}', cannot parse token: {:#?}",
-                            tracking_type, token
-                        );
+                        return Err(report!(AaHParserError::UnknownTrackingType(
+                            tracking_type.clone(),
+                            token.clone()
+                        )));
                     }
                 }
             }
         }
+
+        Ok(())
     }
 }
