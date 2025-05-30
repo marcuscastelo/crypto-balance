@@ -88,6 +88,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "atUSD",
                 "GHO",
                 "lvlUSD",
+                "USD₮0",
             ],
         },
         RelevantDebankToken {
@@ -103,6 +104,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "weETH",
                 "wrsETH",
                 "ezETH",
+                "UETH",
                 "cbETH",
             ],
         },
