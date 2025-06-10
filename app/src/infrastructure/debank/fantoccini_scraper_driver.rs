@@ -5,9 +5,7 @@ use tracing::instrument;
 
 use fantoccini::{Client, ClientBuilder};
 
-use super::scraper_driver::{
-    random_port, spawn_geckodriver_process, ScraperDriver, ScraperDriverError,
-};
+use super::scraper_driver::{random_port, spawn_geckodriver_process, ScraperDriverError};
 
 pub struct FantocciniScraperDriver {
     driver_process: Option<Child>,
@@ -72,36 +70,6 @@ impl FantocciniScraperDriver {
         };
 
         tokio::spawn(future);
-    }
-}
-
-impl ScraperDriver for FantocciniScraperDriver {
-    type Selector = fantoccini::Locator<'static>;
-
-    async fn visit_url(&mut self, url: &str) -> error_stack::Result<(), ScraperDriverError> {
-        todo!()
-    }
-
-    async fn wait_for_url(&mut self, url: &str) -> error_stack::Result<(), ScraperDriverError> {
-        todo!()
-    }
-
-    async fn close(&mut self) -> error_stack::Result<(), ScraperDriverError> {
-        todo!()
-    }
-
-    async fn find(
-        &mut self,
-        selector: Self::Selector,
-    ) -> error_stack::Result<(), ScraperDriverError> {
-        todo!()
-    }
-
-    async fn find_all(
-        &mut self,
-        selector: Self::Selector,
-    ) -> error_stack::Result<(), ScraperDriverError> {
-        todo!()
     }
 }
 

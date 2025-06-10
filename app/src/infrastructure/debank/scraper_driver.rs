@@ -4,21 +4,6 @@ use error_stack::ResultExt;
 use thiserror::Error;
 use tracing::instrument;
 
-pub trait ScraperDriver {
-    type Selector;
-    async fn visit_url(&mut self, url: &str) -> error_stack::Result<(), ScraperDriverError>;
-    async fn wait_for_url(&mut self, url: &str) -> error_stack::Result<(), ScraperDriverError>;
-    async fn close(&mut self) -> error_stack::Result<(), ScraperDriverError>;
-    async fn find(
-        &mut self,
-        selector: Self::Selector,
-    ) -> error_stack::Result<(), ScraperDriverError>;
-    async fn find_all(
-        &mut self,
-        selector: Self::Selector,
-    ) -> error_stack::Result<(), ScraperDriverError>;
-}
-
 #[derive(Debug, Error)]
 pub enum ScraperDriverError {
     #[error("Failed to spawn geckodriver process")]

@@ -53,15 +53,15 @@ async fn run_routines(parallel: bool) {
             CONFIG.blockchain.airdrops.evm.clone(),
             Arc::clone(&spreadsheet_manager),
         )),
-        Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
-        Box::new(ExchangeBalancesRoutine::new(
-            BinanceUseCases::new(BinanceAccountFactory::new(CONFIG.binance.clone())),
-            Arc::clone(&balance_repository),
-        )),
-        Box::new(ExchangeBalancesRoutine::new(
-            KrakenUseCases::new(KrakenFactory::new(CONFIG.kraken.clone())),
-            Arc::clone(&balance_repository),
-        )),
+        // Box::new(TokenPricesRoutine::new(&spreadsheet_manager)),
+        // Box::new(ExchangeBalancesRoutine::new(
+        //     BinanceUseCases::new(BinanceAccountFactory::new(CONFIG.binance.clone())),
+        //     Arc::clone(&balance_repository),
+        // )),
+        // Box::new(ExchangeBalancesRoutine::new(
+        //     KrakenUseCases::new(KrakenFactory::new(CONFIG.kraken.clone())),
+        //     Arc::clone(&balance_repository),
+        // )),
         // Box::new(UpdateHoldBalanceOnSheetsRoutine),
     ];
 

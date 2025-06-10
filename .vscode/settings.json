@@ -5,5 +5,6 @@
         "debank",
         "geckodriver",
         "СLАLМ"
-    ]
+    ],
+    "chat.agent.maxRequests": 2000,
 }
