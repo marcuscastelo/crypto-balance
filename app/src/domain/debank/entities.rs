@@ -1,6 +1,21 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebankResponse {
+    pub chains: Vec<Chain>,
+    pub metadata: DebankMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebankMetadata {
+    pub wallet_address: String,
+    pub chain_filter: String,
+    pub url: String,
+    pub screenshot_path: String,
+    pub html_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Represents a chain in the DeBank ecosystem (e.g., Ethereum, Binance Smart Chain, etc.)
 /// Each chain is composed of one wallet (the user's tokens) and multiple projects (e.g., Aave, Compound, etc.).
 pub struct Chain {

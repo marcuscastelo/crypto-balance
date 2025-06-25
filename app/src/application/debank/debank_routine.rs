@@ -287,9 +287,9 @@ impl DebankRoutine {
     #[instrument(skip(self), name = "DebankRoutine::main_routine")]
     async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
         let user_id = self.config.address.as_ref();
-        
+
         tracing::debug!(user_id = user_id, "Processing empty Debank data");
-        
+
         // For now, using empty HashMap<String, Chain> as requested
         let scraped_chains: HashMap<String, Chain> = HashMap::new();
         tracing::debug!(scraped_chains = ?scraped_chains, "Empty chains processed");
