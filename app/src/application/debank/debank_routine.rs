@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
 
-use crate::domain::debank::Chain;
+use crate::domain::debank::{Chain, DebankResponse};
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
@@ -88,6 +88,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "GHO",
                 "lvlUSD",
                 "USD₮0",
+                "rUSD",
             ],
         },
         RelevantDebankToken {
@@ -183,6 +184,35 @@ impl DebankRoutine {
             config,
             spreadsheet_manager,
         }
+    }
+
+    #[instrument(skip(self), name = "DebankRoutine::load_debank_json")]
+    async fn load_debank_json(&self) -> error_stack::Result<HashMap<String, Chain>, RoutineError> {
+        let json_path = "debank_output.json";
+
+        tracing::debug!(path = json_path, "Loading Debank JSON file");
+
+        let json_content = std::fs::read_to_string(json_path).change_context(
+            RoutineError::routine_failure(format!("Failed to read JSON file: {}", json_path)),
+        )?;
+
+        let debank_response: DebankResponse = serde_json::from_str(&json_content).change_context(
+            RoutineError::routine_failure(format!("Failed to parse JSON file: {}", json_path)),
+        )?;
+
+        // Convert Vec<Chain> to HashMap<String, Chain> as expected by existing logic
+        let mut chain_map = HashMap::new();
+        for chain in debank_response.chains {
+            chain_map.insert(chain.name.clone(), chain);
+        }
+
+        tracing::debug!(
+            chains_loaded = chain_map.len(),
+            total_balance = ?debank_response.metadata.map(|m| m.wallet_address),
+            "Successfully loaded Debank data from JSON"
+        );
+
+        Ok(chain_map)
     }
 
     #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
@@ -288,11 +318,14 @@ impl DebankRoutine {
     async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
         let user_id = self.config.address.as_ref();
 
-        tracing::debug!(user_id = user_id, "Processing empty Debank data");
+        tracing::debug!(user_id = user_id, "Processing Debank data from JSON");
 
-        // For now, using empty HashMap<String, Chain> as requested
-        let scraped_chains: HashMap<String, Chain> = HashMap::new();
-        tracing::debug!(scraped_chains = ?scraped_chains, "Empty chains processed");
+        // Load chains from JSON file
+        let scraped_chains = self.load_debank_json().await?;
+        tracing::debug!(
+            chains_count = scraped_chains.len(),
+            "Chains loaded from JSON"
+        );
 
         let balances = self
             .parse_debank_profile(scraped_chains)
@@ -307,8 +340,14 @@ impl DebankRoutine {
             "Balances processed"
         );
 
-        // For now, setting total balance to 0.0 since we have no scraping
-        let total_balance = 0.0;
+        // Calculate total balance from all chains (for now, we'll calculate it from the parsed data)
+        let total_balance = balances
+            .values()
+            .flat_map(|token_map| token_map.values())
+            .sum::<f64>();
+
+        tracing::debug!(total_balance = total_balance, "Calculated total balance");
+
         tracing::trace!("Updating TOTAL balance on the spreadsheet");
         self.update_debank_balance_on_spreadsheet(total_balance)
             .await

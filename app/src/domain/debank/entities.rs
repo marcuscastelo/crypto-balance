@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DebankResponse {
     pub chains: Vec<Chain>,
-    pub metadata: DebankMetadata,
+    pub metadata: Option<DebankMetadata>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
