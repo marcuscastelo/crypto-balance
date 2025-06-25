@@ -102,6 +102,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "wstETH+ETH",
                 "eETH",
                 "weETH",
+                "weETHs",
                 "wrsETH",
                 "ezETH",
                 "UETH",
@@ -187,7 +188,7 @@ impl DebankRoutine {
     }
 
     #[instrument(skip(self), name = "DebankRoutine::load_debank_json")]
-    async fn load_debank_json(&self) -> error_stack::Result<HashMap<String, Chain>, RoutineError> {
+    async fn load_debank_json(&self) -> error_stack::Result<Vec<(String, Chain)>, RoutineError> {
         let json_path = "debank_output.json";
 
         tracing::debug!(path = json_path, "Loading Debank JSON file");
@@ -200,27 +201,32 @@ impl DebankRoutine {
             RoutineError::routine_failure(format!("Failed to parse JSON file: {}", json_path)),
         )?;
 
-        // Convert Vec<Chain> to HashMap<String, Chain> as expected by existing logic
-        let mut chain_map = HashMap::new();
-        for chain in debank_response.chains {
-            chain_map.insert(chain.name.clone(), chain);
-        }
+        // Convert Vec<Chain> to Vec<(String, Chain)> preserving original order
+        let chain_list: Vec<(String, Chain)> = debank_response
+            .chains
+            .into_iter()
+            .map(|chain| (chain.name.clone(), chain))
+            .collect();
 
         tracing::debug!(
-            chains_loaded = chain_map.len(),
-            total_balance = ?debank_response.metadata.map(|m| m.wallet_address),
+            chains_loaded = chain_list.len(),
+            total_balance = ?debank_response.metadata.as_ref().map(|m| &m.wallet_address),
             "Successfully loaded Debank data from JSON"
         );
 
-        Ok(chain_map)
+        Ok(chain_list)
     }
 
     #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
     async fn parse_debank_profile(
         &self,
-        chain_infos: HashMap<String, Chain>,
-    ) -> error_stack::Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
+        chain_infos: Vec<(String, Chain)>,
+    ) -> error_stack::Result<
+        (HashMap<String, HashMap<String, f64>>, Vec<String>),
+        DebankTokensRoutineError,
+    > {
         let mut aah_parser = AaHParser::new();
+        let chain_order: Vec<String> = chain_infos.iter().map(|(name, _)| name.clone()).collect();
 
         for (chain, chain_info) in chain_infos.iter() {
             event!(Level::TRACE, chain = chain, "Parsing chain");
@@ -248,7 +254,7 @@ impl DebankRoutine {
             }
         }
 
-        Ok(aah_parser.balances)
+        Ok((aah_parser.balances, chain_order))
     }
 
     #[instrument]
@@ -263,16 +269,17 @@ impl DebankRoutine {
         Ok(())
     }
 
-    #[instrument(skip(self, balances), name = "DebankRoutine::update_debank_eth_AaH_balances_on_spreadsheet", fields(user_id = self.config.address))]
+    #[instrument(skip(self, balances, chain_order), name = "DebankRoutine::update_debank_eth_AaH_balances_on_spreadsheet", fields(user_id = self.config.address))]
     #[allow(non_snake_case)] // Specially allowed for the sake of readability of an acronym
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
         balances: HashMap<String, HashMap<String, f64>>,
+        chain_order: Vec<String>,
     ) -> error_stack::Result<(), SpreadsheetManagerError> {
         futures::future::join_all(
             RELEVANT_DEBANK_TOKENS
                 .iter()
-                .map(|token| self.update_balances_for_token(token, &balances))
+                .map(|token| self.update_balances_for_token(token, &balances, &chain_order))
                 .collect::<Vec<_>>(),
         )
         .await
@@ -287,6 +294,7 @@ impl DebankRoutine {
         &self,
         token: &RelevantDebankToken,
         balances: &HashMap<String, HashMap<String, f64>>,
+        chain_order: &Vec<String>,
     ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let empty_hashmap = HashMap::new();
         let token_balances = balances.get(token.token_name).unwrap_or_else(|| {
@@ -299,9 +307,54 @@ impl DebankRoutine {
             .map(|(name, amount)| (name.clone(), amount.to_string()))
             .collect::<Vec<(String, String)>>();
 
-        names_amounts_tuples.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
+        // Create a map of chain names to their order for efficient lookup
+        let chain_order_map: HashMap<&String, usize> = chain_order
+            .iter()
+            .enumerate()
+            .map(|(i, chain)| (chain, i))
+            .collect();
+
+        // Custom sort: first by chain order (from JSON), then alphabetically within same chain
+        names_amounts_tuples.sort_by(|(name1, _), (name2, _)| {
+            // Extract chain from the location name (format is "chain - <custody> (token)")
+            let chain1 = name1.split(" - ").next().unwrap_or(name1);
+            let chain2 = name2.split(" - ").next().unwrap_or(name2);
+
+            let order1 = chain_order_map
+                .get(&chain1.to_string())
+                .unwrap_or(&usize::MAX);
+            let order2 = chain_order_map
+                .get(&chain2.to_string())
+                .unwrap_or(&usize::MAX);
+
+            tracing::trace!(
+                "Comparing '{}' (chain: '{}', order: {:?}) vs '{}' (chain: '{}', order: {:?})",
+                name1,
+                chain1,
+                order1,
+                name2,
+                chain2,
+                order2
+            );
+
+            // First compare by chain order
+            match order1.cmp(order2) {
+                std::cmp::Ordering::Equal => {
+                    // If same chain (or both not found), sort alphabetically
+                    name1.cmp(name2)
+                }
+                other => other,
+            }
+        });
 
         let (names, amounts): (Vec<_>, Vec<_>) = names_amounts_tuples.iter().cloned().unzip();
+
+        tracing::debug!(
+            token_name = token.token_name,
+            entries_count = names.len(),
+            entries = ?names,
+            "Final sorted order for token"
+        );
 
         self.spreadsheet_manager
             .write_named_two_columns(
@@ -327,7 +380,7 @@ impl DebankRoutine {
             "Chains loaded from JSON"
         );
 
-        let balances = self
+        let (balances, chain_order) = self
             .parse_debank_profile(scraped_chains)
             .await
             .change_context(RoutineError::routine_failure(format!(
@@ -357,7 +410,7 @@ impl DebankRoutine {
             )))?;
 
         tracing::trace!("Updating AaH balances on the spreadsheet");
-        self.update_debank_eth_AaH_balances_on_spreadsheet(balances)
+        self.update_debank_eth_AaH_balances_on_spreadsheet(balances, chain_order)
             .await
             .change_context(RoutineError::routine_failure(format!(
                 "Failed to update Debank AaH balances on the spreadsheet for wallet: {}",
