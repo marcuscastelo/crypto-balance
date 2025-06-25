@@ -10,6 +10,7 @@ use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
 use crate::infrastructure::debank::aah_parser::{AaHParser, TokenBalance};
+use crate::infrastructure::debank::balance::format_balance;
 use crate::infrastructure::sheets::spreadsheet_manager::{
     SpreadsheetManager, SpreadsheetManagerError,
 };
@@ -191,7 +192,7 @@ impl DebankRoutine {
     }
 
     #[instrument(skip(self), name = "DebankRoutine::load_debank_json")]
-    async fn load_debank_json(&self) -> error_stack::Result<Vec<(String, Chain)>, RoutineError> {
+    async fn load_debank_json(&self) -> error_stack::Result<(Vec<(String, Chain)>, String), RoutineError> {
         let json_path = "debank_output.json";
 
         tracing::debug!(path = json_path, "Loading Debank JSON file");
@@ -214,10 +215,11 @@ impl DebankRoutine {
         tracing::debug!(
             chains_loaded = chain_list.len(),
             total_balance = ?debank_response.metadata.as_ref().map(|m| &m.wallet_address),
+            total_usd_value = %debank_response.total_usd_value,
             "Successfully loaded Debank data from JSON"
         );
 
-        Ok(chain_list)
+        Ok((chain_list, debank_response.total_usd_value))
     }
 
     #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
@@ -404,9 +406,10 @@ impl DebankRoutine {
         tracing::debug!(user_id = user_id, "Processing Debank data from JSON");
 
         // Load chains from JSON file
-        let scraped_chains = self.load_debank_json().await?;
+        let (scraped_chains, total_usd_value_raw) = self.load_debank_json().await?;
         tracing::debug!(
             chains_count = scraped_chains.len(),
+            total_usd_value = %total_usd_value_raw,
             "Chains loaded from JSON"
         );
 
@@ -423,14 +426,19 @@ impl DebankRoutine {
             "Balances processed"
         );
 
-        // Calculate total balance from all chains using USD values (only include Some values)
-        let total_balance = balances
-            .values()
-            .flat_map(|token_map| token_map.values())
-            .filter_map(|token_balance| token_balance.usd_value)
-            .sum::<f64>();
+        // Use total USD value from JSON instead of manually calculating
+        let total_balance = format_balance(&total_usd_value_raw).map_err(|e| {
+            RoutineError::routine_failure(format!(
+                "Failed to parse total USD value '{}' from JSON: {}",
+                total_usd_value_raw, e
+            ))
+        })?;
 
-        tracing::debug!(total_balance = total_balance, "Calculated total balance");
+        tracing::debug!(
+            total_balance = total_balance, 
+            total_usd_value_raw = %total_usd_value_raw,
+            "Using total balance from JSON"
+        );
 
         tracing::trace!("Updating TOTAL balance on the spreadsheet");
         self.update_debank_balance_on_spreadsheet(total_balance)

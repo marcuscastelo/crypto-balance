@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DebankResponse {
+    pub total_usd_value: String,
     pub chains: Vec<Chain>,
     pub metadata: Option<DebankMetadata>,
 }
