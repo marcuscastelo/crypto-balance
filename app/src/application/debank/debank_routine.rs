@@ -10,7 +10,6 @@ use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
 use crate::infrastructure::debank::aah_parser::AaHParser;
-use crate::infrastructure::debank::debank_scraper::DebankBalanceScraper;
 use crate::infrastructure::sheets::spreadsheet_manager::{
     SpreadsheetManager, SpreadsheetManagerError,
 };
@@ -186,30 +185,6 @@ impl DebankRoutine {
         }
     }
 
-    #[instrument(skip(self), name = "DebankRoutine::create_scraper")]
-    async fn create_scraper(&self) -> DebankBalanceScraper {
-        let scraper = DebankBalanceScraper::new()
-            .await
-            .expect("Should create DebankBalanceScraper");
-
-        scraper
-    }
-
-    #[instrument(skip(self), name = "DebankRoutine::fetch_relevant_token_amounts", fields(user_id = self.config.address))]
-    async fn fetch_relevant_token_amounts(
-        &self,
-    ) -> error_stack::Result<HashMap<String, HashMap<String, f64>>, DebankTokensRoutineError> {
-        let scraper = DebankBalanceScraper::new()
-            .await
-            .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
-        let chain_infos = scraper
-            .explore_debank_profile(&self.config.address)
-            .await
-            .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
-
-        return self.parse_debank_profile(chain_infos).await;
-    }
-
     #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
     async fn parse_debank_profile(
         &self,
@@ -311,37 +286,13 @@ impl DebankRoutine {
 
     #[instrument(skip(self), name = "DebankRoutine::main_routine")]
     async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
-        let scraper = self.create_scraper().await;
         let user_id = self.config.address.as_ref();
-
-        tracing::debug!(user_id = user_id, "Accessing Debank profile");
-        scraper
-            .access_profile(user_id)
-            .await
-            .change_context(RoutineError::routine_failure(format!(
-                "Failed to access Debank profile: {}",
-                user_id
-            )))?;
-        tracing::debug!(user_id = user_id, "Accessed Debank profile");
-
-        let total_balance =
-            scraper
-                .get_total_balance()
-                .await
-                .change_context(RoutineError::routine_failure(format!(
-                    "Failed to get total balance for user: {}",
-                    user_id
-                )))?;
-        tracing::debug!(total_balance = total_balance, "Total balance processed");
-
-        let scraped_chains = scraper
-            .explore_debank_profile(user_id)
-            .await
-            .change_context(RoutineError::routine_failure(format!(
-                "Failed to explore Debank profile: {}",
-                user_id
-            )))?;
-        tracing::debug!(scraped_chains = ?scraped_chains, "Scraped chains processed");
+        
+        tracing::debug!(user_id = user_id, "Processing empty Debank data");
+        
+        // For now, using empty HashMap<String, Chain> as requested
+        let scraped_chains: HashMap<String, Chain> = HashMap::new();
+        tracing::debug!(scraped_chains = ?scraped_chains, "Empty chains processed");
 
         let balances = self
             .parse_debank_profile(scraped_chains)
@@ -356,6 +307,8 @@ impl DebankRoutine {
             "Balances processed"
         );
 
+        // For now, setting total balance to 0.0 since we have no scraping
+        let total_balance = 0.0;
         tracing::trace!("Updating TOTAL balance on the spreadsheet");
         self.update_debank_balance_on_spreadsheet(total_balance)
             .await
