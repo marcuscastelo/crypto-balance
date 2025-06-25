@@ -22,7 +22,7 @@ use tracing::instrument;
 #[derive(Debug, Clone)]
 pub struct TokenBalance {
     pub amount: f64,
-    pub usd_value: f64,
+    pub usd_value: Option<f64>,
 }
 
 #[derive(Debug)]
@@ -167,7 +167,7 @@ impl AaHParser {
         &mut self,
         token_location: AaHLocation,
         amount: &str,
-        usd_value: &str,
+        usd_value_str: Option<&str>,
         extra_names: Option<&[&str]>,
     ) -> error_stack::Result<(), AaHParserError> {
         let matches = RELEVANT_DEBANK_TOKENS
@@ -268,12 +268,19 @@ impl AaHParser {
             .or_insert(HashMap::new());
 
         let mut amount = parse_amount(amount)?;
-        let mut usd_value = format_balance(usd_value).map_err(|e| {
-            AaHParserError::Parse(ParseError::Amount(format!(
-                "Failed to parse USD value: '{}', error: {}",
-                usd_value, e
-            )))
-        })?;
+
+        // Parse USD value - use None when USD value is not available
+        let mut usd_value = if let Some(usd_str) = usd_value_str {
+            Some(format_balance(usd_str).map_err(|e| {
+                AaHParserError::Parse(ParseError::Amount(format!(
+                    "Failed to parse USD value: '{:?}', error: {}",
+                    usd_str, e
+                )))
+            })?)
+        } else {
+            None
+        };
+
         let name = format!("{token_location}");
 
         if token_balances.contains_key(&name) {
@@ -283,15 +290,23 @@ impl AaHParser {
             );
             let existing = token_balances.get(&name).unwrap();
             tracing::warn!(
-                "Previous values for '{}': amount={}, usd_value={}",
+                "Previous values for '{}': amount={}, usd_value={:?}",
                 name,
                 existing.amount,
                 existing.usd_value
             );
             amount += existing.amount;
-            usd_value += existing.usd_value;
+
+            // Add USD values if both are Some, otherwise keep the existing logic
+            usd_value = match (usd_value, existing.usd_value) {
+                (Some(new_val), Some(existing_val)) => Some(new_val + existing_val),
+                (Some(new_val), None) => Some(new_val),
+                (None, Some(existing_val)) => Some(existing_val),
+                (None, None) => None,
+            };
+
             tracing::warn!(
-                "New values for '{}': amount={}, usd_value={}",
+                "New values for '{}': amount={}, usd_value={:?}",
                 name,
                 amount,
                 usd_value
@@ -312,7 +327,7 @@ impl AaHParser {
             let result = self.parse_generic(
                 AaHLocation::from_wallet_token(chain, token.name.as_str()),
                 token.amount.as_str(),
-                token.usd_value.as_str(),
+                Some(token.usd_value.as_str()),
                 None,
             );
 
@@ -351,7 +366,7 @@ impl AaHParser {
                 token.pool.as_str(),
             ),
             token.balance.as_str(),
-            token.usd_value.as_str(),
+            Some(token.usd_value.as_str()),
             extra_names.as_deref(),
         )
     }
@@ -420,12 +435,11 @@ impl AaHParser {
                 "Parsing stake-like token (Project: {project_name}): balance: {balance}, token_name: {token_name}, type: {balance_type}",
             );
 
-            // Use the actual USD value for simple staked tokens, otherwise default to "0"
+            // Use the actual USD value for simple staked tokens, otherwise None
             let usd_value = if use_token_usd_value {
-                token.usd_value.as_str()
+                Some(token.usd_value.as_str())
             } else {
-                "9999" // USD value not available for multi-token parsed entries,
-                       // so we use a placeholder to avoid filtering out these entries (TODO: use Option)
+                None // No USD value available for multi-token parsed entries
             };
 
             let result = self.parse_generic(
@@ -470,7 +484,7 @@ impl AaHParser {
                 token.token_name.as_str(),
             ),
             token.balance.as_str(),
-            token.usd_value.as_str(),
+            Some(token.usd_value.as_str()),
             None,
         )
     }
@@ -563,6 +577,9 @@ impl AaHParser {
                     if section.title == "Borrowed" {
                         let negative_balance = token.balance.map(|balance| format!("-{balance}"));
                         token.balance = negative_balance;
+
+                        let negative_usd_value = token.usd_value.map(|usd| format!("-{usd}"));
+                        token.usd_value = negative_usd_value;
                     }
 
                     let result = if SIMPLE.contains(&tracking_type.as_str()) {

@@ -308,14 +308,19 @@ impl DebankRoutine {
         let mut names_amounts_tuples = token_balances
             .iter()
             .filter_map(|(name, token_balance)| {
-                // Filter out positions with USD value below $1.00
-                if token_balance.usd_value >= MIN_USD_VALUE {
+                // Filter out positions with USD value below $1.00, but only if USD value is Some
+                let should_include = match token_balance.usd_value {
+                    Some(usd_val) => (usd_val * usd_val) >= MIN_USD_VALUE,
+                    None => true, // Always include when USD value is None
+                };
+
+                if should_include {
                     Some((name.clone(), token_balance.amount.to_string()))
                 } else {
                     tracing::debug!(
                         token = token.token_name,
                         position = name,
-                        usd_value = token_balance.usd_value,
+                        usd_value = ?token_balance.usd_value,
                         amount = token_balance.amount,
                         "Filtered out position with USD value below ${:.2}",
                         MIN_USD_VALUE
@@ -418,11 +423,11 @@ impl DebankRoutine {
             "Balances processed"
         );
 
-        // Calculate total balance from all chains using USD values
+        // Calculate total balance from all chains using USD values (only include Some values)
         let total_balance = balances
             .values()
             .flat_map(|token_map| token_map.values())
-            .map(|token_balance| token_balance.usd_value)
+            .filter_map(|token_balance| token_balance.usd_value)
             .sum::<f64>();
 
         tracing::debug!(total_balance = total_balance, "Calculated total balance");
