@@ -9,11 +9,14 @@ use crate::domain::debank::{Chain, DebankResponse};
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
-use crate::infrastructure::debank::aah_parser::AaHParser;
+use crate::infrastructure::debank::aah_parser::{AaHParser, TokenBalance};
 use crate::infrastructure::sheets::spreadsheet_manager::{
     SpreadsheetManager, SpreadsheetManagerError,
 };
 use crate::infrastructure::sheets::spreadsheet_write::SpreadsheetWrite;
+
+// Minimum USD value for positions to be included in the spreadsheet
+const MIN_USD_VALUE: f64 = 1.0;
 
 #[derive(Error, Debug)]
 pub enum DebankTokensRoutineError {
@@ -132,7 +135,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
         RelevantDebankToken {
             token_name: "ENA",
             range_balance_two_cols: ranges::AaH::RW_ENA_BALANCES_NAMES,
-            alternative_names: vec!["ETHENA", "PT-sENA-24APR2025", "sENA"],
+            alternative_names: vec!["ETHENA", "PT-sENA-24APR2025", "sENA", "ENA"],
         },
         RelevantDebankToken {
             token_name: "GS",
@@ -222,7 +225,7 @@ impl DebankRoutine {
         &self,
         chain_infos: Vec<(String, Chain)>,
     ) -> error_stack::Result<
-        (HashMap<String, HashMap<String, f64>>, Vec<String>),
+        (HashMap<String, HashMap<String, TokenBalance>>, Vec<String>),
         DebankTokensRoutineError,
     > {
         let mut aah_parser = AaHParser::new();
@@ -273,7 +276,7 @@ impl DebankRoutine {
     #[allow(non_snake_case)] // Specially allowed for the sake of readability of an acronym
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
-        balances: HashMap<String, HashMap<String, f64>>,
+        balances: HashMap<String, HashMap<String, TokenBalance>>,
         chain_order: Vec<String>,
     ) -> error_stack::Result<(), SpreadsheetManagerError> {
         futures::future::join_all(
@@ -293,7 +296,7 @@ impl DebankRoutine {
     async fn update_balances_for_token(
         &self,
         token: &RelevantDebankToken,
-        balances: &HashMap<String, HashMap<String, f64>>,
+        balances: &HashMap<String, HashMap<String, TokenBalance>>,
         chain_order: &Vec<String>,
     ) -> error_stack::Result<(), SpreadsheetManagerError> {
         let empty_hashmap = HashMap::new();
@@ -304,8 +307,30 @@ impl DebankRoutine {
 
         let mut names_amounts_tuples = token_balances
             .iter()
-            .map(|(name, amount)| (name.clone(), amount.to_string()))
+            .filter_map(|(name, token_balance)| {
+                // Filter out positions with USD value below $1.00
+                if token_balance.usd_value >= MIN_USD_VALUE {
+                    Some((name.clone(), token_balance.amount.to_string()))
+                } else {
+                    tracing::debug!(
+                        token = token.token_name,
+                        position = name,
+                        usd_value = token_balance.usd_value,
+                        amount = token_balance.amount,
+                        "Filtered out position with USD value below ${:.2}",
+                        MIN_USD_VALUE
+                    );
+                    None
+                }
+            })
             .collect::<Vec<(String, String)>>();
+
+        tracing::debug!(
+            token = token.token_name,
+            total_positions = token_balances.len(),
+            filtered_positions = names_amounts_tuples.len(),
+            "Applied $1.00 minimum filter"
+        );
 
         // Create a map of chain names to their order for efficient lookup
         let chain_order_map: HashMap<&String, usize> = chain_order
@@ -393,10 +418,11 @@ impl DebankRoutine {
             "Balances processed"
         );
 
-        // Calculate total balance from all chains (for now, we'll calculate it from the parsed data)
+        // Calculate total balance from all chains using USD values
         let total_balance = balances
             .values()
             .flat_map(|token_map| token_map.values())
+            .map(|token_balance| token_balance.usd_value)
             .sum::<f64>();
 
         tracing::debug!(total_balance = total_balance, "Calculated total balance");

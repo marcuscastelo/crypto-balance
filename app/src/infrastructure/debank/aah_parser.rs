@@ -9,6 +9,7 @@ use crate::{
         RelevantDebankToken, TokenMatch, RELEVANT_DEBANK_TOKENS,
     },
     domain::debank::SimpleTokenInfo,
+    infrastructure::debank::balance::format_balance,
 };
 
 use crate::domain::debank::{
@@ -18,9 +19,15 @@ use error_stack::{report, ResultExt};
 use thiserror::Error;
 use tracing::instrument;
 
+#[derive(Debug, Clone)]
+pub struct TokenBalance {
+    pub amount: f64,
+    pub usd_value: f64,
+}
+
 #[derive(Debug)]
 pub struct AaHParser {
-    pub balances: HashMap<String, HashMap<String, f64>>,
+    pub balances: HashMap<String, HashMap<String, TokenBalance>>,
 }
 
 #[derive(Error, Debug)]
@@ -160,6 +167,7 @@ impl AaHParser {
         &mut self,
         token_location: AaHLocation,
         amount: &str,
+        usd_value: &str,
         extra_names: Option<&[&str]>,
     ) -> error_stack::Result<(), AaHParserError> {
         let matches = RELEVANT_DEBANK_TOKENS
@@ -260,6 +268,12 @@ impl AaHParser {
             .or_insert(HashMap::new());
 
         let mut amount = parse_amount(amount)?;
+        let mut usd_value = format_balance(usd_value).map_err(|e| {
+            AaHParserError::Parse(ParseError::Amount(format!(
+                "Failed to parse USD value: '{}', error: {}",
+                usd_value, e
+            )))
+        })?;
         let name = format!("{token_location}");
 
         if token_balances.contains_key(&name) {
@@ -267,15 +281,23 @@ impl AaHParser {
                 "The same location has appeared multiple times: '{}', adding amounts together",
                 name
             );
+            let existing = token_balances.get(&name).unwrap();
             tracing::warn!(
-                "Previous amount for '{}': {}",
+                "Previous values for '{}': amount={}, usd_value={}",
                 name,
-                token_balances.get(&name).unwrap()
+                existing.amount,
+                existing.usd_value
             );
-            amount += token_balances.get(&name).unwrap();
-            tracing::warn!("New amount for '{}': {}", name, amount);
+            amount += existing.amount;
+            usd_value += existing.usd_value;
+            tracing::warn!(
+                "New values for '{}': amount={}, usd_value={}",
+                name,
+                amount,
+                usd_value
+            );
         }
-        token_balances.insert(name, amount);
+        token_balances.insert(name, TokenBalance { amount, usd_value });
         Ok(())
     }
 
@@ -290,6 +312,7 @@ impl AaHParser {
             let result = self.parse_generic(
                 AaHLocation::from_wallet_token(chain, token.name.as_str()),
                 token.amount.as_str(),
+                token.usd_value.as_str(),
                 None,
             );
 
@@ -328,6 +351,7 @@ impl AaHParser {
                 token.pool.as_str(),
             ),
             token.balance.as_str(),
+            token.usd_value.as_str(),
             extra_names.as_deref(),
         )
     }
@@ -399,6 +423,7 @@ impl AaHParser {
                     token_name,
                 ),
                 balance,
+                "0", // USD value not available for parsed tokens
                 None,
             );
 
@@ -431,6 +456,7 @@ impl AaHParser {
                 token.token_name.as_str(),
             ),
             token.balance.as_str(),
+            token.usd_value.as_str(),
             None,
         )
     }
