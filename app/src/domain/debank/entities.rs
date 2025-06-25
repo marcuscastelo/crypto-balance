@@ -98,7 +98,7 @@ pub struct StakeTokenInfo {
     pub pool: String,
     pub balance: String,
     pub rewards: Option<String>,
-    pub usd_value: String,
+    pub usd_value: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

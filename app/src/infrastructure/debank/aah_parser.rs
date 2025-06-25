@@ -437,7 +437,7 @@ impl AaHParser {
 
             // Use the actual USD value for simple staked tokens, otherwise None
             let usd_value = if use_token_usd_value {
-                Some(token.usd_value.as_str())
+                token.usd_value.as_deref()
             } else {
                 None // No USD value available for multi-token parsed entries
             };
@@ -546,11 +546,7 @@ impl AaHParser {
                     .clone(),
                 token_name: token.token_name.clone(),
                 rewards: None,
-                usd_value: token
-                    .usd_value
-                    .as_ref()
-                    .expect("USD value should be present for stake-shaped tokens")
-                    .clone(),
+                usd_value: token.usd_value.clone(),
             };
 
             let convert_to_lending = |token: &TokenInfo| LendingTokenInfo {
