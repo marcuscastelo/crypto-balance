@@ -410,10 +410,24 @@ impl AaHParser {
             .chain(rewards_with_balances.into_iter())
             .collect::<Vec<_>>();
 
+        // If there's only one token balance and it matches the pool name, use the token's USD value
+        // This handles simple staked tokens like ENA where the balance is a single line
+        let use_token_usd_value =
+            all_types_with_balances.len() == 1 && all_types_with_balances[0].2 == token.pool;
+
         for (balance_type, balance, token_name) in all_types_with_balances.as_slice() {
             tracing::info!(
                 "Parsing stake-like token (Project: {project_name}): balance: {balance}, token_name: {token_name}, type: {balance_type}",
             );
+
+            // Use the actual USD value for simple staked tokens, otherwise default to "0"
+            let usd_value = if use_token_usd_value {
+                token.usd_value.as_str()
+            } else {
+                "9999" // USD value not available for multi-token parsed entries,
+                       // so we use a placeholder to avoid filtering out these entries (TODO: use Option)
+            };
+
             let result = self.parse_generic(
                 AaHLocation::from_project_tracking(
                     chain,
@@ -423,7 +437,7 @@ impl AaHParser {
                     token_name,
                 ),
                 balance,
-                "0", // USD value not available for parsed tokens
+                usd_value,
                 None,
             );
 
