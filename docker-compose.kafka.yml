@@ -1,0 +1,79 @@
+version: "3.7"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9997:9997"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9997
+      KAFKA_JMX_HOSTNAME: localhost
+
+  # OpenTelemetry setup from original docker-compose
+  otel-collector:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector:latest
+    hostname: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - crypto-network
+
+  jaeger:
+    hostname: jaeger
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686" # UI
+      - "14268:14268" # Jaeger Collector HTTP (Thrift)
+      - "9411:9411"   # enables Zipkin receiver
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    networks:
+      - crypto-network
+
+  # Crypto Balance app in Kafka consumer mode
+  crypto-balance-consumer:
+    build:
+      context: .
+      dockerfile: crates/kafka/Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_GROUP_ID=crypto-balance-group
+      - KAFKA_TOPICS=crypto-balance-events
+    depends_on:
+      - kafka
+      - otel-collector
+    networks:
+      - crypto-network
+    volumes:
+      - ./Config.toml:/Config.toml:ro
+      - ./priv_key.json:/priv_key.json:ro
+    
+networks:
+  crypto-network:
+    driver: bridge
