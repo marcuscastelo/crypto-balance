@@ -9,6 +9,7 @@ use crate::{
         RelevantDebankToken, TokenMatch, RELEVANT_DEBANK_TOKENS,
     },
     domain::debank::SimpleTokenInfo,
+    infrastructure::debank::balance::format_balance,
 };
 
 use crate::domain::debank::{
@@ -18,9 +19,15 @@ use error_stack::{report, ResultExt};
 use thiserror::Error;
 use tracing::instrument;
 
+#[derive(Debug, Clone)]
+pub struct TokenBalance {
+    pub amount: f64,
+    pub usd_value: Option<f64>,
+}
+
 #[derive(Debug)]
 pub struct AaHParser {
-    pub balances: HashMap<String, HashMap<String, f64>>,
+    pub balances: HashMap<String, HashMap<String, TokenBalance>>,
 }
 
 #[derive(Error, Debug)]
@@ -160,6 +167,7 @@ impl AaHParser {
         &mut self,
         token_location: AaHLocation,
         amount: &str,
+        usd_value_str: Option<&str>,
         extra_names: Option<&[&str]>,
     ) -> error_stack::Result<(), AaHParserError> {
         let matches = RELEVANT_DEBANK_TOKENS
@@ -260,6 +268,19 @@ impl AaHParser {
             .or_insert(HashMap::new());
 
         let mut amount = parse_amount(amount)?;
+
+        // Parse USD value - use None when USD value is not available
+        let mut usd_value = if let Some(usd_str) = usd_value_str {
+            Some(format_balance(usd_str).map_err(|e| {
+                AaHParserError::Parse(ParseError::Amount(format!(
+                    "Failed to parse USD value: '{:?}', error: {}",
+                    usd_str, e
+                )))
+            })?)
+        } else {
+            None
+        };
+
         let name = format!("{token_location}");
 
         if token_balances.contains_key(&name) {
@@ -267,15 +288,31 @@ impl AaHParser {
                 "The same location has appeared multiple times: '{}', adding amounts together",
                 name
             );
+            let existing = token_balances.get(&name).unwrap();
             tracing::warn!(
-                "Previous amount for '{}': {}",
+                "Previous values for '{}': amount={}, usd_value={:?}",
                 name,
-                token_balances.get(&name).unwrap()
+                existing.amount,
+                existing.usd_value
             );
-            amount += token_balances.get(&name).unwrap();
-            tracing::warn!("New amount for '{}': {}", name, amount);
+            amount += existing.amount;
+
+            // Add USD values if both are Some, otherwise keep the existing logic
+            usd_value = match (usd_value, existing.usd_value) {
+                (Some(new_val), Some(existing_val)) => Some(new_val + existing_val),
+                (Some(new_val), None) => Some(new_val),
+                (None, Some(existing_val)) => Some(existing_val),
+                (None, None) => None,
+            };
+
+            tracing::warn!(
+                "New values for '{}': amount={}, usd_value={:?}",
+                name,
+                amount,
+                usd_value
+            );
         }
-        token_balances.insert(name, amount);
+        token_balances.insert(name, TokenBalance { amount, usd_value });
         Ok(())
     }
 
@@ -290,6 +327,7 @@ impl AaHParser {
             let result = self.parse_generic(
                 AaHLocation::from_wallet_token(chain, token.name.as_str()),
                 token.amount.as_str(),
+                Some(token.usd_value.as_str()),
                 None,
             );
 
@@ -328,6 +366,7 @@ impl AaHParser {
                 token.pool.as_str(),
             ),
             token.balance.as_str(),
+            Some(token.usd_value.as_str()),
             extra_names.as_deref(),
         )
     }
@@ -386,10 +425,23 @@ impl AaHParser {
             .chain(rewards_with_balances.into_iter())
             .collect::<Vec<_>>();
 
+        // If there's only one token balance and it matches the pool name, use the token's USD value
+        // This handles simple staked tokens like ENA where the balance is a single line
+        let use_token_usd_value =
+            all_types_with_balances.len() == 1 && all_types_with_balances[0].2 == token.pool;
+
         for (balance_type, balance, token_name) in all_types_with_balances.as_slice() {
             tracing::info!(
                 "Parsing stake-like token (Project: {project_name}): balance: {balance}, token_name: {token_name}, type: {balance_type}",
             );
+
+            // Use the actual USD value for simple staked tokens, otherwise None
+            let usd_value = if use_token_usd_value {
+                token.usd_value.as_deref()
+            } else {
+                None // No USD value available for multi-token parsed entries
+            };
+
             let result = self.parse_generic(
                 AaHLocation::from_project_tracking(
                     chain,
@@ -399,6 +451,7 @@ impl AaHParser {
                     token_name,
                 ),
                 balance,
+                usd_value,
                 None,
             );
 
@@ -431,6 +484,7 @@ impl AaHParser {
                 token.token_name.as_str(),
             ),
             token.balance.as_str(),
+            Some(token.usd_value.as_str()),
             None,
         )
     }
@@ -492,11 +546,7 @@ impl AaHParser {
                     .clone(),
                 token_name: token.token_name.clone(),
                 rewards: None,
-                usd_value: token
-                    .usd_value
-                    .as_ref()
-                    .expect("USD value should be present for stake-shaped tokens")
-                    .clone(),
+                usd_value: token.usd_value.clone(),
             };
 
             let convert_to_lending = |token: &TokenInfo| LendingTokenInfo {
@@ -523,6 +573,9 @@ impl AaHParser {
                     if section.title == "Borrowed" {
                         let negative_balance = token.balance.map(|balance| format!("-{balance}"));
                         token.balance = negative_balance;
+
+                        let negative_usd_value = token.usd_value.map(|usd| format!("-{usd}"));
+                        token.usd_value = negative_usd_value;
                     }
 
                     let result = if SIMPLE.contains(&tracking_type.as_str()) {

@@ -1,4 +1,22 @@
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebankResponse {
+    pub total_usd_value: String,
+    pub chains: Vec<Chain>,
+    pub metadata: Option<DebankMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebankMetadata {
+    pub wallet_address: String,
+    pub chain_filter: String,
+    pub url: String,
+    pub screenshot_path: String,
+    pub html_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Represents a chain in the DeBank ecosystem (e.g., Ethereum, Binance Smart Chain, etc.)
 /// Each chain is composed of one wallet (the user's tokens) and multiple projects (e.g., Aave, Compound, etc.).
 pub struct Chain {
@@ -9,13 +27,13 @@ pub struct Chain {
     pub project_info: Vec<Project>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainWallet {
     pub usd_value: String,
     pub tokens: Vec<SpotTokenInfo>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Represents a project in the DeBank ecosystem (e.g., Aave, Compound, etc.)
 /// A project is limited to a single chain, so if a project exists on multiple chains, they will be represented as separate `Project` instances.
 pub struct Project {
@@ -25,7 +43,7 @@ pub struct Project {
     pub trackings: Vec<ProjectTracking>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Represents a specific type of tracking for a project, such as lending, staking, farming, etc.
 pub struct ProjectTracking {
     /// Type of tracking. Possible values include "Lending", "Staking", "Farming", "Liquidity Pool", etc.
@@ -37,7 +55,7 @@ pub struct ProjectTracking {
     pub token_sections: Vec<ProjectTrackingSection>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Represents a section within a project tracking, such as "Supplied", "Borrowed", "Rewards", etc.
 /// Most trackings will have only one section, but some (like "Lending") can have multiple sections.
 pub struct ProjectTrackingSection {
@@ -47,7 +65,7 @@ pub struct ProjectTrackingSection {
     pub tokens: Vec<TokenInfo>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TokenInfo {
     pub token_name: Option<String>,
     pub pool: Option<String>,
@@ -60,7 +78,7 @@ pub struct TokenInfo {
     pub variant_header: Option<String>, // Supplied, Borrowed, Rewards, etc. (not to be confused with tracking title)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpotTokenInfo {
     pub name: String,
     pub price: String,
@@ -68,23 +86,23 @@ pub struct SpotTokenInfo {
     pub usd_value: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LendingTokenInfo {
     pub token_name: String,
     pub balance: String,
     pub usd_value: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StakeTokenInfo {
     pub token_name: Option<String>, // When token_name is not available, pool name is used
     pub pool: String,
     pub balance: String,
     pub rewards: Option<String>,
-    pub usd_value: String,
+    pub usd_value: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimpleTokenInfo {
     pub token_name: Option<String>,
     pub pool: String,
