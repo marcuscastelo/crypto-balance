@@ -93,6 +93,9 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "lvlUSD",
                 "USD₮0",
                 "rUSD",
+                "hbUSDT",
+                "WHLP",
+                "USDHL",
             ],
         },
         RelevantDebankToken {
@@ -192,7 +195,9 @@ impl DebankRoutine {
     }
 
     #[instrument(skip(self), name = "DebankRoutine::load_debank_json")]
-    async fn load_debank_json(&self) -> error_stack::Result<(Vec<(String, Chain)>, String), RoutineError> {
+    async fn load_debank_json(
+        &self,
+    ) -> error_stack::Result<(Vec<(String, Chain)>, String), RoutineError> {
         let json_path = "debank_output.json";
 
         tracing::debug!(path = json_path, "Loading Debank JSON file");
@@ -435,7 +440,7 @@ impl DebankRoutine {
         })?;
 
         tracing::debug!(
-            total_balance = total_balance, 
+            total_balance = total_balance,
             total_usd_value_raw = %total_usd_value_raw,
             "Using total balance from JSON"
         );
