@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use error_stack::ResultExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -29,9 +28,6 @@ pub enum ApiClientError {
 
     #[error("Scrape job timed out after {0} seconds")]
     JobTimeout(u64),
-
-    #[error("Invalid job status: {0}")]
-    InvalidJobStatus(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
