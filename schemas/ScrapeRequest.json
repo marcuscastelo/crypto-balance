@@ -1,0 +1,45 @@
+{
+  "properties": {
+    "wallet_address": {
+      "description": "Ethereum wallet address to scrape",
+      "title": "Wallet Address",
+      "type": "string"
+    },
+    "chain": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "",
+      "description": "Optional chain filter",
+      "title": "Chain"
+    },
+    "save_html": {
+      "default": true,
+      "description": "Save raw HTML file",
+      "title": "Save Html",
+      "type": "boolean"
+    },
+    "save_screenshot": {
+      "default": true,
+      "description": "Save screenshot",
+      "title": "Save Screenshot",
+      "type": "boolean"
+    },
+    "headless": {
+      "default": true,
+      "description": "Run browser in headless mode",
+      "title": "Headless",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "wallet_address"
+  ],
+  "title": "ScrapeRequest",
+  "type": "object"
+}

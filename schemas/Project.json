@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "TokenInfo": {
+      "description": "Model for project token information (supplied, borrowed, rewards, etc.)",
+      "properties": {
+        "token_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Token name",
+          "title": "Token Name"
+        },
+        "pool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pool identifier",
+          "title": "Pool"
+        },
+        "balance": {
+          "default": "",
+          "description": "Token balance",
+          "title": "Balance",
+          "type": "string"
+        },
+        "rewards": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Rewards amount if applicable",
+          "title": "Rewards"
+        },
+        "unlock_time": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unlock time for locked tokens",
+          "title": "Unlock Time"
+        },
+        "claimable_amount": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Claimable amount",
+          "title": "Claimable Amount"
+        },
+        "end_time": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End time for time-locked positions",
+          "title": "End Time"
+        },
+        "usd_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "USD value of position",
+          "title": "Usd Value"
+        },
+        "variant_header": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Position type (Supplied, Borrowed, Rewards, etc.)",
+          "title": "Variant Header"
+        }
+      },
+      "title": "TokenInfo",
+      "type": "object"
+    },
+    "TokenSection": {
+      "description": "Model for grouped token sections (e.g., 'Supplied', 'Borrowed', 'Rewards')",
+      "properties": {
+        "title": {
+          "description": "Section title",
+          "title": "Title",
+          "type": "string"
+        },
+        "tokens": {
+          "description": "Tokens in this section",
+          "items": {
+            "$ref": "#/$defs/TokenInfo"
+          },
+          "title": "Tokens",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "TokenSection",
+      "type": "object"
+    },
+    "Tracking": {
+      "description": "Model for position tracking within a project (lending, staking, etc.)",
+      "properties": {
+        "tracking_type": {
+          "description": "Type of tracking (Lending, Yield, etc.)",
+          "title": "Tracking Type",
+          "type": "string"
+        },
+        "token_sections": {
+          "description": "Token sections within this tracking",
+          "items": {
+            "$ref": "#/$defs/TokenSection"
+          },
+          "title": "Token Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tracking_type"
+      ],
+      "title": "Tracking",
+      "type": "object"
+    }
+  },
+  "description": "Model for DeFi project information",
+  "properties": {
+    "name": {
+      "description": "Project name",
+      "title": "Name",
+      "type": "string"
+    },
+    "trackings": {
+      "description": "Position trackings within project",
+      "items": {
+        "$ref": "#/$defs/Tracking"
+      },
+      "title": "Trackings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "Project",
+  "type": "object"
+}

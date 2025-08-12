@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "SpotTokenInfo": {
+      "description": "Model for spot wallet token information",
+      "properties": {
+        "name": {
+          "description": "Token name/symbol",
+          "title": "Name",
+          "type": "string"
+        },
+        "price": {
+          "description": "Token price in USD format ($X.XX)",
+          "title": "Price",
+          "type": "string"
+        },
+        "amount": {
+          "description": "Amount of tokens held",
+          "title": "Amount",
+          "type": "string"
+        },
+        "usd_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "USD value of holdings",
+          "title": "Usd Value"
+        }
+      },
+      "required": [
+        "name",
+        "price",
+        "amount"
+      ],
+      "title": "SpotTokenInfo",
+      "type": "object"
+    }
+  },
+  "description": "Model for aggregated wallet information per chain",
+  "properties": {
+    "usd_value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Total USD value of wallet on this chain",
+      "title": "Usd Value"
+    },
+    "tokens": {
+      "description": "List of tokens in wallet",
+      "items": {
+        "$ref": "#/$defs/SpotTokenInfo"
+      },
+      "title": "Tokens",
+      "type": "array"
+    }
+  },
+  "title": "WalletInfo",
+  "type": "object"
+}
