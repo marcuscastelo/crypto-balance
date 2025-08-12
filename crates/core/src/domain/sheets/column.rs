@@ -29,7 +29,7 @@ impl Column {
     ///
     /// # Examples
     /// ```
-    /// use domain::sheets::column::Column;
+    /// use crypto_balance_core::domain::sheets::column::Column;
     /// let col = Column::from_index(0);
     /// assert_eq!(col.column(), "A");
     /// let col = Column::from_index(25);
@@ -44,13 +44,13 @@ impl Column {
     /// Returns the column number as a 1-based index.
     /// # Examples
     /// ```
-    /// use domain::sheets::column::Column;
+    /// use crypto_balance_core::domain::sheets::column::Column;
     /// let initial_col = Column::from_index(0);
     /// assert_eq!(initial_col.column_num(), 1);
     /// let delta_col = Column::from_index(3);
     /// assert_eq!(delta_col.column_num(), 4);
     /// let final_col = initial_col + delta_col;
-    /// assert_eq!(final_col.column_num(), 5);
+    /// assert_eq!(final_col.column_num(), 4);
     /// ```
     pub fn column_num(&self) -> u32 {
         self.index.saturating_add(1)
@@ -60,7 +60,7 @@ impl Column {
     /// This is useful for internal calculations where columns are indexed starting from 0.
     /// # Examples
     /// ```
-    /// use domain::sheets::column::Column;
+    /// use crypto_balance_core::domain::sheets::column::Column;
     /// let initial_col = Column::from_index(1);
     /// assert_eq!(initial_col.index(), 1);
     /// let delta_col = Column::from_index(4);

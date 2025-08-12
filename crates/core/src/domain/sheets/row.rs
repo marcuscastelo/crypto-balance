@@ -25,13 +25,13 @@ impl Row {
     /// This is useful for representing rows in spreadsheets where rows are typically indexed starting from 1.
     /// # Examples
     /// ```
-    /// use domain::sheets::row::Row;
+    /// use crypto_balance_core::domain::sheets::row::Row;
     /// let row = Row::from_index(0);
-    /// assert_eq!(row.repr(), "1");
+    /// assert_eq!(row.row(), "1");
     /// let row = Row::from_index(4);
-    /// assert_eq!(row.repr(), "5");
+    /// assert_eq!(row.row(), "5");
     /// let row = Row::from_index(25);
-    /// assert_eq!(row.repr(), "26");
+    /// assert_eq!(row.row(), "26");
     /// ```
     pub fn row(&self) -> String {
         self.index.saturating_add(1).to_string()
@@ -41,13 +41,13 @@ impl Row {
     /// This is useful for internal calculations where rows are indexed starting from 0.
     /// # Examples
     /// ```
-    /// use domain::sheets::row::Row;
+    /// use crypto_balance_core::domain::sheets::row::Row;
     /// let initial_row = Row::from_index(1);
-    /// assert_eq!(row.index(), 1);
+    /// assert_eq!(initial_row.index(), 1);
     /// let delta_row = Row::from_index(4);
-    /// assert_eq!(row.index(), 4);
-    /// let final_row = initial + delta;
-    /// assert_eq!(final_row.index(), 4);
+    /// assert_eq!(delta_row.index(), 4);
+    /// let final_row = initial_row + delta_row;
+    /// assert_eq!(final_row.index(), 5);
     /// ```
     pub fn index(&self) -> u32 {
         self.index

@@ -13,6 +13,9 @@ pub enum ExchangeUseCasesError {
     /// ## Example
     ///
     /// ```rust
+    /// use error_stack::report;
+    /// use crypto_balance_core::application::exchange::use_cases::ExchangeUseCasesError;
+    /// # let error: Result<(), std::io::Error> = Err(std::io::Error::new(std::io::ErrorKind::Other, "test"));
     /// let internal_error = error
     ///     .map_err(|e| { report!(ExchangeUseCasesError::InternalError(format!("{e:?}"))) });
     /// ```
