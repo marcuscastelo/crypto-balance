@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
 
-use crate::domain::debank::{Chain, DebankResponse};
+use crate::domain::debank::Chain;
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 use crate::infrastructure::config::blockchain_config::EvmBlockchainConfig;
@@ -194,21 +194,38 @@ impl DebankRoutine {
         }
     }
 
-    #[instrument(skip(self), name = "DebankRoutine::load_debank_json")]
-    async fn load_debank_json(
+    #[instrument(skip(self), name = "DebankRoutine::load_debank_data")]
+    async fn load_debank_data(
         &self,
     ) -> error_stack::Result<(Vec<(String, Chain)>, String), RoutineError> {
-        let json_path = "debank_output.json";
+        let wallet_address = self.config.address.as_ref();
 
-        tracing::debug!(path = json_path, "Loading Debank JSON file");
+        tracing::debug!(
+            wallet_address = wallet_address,
+            "Loading Debank data via API"
+        );
 
-        let json_content = std::fs::read_to_string(json_path).change_context(
-            RoutineError::routine_failure(format!("Failed to read JSON file: {}", json_path)),
-        )?;
+        // Create API client
+        let api_client = crate::infrastructure::debank::api_client::DebankApiClient::new(
+            "http://localhost:8000".to_string(),
+        );
 
-        let debank_response: DebankResponse = serde_json::from_str(&json_content).change_context(
-            RoutineError::routine_failure(format!("Failed to parse JSON file: {}", json_path)),
-        )?;
+        // Create scrape request
+        let scrape_request = crate::infrastructure::debank::api_client::ScrapeRequest {
+            wallet_address: wallet_address.to_string(),
+            chain: None, // No chain filter by default
+            save_html: false,
+            save_screenshot: false,
+            headless: true,
+        };
+
+        // Scrape wallet data via API
+        let debank_response = api_client
+            .scrape_wallet(scrape_request)
+            .await
+            .change_context(RoutineError::routine_failure(
+                "Failed to scrape wallet data via API".to_string(),
+            ))?;
 
         // Convert Vec<Chain> to Vec<(String, Chain)> preserving original order
         let chain_list: Vec<(String, Chain)> = debank_response
@@ -221,7 +238,7 @@ impl DebankRoutine {
             chains_loaded = chain_list.len(),
             total_balance = ?debank_response.metadata.as_ref().map(|m| &m.wallet_address),
             total_usd_value = %debank_response.total_usd_value,
-            "Successfully loaded Debank data from JSON"
+            "Successfully loaded Debank data via API"
         );
 
         Ok((chain_list, debank_response.total_usd_value))
@@ -408,14 +425,14 @@ impl DebankRoutine {
     async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
         let user_id = self.config.address.as_ref();
 
-        tracing::debug!(user_id = user_id, "Processing Debank data from JSON");
+        tracing::debug!(user_id = user_id, "Processing Debank data from API");
 
-        // Load chains from JSON file
-        let (scraped_chains, total_usd_value_raw) = self.load_debank_json().await?;
+        // Load chains from API
+        let (scraped_chains, total_usd_value_raw) = self.load_debank_data().await?;
         tracing::debug!(
             chains_count = scraped_chains.len(),
             total_usd_value = %total_usd_value_raw,
-            "Chains loaded from JSON"
+            "Chains loaded from API"
         );
 
         let (balances, chain_order) = self
@@ -431,10 +448,10 @@ impl DebankRoutine {
             "Balances processed"
         );
 
-        // Use total USD value from JSON instead of manually calculating
+        // Use total USD value from API instead of manually calculating
         let total_balance = format_balance(&total_usd_value_raw).map_err(|e| {
             RoutineError::routine_failure(format!(
-                "Failed to parse total USD value '{}' from JSON: {}",
+                "Failed to parse total USD value '{}' from API: {}",
                 total_usd_value_raw, e
             ))
         })?;
@@ -442,7 +459,7 @@ impl DebankRoutine {
         tracing::debug!(
             total_balance = total_balance,
             total_usd_value_raw = %total_usd_value_raw,
-            "Using total balance from JSON"
+            "Using total balance from API"
         );
 
         tracing::trace!("Updating TOTAL balance on the spreadsheet");
