@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: rustup toolchain install nightly --profile minimal
+    - run: rustup toolchain install nightly 
     - run: rustup default nightly
 
     - name: Cache Rust packages
