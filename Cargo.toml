@@ -1,3 +1,63 @@
 [workspace]
+members = [
+    "crates/core",
+    "crates/cli",
+    "crates/kafka"
+]
 resolver = "2"
-members = ["app"]
+
+[workspace.dependencies]
+# Async & Runtime
+tokio = { version = "1.36.0", features = ["full"] }
+async-trait = "0.1.77"
+futures = "0.3.30"
+
+# Serialization & HTTP
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.113"
+reqwest = { version = "0.11.23", features = ["blocking"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0.80"
+error-stack = { version = "0.4.1", features = ["anyhow"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+tracing-indicatif = "0.3.9"
+tracing-opentelemetry = "0.22"
+tracing-chrome = "0.6"
+tracing-flame = "0.2"
+opentelemetry = { version = "0.21" }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = ["grpc-tonic"] }
+tonic = "0.10"
+
+# External APIs
+binance-rs-async = "1.3.2"
+krakenrs = { git = "https://github.com/marcuscastelo/krakenrs-async" }
+bybit_rs = { git = "https://github.com/marcuscastelo/bybit_rs" }
+google-sheets4 = "*"
+
+# Web automation
+fantoccini = "0.19.3"
+undetected-chromedriver = "0.1.2"
+
+# Crypto & Utilities
+hmac = "0.12.1"
+sha2 = "0.10.8"
+chrono = "0.4.19"
+regex = "1.10.4"
+rand = "0.8.5"
+num-traits = "0.2"
+strum = { version = "0.26", features = ["derive"] }
+
+# Configuration
+config = "0.14.0"
+
+# Progress indicators
+indicatif = "0.17.8"
+
+# Kafka
+rdkafka = { version = "0.36", features = ["cmake-build", "ssl", "sasl"] }

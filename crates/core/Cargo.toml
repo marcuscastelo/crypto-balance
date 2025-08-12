@@ -1,0 +1,46 @@
+[package]
+name = "crypto-balance-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Workspace dependencies
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+error-stack = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+tonic = { workspace = true }
+chrono = { workspace = true }
+
+# External APIs
+binance-rs-async = { workspace = true }
+krakenrs = { workspace = true }
+bybit_rs = { workspace = true }
+google-sheets4 = { workspace = true }
+
+# Web automation
+fantoccini = { workspace = true }
+undetected-chromedriver = { workspace = true }
+
+# Crypto & Utilities
+hmac = { workspace = true }
+sha2 = { workspace = true }
+regex = { workspace = true }
+rand = { workspace = true }
+num-traits = { workspace = true }
+strum = { workspace = true }
+config = { workspace = true }
+
+# Kafka for event publishing
+rdkafka = { workspace = true }

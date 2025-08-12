@@ -1,0 +1,29 @@
+[package]
+name = "crypto-balance-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "crypto-balance-cli"
+path = "src/main.rs"
+
+[dependencies]
+# Core library
+crypto-balance-core = { path = "../core" }
+
+# Workspace dependencies  
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-indicatif = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+tonic = { workspace = true }
+thiserror = { workspace = true }
+error-stack = { workspace = true }
+async-trait = { workspace = true }
+
+# CLI specific
+indicatif = { workspace = true }
