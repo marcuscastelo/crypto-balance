@@ -60,4 +60,4 @@ config = "0.14.0"
 indicatif = "0.17.8"
 
 # Kafka
-rdkafka = { version = "0.36", features = ["cmake-build", "ssl", "sasl"] }
+rdkafka = { version = "0.36", features = ["cmake-build", "ssl"] }
