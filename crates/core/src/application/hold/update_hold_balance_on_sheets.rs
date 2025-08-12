@@ -4,6 +4,13 @@ use error_stack::ResultExt;
 use regex::Regex;
 use tracing::instrument;
 
+use crate::adapters::blockchain::chains::{ARBITRUM, OPTIMISM, POLYGON};
+use crate::adapters::config::blockchain_config::BlockchainConfig;
+use crate::adapters::config::sheets_config::SpreadsheetConfig;
+use crate::adapters::sheets::cell_range::CellRange;
+use crate::adapters::sheets::spreadsheet_manager::SpreadsheetManager;
+use crate::adapters::sheets::spreadsheet_read::SpreadsheetRead;
+use crate::adapters::sheets::spreadsheet_write::SpreadsheetWrite;
 use crate::domain::blockchain::chain::Chain;
 use crate::domain::blockchain::explorer::FetchBalanceError;
 use crate::domain::blockchain::token::Token;
@@ -14,13 +21,6 @@ use crate::domain::sheets::cell_position::CellPosition;
 use crate::domain::sheets::column::Column;
 use crate::domain::sheets::ranges;
 use crate::domain::sheets::row::Row;
-use crate::adapters::blockchain::chains::{ARBITRUM, OPTIMISM, POLYGON};
-use crate::adapters::config::blockchain_config::BlockchainConfig;
-use crate::adapters::config::sheets_config::SpreadsheetConfig;
-use crate::adapters::sheets::cell_range::CellRange;
-use crate::adapters::sheets::spreadsheet_manager::SpreadsheetManager;
-use crate::adapters::sheets::spreadsheet_read::SpreadsheetRead;
-use crate::adapters::sheets::spreadsheet_write::SpreadsheetWrite;
 
 #[derive(Debug)]
 pub struct UpdateHoldBalanceOnSheetsRoutine {

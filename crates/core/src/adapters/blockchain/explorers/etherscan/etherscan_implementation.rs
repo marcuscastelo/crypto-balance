@@ -1,12 +1,12 @@
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
+use crate::adapters::blockchain::token::spam_filter;
 use crate::domain::blockchain::chain::Chain;
 use crate::domain::blockchain::constants::WEI_CONVERSION;
 use crate::domain::blockchain::explorer::{BlockExplorer, FetchBalanceError};
 use crate::domain::blockchain::token::{ERC20TokenInfo, Token};
 use crate::domain::blockchain::token_balance::TokenBalance;
-use crate::adapters::blockchain::token::spam_filter;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 

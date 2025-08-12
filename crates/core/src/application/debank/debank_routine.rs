@@ -5,16 +5,14 @@ use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
 
-use crate::domain::debank::Chain;
-use crate::domain::routine::{Routine, RoutineError};
-use crate::domain::sheets::ranges;
 use crate::adapters::config::blockchain_config::EvmBlockchainConfig;
 use crate::adapters::debank::aah_parser::{AaHParser, TokenBalance};
 use crate::adapters::debank::balance::format_balance;
-use crate::adapters::sheets::spreadsheet_manager::{
-    SpreadsheetManager, SpreadsheetManagerError,
-};
+use crate::adapters::sheets::spreadsheet_manager::{SpreadsheetManager, SpreadsheetManagerError};
 use crate::adapters::sheets::spreadsheet_write::SpreadsheetWrite;
+use crate::domain::debank::Chain;
+use crate::domain::routine::{Routine, RoutineError};
+use crate::domain::sheets::ranges;
 
 // Minimum USD value for positions to be included in the spreadsheet
 const MIN_USD_VALUE: f64 = 1.0;

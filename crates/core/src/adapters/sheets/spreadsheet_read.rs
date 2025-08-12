@@ -11,14 +11,16 @@ use super::{
 };
 
 pub trait SpreadsheetRead {
-    async fn read_range(
+    fn read_range(
         &self,
         range: &str,
-    ) -> error_stack::Result<Vec<String>, SpreadsheetManagerError>;
-    async fn read_named_range(
+    ) -> impl std::future::Future<Output = error_stack::Result<Vec<String>, SpreadsheetManagerError>>
+           + Send;
+    fn read_named_range(
         &self,
         name: &str,
-    ) -> error_stack::Result<Vec<String>, SpreadsheetManagerError>;
+    ) -> impl std::future::Future<Output = error_stack::Result<Vec<String>, SpreadsheetManagerError>>
+           + Send;
 }
 
 impl SpreadsheetRead for SpreadsheetManager {

@@ -35,5 +35,6 @@ pub trait EventHandler: Send + Sync {
 
 #[async_trait::async_trait]
 pub trait EventPublisher: Send + Sync {
-    async fn publish(&self, topic: &str, event: CryptoEvent) -> error_stack::Result<(), EventError>;
+    async fn publish(&self, topic: &str, event: CryptoEvent)
+        -> error_stack::Result<(), EventError>;
 }

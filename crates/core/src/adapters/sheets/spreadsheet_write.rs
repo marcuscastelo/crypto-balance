@@ -1,44 +1,44 @@
-use crate::domain::sheets::a1_notation::A1Notation;
-use crate::domain::sheets::a1_notation::ToA1Notation;
 use crate::adapters::sheets::cell_range::CellRange;
 use crate::adapters::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::adapters::sheets::spreadsheet_manager::SpreadsheetManagerError;
+use crate::domain::sheets::a1_notation::A1Notation;
+use crate::domain::sheets::a1_notation::ToA1Notation;
 use error_stack::{report, ResultExt};
 use google_sheets4::api::ValueRange;
 use tracing::instrument;
 
 use super::value_range_factory::ValueRangeFactory;
 pub trait SpreadsheetWrite {
-    async fn write_value(
+    fn write_value(
         &self,
         position_str: &A1Notation,
         value: &str,
-    ) -> error_stack::Result<(), SpreadsheetManagerError>;
+    ) -> impl std::future::Future<Output = error_stack::Result<(), SpreadsheetManagerError>> + Send;
 
-    async fn write_column(
+    fn write_column(
         &self,
         range: &CellRange,
         values: &[String],
-    ) -> error_stack::Result<(), SpreadsheetManagerError>;
+    ) -> impl std::future::Future<Output = error_stack::Result<(), SpreadsheetManagerError>> + Send;
 
-    async fn write_named_cell(
+    fn write_named_cell(
         &self,
         name: &str,
         value: &str,
-    ) -> error_stack::Result<(), SpreadsheetManagerError>;
+    ) -> impl std::future::Future<Output = error_stack::Result<(), SpreadsheetManagerError>> + Send;
 
-    async fn write_named_column(
+    fn write_named_column(
         &self,
         name: &str,
         values: &[String],
-    ) -> error_stack::Result<(), SpreadsheetManagerError>;
+    ) -> impl std::future::Future<Output = error_stack::Result<(), SpreadsheetManagerError>> + Send;
 
-    async fn write_named_two_columns(
+    fn write_named_two_columns(
         &self,
         name: &str,
         col1_values: &[String],
         col2_values: &[String],
-    ) -> error_stack::Result<(), SpreadsheetManagerError>;
+    ) -> impl std::future::Future<Output = error_stack::Result<(), SpreadsheetManagerError>> + Send;
 }
 
 impl SpreadsheetWrite for SpreadsheetManager {

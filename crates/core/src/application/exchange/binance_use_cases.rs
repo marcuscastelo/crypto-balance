@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use error_stack::{Report, ResultExt};
 
 use crate::{
-    domain::exchange::BalanceUpdateTarget,
     adapters::exchange::binance_factory::BinanceAccountFactory,
+    domain::exchange::BalanceUpdateTarget,
 };
 
 use super::use_cases::{ExchangeUseCases, ExchangeUseCasesError};

@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use error_stack::ResultExt;
 
-use crate::domain::exchange::{BalanceRepository, BalanceRepositoryError, BalanceUpdateTarget};
-use crate::domain::sheets::ranges;
 use crate::adapters::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::adapters::sheets::spreadsheet_read::SpreadsheetRead;
 use crate::adapters::sheets::spreadsheet_write::SpreadsheetWrite;
+use crate::domain::exchange::{BalanceRepository, BalanceRepositoryError, BalanceUpdateTarget};
+use crate::domain::sheets::ranges;
 
 pub struct SpreadsheetBalanceRepository {
     pub spreadsheet_manager: Arc<SpreadsheetManager>,

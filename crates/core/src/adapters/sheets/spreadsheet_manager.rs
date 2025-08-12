@@ -9,8 +9,8 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::instrument;
 
-use crate::domain::sheets::a1_notation::A1Notation;
 use crate::adapters::config::sheets_config::SpreadsheetConfig;
+use crate::domain::sheets::a1_notation::A1Notation;
 
 use super::{
     auth::{self},

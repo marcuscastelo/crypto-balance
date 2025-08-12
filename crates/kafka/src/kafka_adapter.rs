@@ -66,14 +66,18 @@ impl KafkaEventAdapter {
 
                     match self.process_message(payload).await {
                         Ok(_) => {
-                            if let Err(e) = self.consumer.commit_message(&message, CommitMode::Async) {
+                            if let Err(e) =
+                                self.consumer.commit_message(&message, CommitMode::Async)
+                            {
                                 error!("Failed to commit message: {:?}", e);
                             }
                         }
                         Err(e) => {
                             error!("Failed to process message: {:?}", e);
                             // For now, we'll commit to avoid infinite retries
-                            if let Err(commit_err) = self.consumer.commit_message(&message, CommitMode::Async) {
+                            if let Err(commit_err) =
+                                self.consumer.commit_message(&message, CommitMode::Async)
+                            {
                                 error!("Failed to commit failed message: {:?}", commit_err);
                             }
                         }
@@ -92,10 +96,11 @@ impl KafkaEventAdapter {
 
     #[instrument(skip(self, payload))]
     async fn process_message(&self, payload: &str) -> error_stack::Result<(), EventError> {
-        let event: CryptoEvent = serde_json::from_str(payload)
-            .map_err(|e| error_stack::report!(EventError::InvalidEvent {
+        let event: CryptoEvent = serde_json::from_str(payload).map_err(|e| {
+            error_stack::report!(EventError::InvalidEvent {
                 details: format!("Failed to deserialize event: {}", e),
-            }))?;
+            })
+        })?;
 
         info!("Processing event: {:?}", event);
         self.handle(event).await
@@ -111,7 +116,7 @@ impl EventHandler for KafkaEventAdapter {
                 // Try to find routine name based on exchange
                 let routine_name = match exchange.as_str() {
                     "Binance" => "BinanceBalancesRoutine",
-                    "Kraken" => "KrakenBalancesRoutine", 
+                    "Kraken" => "KrakenBalancesRoutine",
                     _ => {
                         return Err(error_stack::report!(EventError::ProcessingFailed {
                             details: format!("Unknown exchange: {}", exchange),
@@ -122,33 +127,41 @@ impl EventHandler for KafkaEventAdapter {
                 self.application_service
                     .run_routine_by_name(routine_name)
                     .await
-                    .map_err(|e| error_stack::report!(EventError::ProcessingFailed {
-                        details: format!("Failed to run balance update for {}: {:?}", exchange, e),
-                    }))?;
+                    .map_err(|e| {
+                        error_stack::report!(EventError::ProcessingFailed {
+                            details: format!(
+                                "Failed to run balance update for {}: {:?}",
+                                exchange, e
+                            ),
+                        })
+                    })?;
             }
             CryptoEvent::RunPriceUpdate { .. } => {
                 self.application_service
                     .run_routine_by_name("TokenPricesRoutine")
                     .await
-                    .map_err(|e| error_stack::report!(EventError::ProcessingFailed {
-                        details: format!("Failed to run price update: {:?}", e),
-                    }))?;
+                    .map_err(|e| {
+                        error_stack::report!(EventError::ProcessingFailed {
+                            details: format!("Failed to run price update: {:?}", e),
+                        })
+                    })?;
             }
             CryptoEvent::RunDebankUpdate { .. } => {
                 self.application_service
                     .run_routine_by_name("DebankRoutine")
                     .await
-                    .map_err(|e| error_stack::report!(EventError::ProcessingFailed {
-                        details: format!("Failed to run debank update: {:?}", e),
-                    }))?;
+                    .map_err(|e| {
+                        error_stack::report!(EventError::ProcessingFailed {
+                            details: format!("Failed to run debank update: {:?}", e),
+                        })
+                    })?;
             }
             CryptoEvent::HealthCheck { .. } => {
-                let health = self.application_service
-                    .health_check()
-                    .await
-                    .map_err(|e| error_stack::report!(EventError::ProcessingFailed {
+                let health = self.application_service.health_check().await.map_err(|e| {
+                    error_stack::report!(EventError::ProcessingFailed {
                         details: format!("Health check failed: {:?}", e),
-                    }))?;
+                    })
+                })?;
                 info!("Health check result: {}", health);
             }
         }

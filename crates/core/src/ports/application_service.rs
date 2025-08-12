@@ -16,11 +16,20 @@ pub enum ApplicationServiceError {
 
 #[async_trait::async_trait]
 pub trait ApplicationService: Send + Sync {
-    async fn run_all_routines(&self, parallel: bool) -> error_stack::Result<HashMap<String, error_stack::Result<(), RoutineError>>, ApplicationServiceError>;
-    
-    async fn run_routine_by_name(&self, name: &str) -> error_stack::Result<(), ApplicationServiceError>;
-    
+    async fn run_all_routines(
+        &self,
+        parallel: bool,
+    ) -> error_stack::Result<
+        HashMap<String, error_stack::Result<(), RoutineError>>,
+        ApplicationServiceError,
+    >;
+
+    async fn run_routine_by_name(
+        &self,
+        name: &str,
+    ) -> error_stack::Result<(), ApplicationServiceError>;
+
     async fn list_available_routines(&self) -> Vec<String>;
-    
+
     async fn health_check(&self) -> error_stack::Result<String, ApplicationServiceError>;
 }

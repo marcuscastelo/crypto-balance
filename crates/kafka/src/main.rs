@@ -8,11 +8,11 @@ use tracing::{error, info, instrument};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
-mod kafka_adapter;
 mod application_service_factory;
+mod kafka_adapter;
 
-use kafka_adapter::KafkaEventAdapter;
 use application_service_factory::ApplicationServiceFactory;
+use kafka_adapter::KafkaEventAdapter;
 
 #[tokio::main]
 #[instrument]
@@ -23,7 +23,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting crypto-balance Kafka consumer");
 
     let brokers = env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
-    let group_id = env::var("KAFKA_GROUP_ID").unwrap_or_else(|_| "crypto-balance-group".to_string());
+    let group_id =
+        env::var("KAFKA_GROUP_ID").unwrap_or_else(|_| "crypto-balance-group".to_string());
     let topics = env::var("KAFKA_TOPICS")
         .unwrap_or_else(|_| "crypto-balance-events".to_string())
         .split(',')
@@ -65,13 +66,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn setup_tracing() -> Result<(), Box<dyn std::error::Error>> {
-    let stdout_layer = tracing_subscriber::fmt::layer()
-        .with_writer(std::io::stdout);
+    let stdout_layer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
 
     let log_file_layer = tracing_subscriber::fmt::layer()
-        .with_writer(
-            std::fs::File::create("crypto_balance_kafka.log")?,
-        )
+        .with_writer(std::fs::File::create("crypto_balance_kafka.log")?)
         .with_ansi(false);
 
     let exporter = opentelemetry_otlp::new_exporter()

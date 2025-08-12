@@ -3,8 +3,8 @@ use std::collections::HashMap;
 #[allow(unused_imports)]
 use num_traits::ToPrimitive;
 
-use crate::domain::exchange::BalanceUpdateTarget;
 use crate::adapters::exchange::kraken_factory::KrakenFactory;
+use crate::domain::exchange::BalanceUpdateTarget;
 
 use error_stack::{report, ResultExt};
 

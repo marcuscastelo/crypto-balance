@@ -17,8 +17,12 @@ pub enum BalanceUpdateTarget {
 impl BalanceUpdateTarget {
     pub fn range(&self) -> &'static str {
         match &self {
-            BalanceUpdateTarget::Binance => crate::domain::sheets::ranges::balances::binance::RW_AMOUNTS,
-            BalanceUpdateTarget::Kraken => crate::domain::sheets::ranges::balances::kraken::RW_AMOUNTS,
+            BalanceUpdateTarget::Binance => {
+                crate::domain::sheets::ranges::balances::binance::RW_AMOUNTS
+            }
+            BalanceUpdateTarget::Kraken => {
+                crate::domain::sheets::ranges::balances::kraken::RW_AMOUNTS
+            }
         }
     }
 }
