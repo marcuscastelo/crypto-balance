@@ -94,6 +94,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
                 "hbUSDT",
                 "WHLP",
                 "USDHL",
+                "THBILL",
             ],
         },
         RelevantDebankToken {
