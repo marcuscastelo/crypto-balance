@@ -42,9 +42,8 @@ impl ExchangeUseCases for BinanceUseCases {
             .change_context(ExchangeUseCasesError::FetchBalancesError("Binance"))?
             .balances
             .into_iter()
-            .filter(|x| x.free > 0.0)
-            // Convert to Hashmap of token.asset, token.free
-            .map(|token| (token.asset, token.free))
+            .filter(|x| x.free + x.locked > 0.0)
+            .map(|token| (token.asset, token.free + token.locked))
             .collect::<HashMap<_, _>>();
 
         Ok(balances)
