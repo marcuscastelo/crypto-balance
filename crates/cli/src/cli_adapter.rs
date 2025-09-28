@@ -76,7 +76,7 @@ impl CommandHandler for CliAdapter {
 
                 let mut success_count = 0;
                 let mut failure_count = 0;
-                let mut output = String::new();
+                let mut output = "\nRoutine Results:\n".to_string();
 
                 for (name, result) in results {
                     match result {
