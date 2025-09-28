@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use binance::rest_model::Balance;
 use error_stack::{Report, ResultExt};
 
 use crate::{
@@ -43,8 +44,21 @@ impl ExchangeUseCases for BinanceUseCases {
             .balances
             .into_iter()
             .filter(|x| x.free + x.locked > 0.0)
+            .map(|token| {
+                if token.asset == "USDC" {
+                    Balance {
+                        asset: "USDT".to_string(),
+                        free: token.free,
+                        locked: token.locked,
+                    }
+                } else {
+                    token
+                }
+            })
             .map(|token| (token.asset, token.free + token.locked))
             .collect::<HashMap<_, _>>();
+
+        tracing::trace!("Fetched Binance balances: {:?}", balances);
 
         Ok(balances)
     }
