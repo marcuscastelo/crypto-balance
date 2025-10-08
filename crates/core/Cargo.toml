@@ -44,3 +44,4 @@ config = { workspace = true }
 
 # Kafka for event publishing
 rdkafka = { workspace = true }
+serde_path_to_error = "0.1.20"

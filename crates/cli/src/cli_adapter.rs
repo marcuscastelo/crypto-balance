@@ -1,10 +1,13 @@
+use crypto_balance_core::adapters::kafka_publisher::KafkaEventPublisher;
 use crypto_balance_core::ports::application_service::ApplicationService;
 use crypto_balance_core::ports::command_handler::{Command, CommandError, CommandHandler};
+use crypto_balance_core::ports::event_handler::{CryptoEvent, EventPublisher};
 use std::sync::Arc;
 use tracing::{error, info, instrument};
 
 pub struct CliAdapter {
     application_service: Arc<dyn ApplicationService>,
+    kafka_publisher: Option<Arc<KafkaEventPublisher>>,
 }
 
 impl std::fmt::Debug for CliAdapter {
@@ -17,14 +20,40 @@ impl std::fmt::Debug for CliAdapter {
 
 impl CliAdapter {
     pub fn new(application_service: Arc<dyn ApplicationService>) -> Self {
+        // Tenta criar o publisher Kafka lendo brokers do env ou default
+        let brokers =
+            std::env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
+        let kafka_publisher = match KafkaEventPublisher::new(&brokers) {
+            Ok(p) => Some(Arc::new(p)),
+            Err(e) => {
+                tracing::warn!("KafkaEventPublisher não inicializado: {e}");
+                None
+            }
+        };
         Self {
             application_service,
+            kafka_publisher,
         }
     }
 
     #[instrument]
     pub async fn run(&self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         let command = self.parse_args(args)?;
+
+        // Se for rotina Debank, publica evento Kafka antes de executar
+        if let Command::RunRoutines { .. } | Command::RunSpecificRoutine { .. } = &command {
+            if let Some(publisher) = &self.kafka_publisher {
+                let event = CryptoEvent::RunDebankUpdate {
+                    timestamp: chrono::Utc::now(),
+                };
+                // Tópico padrão
+                let topic = "user.sync";
+                match publisher.publish(topic, event).await {
+                    Ok(_) => info!("Evento user.sync.request publicado no Kafka"),
+                    Err(e) => error!("Falha ao publicar evento Kafka: {e:?}"),
+                }
+            }
+        }
 
         match self.handle(command).await {
             Ok(result) => {

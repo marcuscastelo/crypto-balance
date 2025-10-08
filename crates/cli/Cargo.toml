@@ -27,3 +27,4 @@ async-trait = { workspace = true }
 
 # CLI specific
 indicatif = { workspace = true }
+chrono.workspace = true
