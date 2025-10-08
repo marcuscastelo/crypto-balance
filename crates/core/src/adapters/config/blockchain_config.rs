@@ -21,7 +21,7 @@ pub struct HoldBlockchainConfig {
 #[allow(unused)]
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct AirdropsBlockchainConfig {
-    pub evm: EvmBlockchainConfig,
+    pub evm: MultiEvmBlockchainConfig,
     pub solana: SolanaBlockchainConfig,
     pub cosmos: CosmosBlockchainConfig,
 }
@@ -29,6 +29,11 @@ pub struct AirdropsBlockchainConfig {
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct EvmBlockchainConfig {
     pub address: Box<str>,
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct MultiEvmBlockchainConfig {
+    pub addresses: Vec<Box<str>>,
 }
 
 #[allow(unused)]

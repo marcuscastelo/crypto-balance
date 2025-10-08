@@ -5,12 +5,12 @@ use std::{collections::HashMap, sync::LazyLock, vec};
 use thiserror::Error;
 use tracing::{event, instrument, Level};
 
-use crate::adapters::config::blockchain_config::EvmBlockchainConfig;
+use crate::adapters::config::blockchain_config::MultiEvmBlockchainConfig;
 use crate::adapters::debank::aah_parser::{AaHParser, TokenBalance};
 use crate::adapters::debank::balance::format_balance;
 use crate::adapters::sheets::spreadsheet_manager::{SpreadsheetManager, SpreadsheetManagerError};
 use crate::adapters::sheets::spreadsheet_write::SpreadsheetWrite;
-use crate::domain::debank::Chain;
+use crate::domain::debank::{Chain, DebankResponse};
 use crate::domain::routine::{Routine, RoutineError};
 use crate::domain::sheets::ranges;
 
@@ -69,7 +69,7 @@ pub enum TokenMatch {
 pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock::new(|| {
     vec![
         RelevantDebankToken {
-            token_name: "USD",
+            token_name: "USD".into(),
             range_balance_two_cols: ranges::AaH::RW_USDT_BALANCES_NAMES,
             alternative_names: vec![
                 "USDT",
@@ -174,7 +174,7 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
 });
 
 pub struct DebankRoutine {
-    config: EvmBlockchainConfig,
+    config: MultiEvmBlockchainConfig,
     spreadsheet_manager: Arc<SpreadsheetManager>,
 }
 
@@ -186,7 +186,10 @@ impl fmt::Debug for DebankRoutine {
 
 impl DebankRoutine {
     #[instrument]
-    pub fn new(config: EvmBlockchainConfig, spreadsheet_manager: Arc<SpreadsheetManager>) -> Self {
+    pub fn new(
+        config: MultiEvmBlockchainConfig,
+        spreadsheet_manager: Arc<SpreadsheetManager>,
+    ) -> Self {
         Self {
             config,
             spreadsheet_manager,
@@ -196,9 +199,8 @@ impl DebankRoutine {
     #[instrument(skip(self), name = "DebankRoutine::load_debank_data")]
     async fn load_debank_data(
         &self,
-    ) -> error_stack::Result<(Vec<(String, Chain)>, String), RoutineError> {
-        let wallet_address = self.config.address.as_ref();
-
+        wallet_address: &str,
+    ) -> error_stack::Result<DebankResponse, RoutineError> {
         tracing::debug!(
             wallet_address = wallet_address,
             "Loading Debank data via API"
@@ -226,55 +228,48 @@ impl DebankRoutine {
                 "Failed to scrape wallet data via API".to_string(),
             ))?;
 
-        // Convert Vec<Chain> to Vec<(String, Chain)> preserving original order
-        let chain_list: Vec<(String, Chain)> = debank_response
-            .chains
-            .into_iter()
-            .map(|chain| (chain.name.clone(), chain))
-            .collect();
-
         tracing::debug!(
-            chains_loaded = chain_list.len(),
+            chains_loaded = debank_response.chains.len(),
             total_balance = ?debank_response.metadata.as_ref().map(|m| &m.wallet_address),
             total_usd_value = %debank_response.total_usd_value,
             "Successfully loaded Debank data via API"
         );
 
-        Ok((chain_list, debank_response.total_usd_value))
+        Ok(debank_response)
     }
 
-    #[instrument(skip(self, chain_infos), name = "DebankRoutine::parse_debank_profile", fields(user_id = self.config.address))]
+    #[instrument(skip(self, chains), name = "DebankRoutine::parse_debank_profile")]
     async fn parse_debank_profile(
         &self,
-        chain_infos: Vec<(String, Chain)>,
+        chains: &[Chain],
     ) -> error_stack::Result<
         (HashMap<String, HashMap<String, TokenBalance>>, Vec<String>),
         DebankTokensRoutineError,
     > {
         let mut aah_parser = AaHParser::new();
-        let chain_order: Vec<String> = chain_infos.iter().map(|(name, _)| name.clone()).collect();
+        let chain_order: Vec<String> = chains.iter().map(|chain| chain.name.clone()).collect();
 
-        for (chain, chain_info) in chain_infos.iter() {
-            event!(Level::TRACE, chain = chain, "Parsing chain");
-            if let Some(wallet) = chain_info.wallet_info.as_ref() {
+        for chain in chains.iter() {
+            event!(Level::TRACE, chain = chain.name, "Parsing chain");
+            if let Some(wallet) = chain.wallet_info.as_ref() {
                 event!(Level::TRACE, wallet = ?wallet, "Wallet detected, parsing");
                 aah_parser
-                    .parse_wallet(chain, wallet)
+                    .parse_wallet(&chain.name, wallet)
                     .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)?;
             }
-            for project in chain_info.project_info.as_slice() {
+            for project in chain.project_info.as_slice() {
                 event!(
                     Level::TRACE,
                     project = project.name,
                     "Project detected, parsing"
                 );
                 aah_parser
-                    .parse_project(chain, project)
+                    .parse_project(&chain.name, project)
                     .change_context(DebankTokensRoutineError::FailedToFetchRelevantTokenAmounts)
                     .attach_printable_lazy(|| {
                         format!(
                             "Failed to parse project: {} on chain: {}",
-                            project.name, chain
+                            project.name, chain.name
                         )
                     })?;
             }
@@ -295,7 +290,10 @@ impl DebankRoutine {
         Ok(())
     }
 
-    #[instrument(skip(self, balances, chain_order), name = "DebankRoutine::update_debank_eth_AaH_balances_on_spreadsheet", fields(user_id = self.config.address))]
+    #[instrument(
+        skip(self, balances, chain_order),
+        name = "DebankRoutine::update_debank_eth_AaH_balances_on_spreadsheet"
+    )]
     #[allow(non_snake_case)] // Specially allowed for the sake of readability of an acronym
     async fn update_debank_eth_AaH_balances_on_spreadsheet(
         &self,
@@ -420,44 +418,109 @@ impl DebankRoutine {
         Ok(())
     }
 
-    #[instrument(skip(self), name = "DebankRoutine::main_routine")]
-    async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
-        let user_id = self.config.address.as_ref();
-
-        tracing::debug!(user_id = user_id, "Processing Debank data from API");
-
+    async fn process_wallet(
+        &self,
+        user_id: String,
+    ) -> error_stack::Result<
+        (
+            String,
+            HashMap<String, HashMap<String, TokenBalance>>,
+            Vec<String>,
+            f64,
+        ),
+        RoutineError,
+    > {
         // Load chains from API
-        let (scraped_chains, total_usd_value_raw) = self.load_debank_data().await?;
+        let debank_response = self.load_debank_data(user_id.as_str()).await?;
         tracing::debug!(
-            chains_count = scraped_chains.len(),
-            total_usd_value = %total_usd_value_raw,
+            chains_count = debank_response.chains.len(),
+            total_usd_value = debank_response.total_usd_value,
             "Chains loaded from API"
         );
 
         let (balances, chain_order) = self
-            .parse_debank_profile(scraped_chains)
+            .parse_debank_profile(debank_response.chains.as_ref())
             .await
             .change_context(RoutineError::routine_failure(format!(
                 "Failed to parse Debank profile: {}",
                 user_id
             )))?;
-
         tracing::debug!(
             balances = ?balances,
             "Balances processed"
         );
 
         // Use total USD value from API instead of manually calculating
-        let total_balance = format_balance(&total_usd_value_raw).map_err(|e| {
+        let total_balance = format_balance(&debank_response.total_usd_value).map_err(|e| {
             RoutineError::routine_failure(format!(
                 "Failed to parse total USD value '{}' from API: {}",
-                total_usd_value_raw, e
+                debank_response.total_usd_value, e
             ))
         })?;
 
+        Ok((user_id, balances, chain_order, total_balance))
+    }
+
+    #[instrument(skip(self), name = "DebankRoutine::main_routine")]
+    async fn main_routine(&self) -> error_stack::Result<(), RoutineError> {
+        let (balances, chain_order, total_balance) = {
+            let mut futures = vec![];
+            for address in self.config.addresses.iter() {
+                let address = address.trim();
+                if address.is_empty() {
+                    tracing::warn!("Skipping empty wallet address in configuration");
+                    continue;
+                }
+                futures.push(self.process_wallet(address.to_owned()));
+            }
+
+            let results = futures::future::join_all(futures).await;
+            if results.is_empty() {}
+
+            let mut combined_balances: HashMap<String, HashMap<String, TokenBalance>> =
+                HashMap::new();
+            let mut combined_chain_order: Vec<String> = vec![];
+            let mut total_balance = 0.0;
+
+            for result in results {
+                match result {
+                    Ok((address, result_balances, result_chain_order, result_total_balance)) => {
+                        // Merge balances
+                        for (token_name, token_balances) in result_balances {
+                            let combined_entry = combined_balances
+                                .entry(token_name)
+                                .or_insert_with(HashMap::new);
+                            for (token_location, balance) in token_balances {
+                                let location_with_address = format!(
+                                    "{} ({})",
+                                    token_location,
+                                    address.get(0..6).unwrap_or("<unknown address>")
+                                );
+                                combined_entry.insert(location_with_address, balance);
+                            }
+                        }
+
+                        // Merge chain order, preserving order and avoiding duplicates
+                        for chain in result_chain_order {
+                            if !combined_chain_order.contains(&chain) {
+                                combined_chain_order.push(chain);
+                            }
+                        }
+
+                        total_balance += result_total_balance;
+                    }
+                    Err(err) => {
+                        tracing::error!(error = ?err, "Error processing wallet, skipping");
+                        return Err(err);
+                    }
+                }
+            }
+
+            (combined_balances, combined_chain_order, total_balance)
+        };
+
         tracing::debug!(
             total_balance = total_balance,
-            total_usd_value_raw = %total_usd_value_raw,
             "Using total balance from API"
         );
 
@@ -465,16 +528,14 @@ impl DebankRoutine {
         self.update_debank_balance_on_spreadsheet(total_balance)
             .await
             .change_context(RoutineError::routine_failure(format!(
-                "Failed to update Debank balance on the spreadsheet for wallet: {}",
-                user_id
+                "Failed to update Debank balance on the spreadsheet"
             )))?;
 
         tracing::trace!("Updating AaH balances on the spreadsheet");
         self.update_debank_eth_AaH_balances_on_spreadsheet(balances, chain_order)
             .await
             .change_context(RoutineError::routine_failure(format!(
-                "Failed to update Debank AaH balances on the spreadsheet for wallet: {}",
-                user_id
+                "Failed to update Debank AaH balances on the spreadsheet"
             )))?;
 
         tracing::info!("Debank: ✅ Updated Debank balance on the spreadsheet");
