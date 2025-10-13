@@ -11,20 +11,20 @@ path = "src/main.rs"
 # Core library
 crypto-balance-core = { path = "../core" }
 
-# Workspace dependencies  
-tokio = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-indicatif = { workspace = true }
-tracing-opentelemetry = { workspace = true }
-opentelemetry = { workspace = true }
-opentelemetry_sdk = { workspace = true }
-opentelemetry-otlp = { workspace = true }
-tonic = { workspace = true }
-thiserror = { workspace = true }
-error-stack = { workspace = true }
-async-trait = { workspace = true }
+# Explicit versions (migrated from workspace dependencies)
+tokio = { version = "1.36.0", features = ["full"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["json"] }
+tracing-indicatif = { version = "0.3.9" }
+tracing-opentelemetry = { version = "0.22" }
+opentelemetry = { version = "0.21" }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = ["grpc-tonic"] }
+tonic = { version = "0.10" }
+thiserror = { version = "1.0" }
+error-stack = { version = "0.4.1", features = ["anyhow"] }
+async-trait = { version = "0.1.77" }
 
 # CLI specific
-indicatif = { workspace = true }
-chrono.workspace = true
+indicatif = { version = "0.17.8" }
+chrono = { version = "0.4.19" }
