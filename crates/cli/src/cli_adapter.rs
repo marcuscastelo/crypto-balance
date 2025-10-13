@@ -1,6 +1,5 @@
 use crypto_balance_core::ports::application_service::ApplicationService;
 use crypto_balance_core::ports::command_handler::{Command, CommandError, CommandHandler};
-use crypto_balance_core::ports::event_handler::CryptoEvent;
 use std::sync::Arc;
 use tracing::{error, info, instrument};
 

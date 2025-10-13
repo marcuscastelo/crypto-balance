@@ -28,7 +28,6 @@ crypto-balance/
 ├── crates/
 │   ├── core/              # 📚 Shared library (business logic)
 │   ├── cli/               # 💻 CLI application 
-│   └── kafka/             # 🔄 Kafka consumer application
 ├── Cargo.toml             # 🎯 Workspace root
 ├── build.sh               # 🛠️ Build script
 └── docker-compose.kafka.yml
@@ -50,11 +49,10 @@ crypto-balance/
 
 ## 🚀 Execution Modes
 
-| Mode | Use Case | Command |
-|------|----------|---------|
-| **CLI** | Automação, scripts, execução manual | `cargo run -p crypto-balance-cli` |
-| **Kafka** | Microsserviços, event-driven | `cargo run -p crypto-balance-kafka` |
-| **Docker** | Production deployment | `docker-compose up` |
+| Mode       | Use Case                            | Command                           |
+| ---------- | ----------------------------------- | --------------------------------- |
+| **CLI**    | Automação, scripts, execução manual | `cargo run -p crypto-balance-cli` |
+| **Docker** | Production deployment               | `docker-compose up`               |
 
 ## 📡 Event-Driven Architecture (Kafka)
 
@@ -83,9 +81,6 @@ cargo test -p crypto-balance-core
 # Run CLI in dev mode  
 cargo run -p crypto-balance-cli -- health
 
-# Run Kafka consumer (needs Kafka)
-KAFKA_BROKERS=localhost:9092 cargo run -p crypto-balance-kafka
-
 # Build workspace
 cargo build --workspace --release
 ```
@@ -94,7 +89,6 @@ cargo build --workspace --release
 
 Individual Dockerfiles for each app:
 - `crates/cli/Dockerfile` - CLI application
-- `crates/kafka/Dockerfile` - Kafka consumer
 - `docker-compose.kafka.yml` - Full stack with Kafka
 
 ---
