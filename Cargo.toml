@@ -1,9 +1,5 @@
 [workspace]
-members = [
-    "crates/core",
-    "crates/cli",
-    "crates/kafka"
-]
+members = ["crates/core", "crates/cli"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -58,6 +54,3 @@ config = "0.14.0"
 
 # Progress indicators
 indicatif = "0.17.8"
-
-# Kafka
-rdkafka = { version = "0.36", features = ["cmake-build", "ssl"] }
