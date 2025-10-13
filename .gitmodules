@@ -1,0 +1,3 @@
+[submodule "crates/core"]
+	path = crates/core
+	url = https://github.com/marcuscastelo/txlens-core
