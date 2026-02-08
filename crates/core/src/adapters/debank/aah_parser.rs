@@ -542,13 +542,14 @@ impl AaHParser {
                 usd_value: token
                     .usd_value
                     .as_ref()
-                    .expect(
-                        format!(
-                            "USD value should be present for simple tokens (Project: {}, Tracking: {})",
-                            project_name, tracking_type
-                        )
-                        .as_str(),
-                    )
+                    .unwrap_or(&"-0.001".to_string()) // TODO: Fix usd_value being null for Hyperliquid Depoist trackings.
+                    // .expect(
+                    //     format!(
+                    //         "USD value should be present for simple tokens (Project: {}, Tracking: {})",
+                    //         project_name, tracking_type
+                    //     )
+                    //     .as_str(),
+                    // )
                     .clone(),
             }
             };
