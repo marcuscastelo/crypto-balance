@@ -168,7 +168,9 @@ pub static RELEVANT_DEBANK_TOKENS: LazyLock<Vec<RelevantDebankToken>> = LazyLock
         RelevantDebankToken {
             token_name: "HYPE",
             range_balance_two_cols: ranges::AaH::RW_HYPE_BALANCES_NAMES,
-            alternative_names: vec!["hbHYPE", "LHYPE", "stHYPE", "mHYPE", "WHYPE"],
+            alternative_names: vec![
+                "hbHYPE", "LHYPE", "stHYPE", "mHYPE", "WHYPE", "vHYPE", "lstHYPE",
+            ],
         },
     ]
 });
