@@ -514,23 +514,43 @@ impl AaHParser {
             ]
             .as_slice();
 
-            let convert_to_simple = |token: &TokenInfo| SimpleTokenInfo {
+            let convert_to_simple = |token: &TokenInfo| {
+                SimpleTokenInfo {
                 token_name: token.token_name.clone(),
                 pool: token
                     .pool
                     .as_ref()
-                    .expect("Pool should be present for simple tokens")
+                    .expect(
+                        format!(
+                            "Pool should be present for simple tokens (Project: {}, Tracking: {})",
+                            project_name, tracking_type
+                        )
+                        .as_str(),
+                    )
                     .clone(),
                 balance: token
                     .balance
                     .as_ref()
-                    .expect("Balance should be present for simple tokens")
+                    .expect(
+                        format!(
+                            "Balance should be present for simple tokens (Project: {}, Tracking: {})",
+                            project_name, tracking_type
+                        )
+                        .as_str(),
+                    )
                     .clone(),
                 usd_value: token
                     .usd_value
                     .as_ref()
-                    .expect("USD value should be present for simple tokens")
+                    .expect(
+                        format!(
+                            "USD value should be present for simple tokens (Project: {}, Tracking: {})",
+                            project_name, tracking_type
+                        )
+                        .as_str(),
+                    )
                     .clone(),
+            }
             };
 
             let convert_to_stake_shaped = |token: &TokenInfo| StakeTokenInfo {

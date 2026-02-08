@@ -434,6 +434,22 @@ impl DebankRoutine {
     > {
         // Load chains from API
         let debank_response = self.load_debank_data(user_id.as_str()).await?;
+        // Save Response to disk for debugging purposes
+        {
+            // File name hardcoded for now, but can be improved to include timestamp or wallet address
+            let file_name = format!(
+                "debank_response_{}.json",
+                user_id.get(0..6).unwrap_or("unknown")
+            );
+            if let Err(err) = std::fs::write(
+                &file_name,
+                serde_json::to_string_pretty(&debank_response)
+                    .unwrap_or_else(|_| "Failed to serialize response".to_string()),
+            ) {
+                tracing::warn!(error = ?err, file_name = ?file_name, "Failed to save Debank response to disk for debugging");
+            }
+        }
+
         tracing::debug!(
             chains_count = debank_response.chains.len(),
             total_usd_value = debank_response.total_usd_value,
