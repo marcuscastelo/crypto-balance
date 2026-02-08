@@ -1,4 +1,4 @@
-use crate::adapters::price::price::get_token_prices;
+use crate::adapters::price::price::fetch_token_prices;
 use crate::adapters::sheets::spreadsheet_manager::SpreadsheetManager;
 use crate::adapters::sheets::spreadsheet_read::SpreadsheetRead;
 use crate::adapters::sheets::spreadsheet_write::SpreadsheetWrite;
@@ -121,7 +121,7 @@ impl Routine for TokenPricesRoutine {
         )?;
 
         tracing::info!("Prices: ☁️  Getting prices of all tokens from Coingecko");
-        let prices = get_token_prices(tokens.as_ref()).await;
+        let prices = fetch_token_prices(tokens.as_ref()).await;
 
         tracing::info!("Prices: 📝 Reading the current prices from the spreadsheet");
         let spreadsheet_prices = self
@@ -131,10 +131,34 @@ impl Routine for TokenPricesRoutine {
                 "Failed to get current prices from spreadsheet",
             ))?;
 
+        tracing::trace!(
+            "Spreadsheet prices: {:?}",
+            spreadsheet_prices
+                .iter()
+                .map(|p| format!("${}", p))
+                .collect::<Vec<_>>()
+        );
+
+        tracing::trace!(
+            "Fetched prices: {:?}",
+            prices
+                .iter()
+                .map(|(token, price)| format!("{}: ${:?}", token, price))
+                .collect::<Vec<_>>()
+        );
+
         tracing::info!("Prices: 📝 Updating the prices on the spreadsheet");
         let new_prices = self
             .order_prices(&tokens, &prices, spreadsheet_prices)
             .change_context(RoutineError::routine_failure("Failed to order prices"))?;
+
+        tracing::trace!(
+            "Final prices: {:?}",
+            new_prices
+                .iter()
+                .map(|p| format!("${}", p))
+                .collect::<Vec<_>>()
+        );
 
         self.update_prices_on_spreadsheet(new_prices)
             .await

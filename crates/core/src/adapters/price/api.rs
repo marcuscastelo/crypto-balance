@@ -1,16 +1,7 @@
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_LANGUAGE, USER_AGENT};
 use std::collections::HashMap;
 
 pub struct CoinGeckoApi;
-
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-pub struct CoinResponse {
-    pub id: String,
-    pub symbol: String,
-    pub name: String,
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-pub struct CoinListResponse(pub Vec<CoinResponse>);
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct PriceResponse {
@@ -39,12 +30,11 @@ impl CoinGeckoApi {
         );
         headers.insert(
             ACCEPT,
-            HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+            HeaderValue::from_static(
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            ),
         );
-        headers.insert(
-            ACCEPT_LANGUAGE,
-            HeaderValue::from_static("en-US,en;q=0.5"),
-        );
+        headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.5"));
 
         let client = reqwest::Client::new();
         let response = client
@@ -59,6 +49,7 @@ impl CoinGeckoApi {
 
         tracing::trace!("CoinGecko API response: {}", response);
         let prices: PricesResponse = serde_json::from_str(&response).unwrap();
+        tracing::trace!("Parsed CoinGecko API response: {:?}", prices);
         prices
     }
 }
